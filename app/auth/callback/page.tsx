@@ -1,11 +1,12 @@
 "use client";
 export const dynamic = "force-dynamic";
-import { useEffect, useState } from "react";
+
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 import { Loader2, AlertCircle } from "lucide-react";
 
-export default function AuthCallbackPage() {
+function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -67,5 +68,19 @@ export default function AuthCallbackPage() {
     <div className="min-h-screen flex items-center justify-center">
       <Loader2 className="h-6 w-6 text-indigo-400 animate-spin" />
     </div>
+  );
+}
+
+const Spinner = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <Loader2 className="h-6 w-6 text-indigo-400 animate-spin" />
+  </div>
+);
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<Spinner />}>
+      <CallbackHandler />
+    </Suspense>
   );
 }
