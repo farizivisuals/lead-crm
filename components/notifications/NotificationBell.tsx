@@ -4,7 +4,13 @@ import { Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import { formatRelative } from "@/lib/utils";
 import type { Notification } from "@/lib/types";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface NotificationBellProps {
   userId: string;
@@ -26,23 +32,17 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
 
   useEffect(() => {
     fetchNotifications();
-
     const channel = supabase
       .channel(`notifications:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `recipient_profile_id=eq.${userId}`,
-        },
-        (payload) => {
-          setNotifications((prev) => [payload.new as Notification, ...prev]);
-        }
-      )
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
+        filter: `recipient_profile_id=eq.${userId}`,
+      }, (payload) => {
+        setNotifications((prev) => [payload.new as Notification, ...prev]);
+      })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [fetchNotifications, userId, supabase]);
 
@@ -50,59 +50,77 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
 
   async function markRead(id: string) {
     await supabase.from("notifications").update({ is_read: true }).eq("id", id);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
   }
 
   async function markAllRead() {
-    await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("recipient_profile_id", userId)
-      .eq("is_read", false);
+    await supabase.from("notifications").update({ is_read: true })
+      .eq("recipient_profile_id", userId).eq("is_read", false);
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
-          <Bell className="h-5 w-5 text-gray-600" />
-          {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
+        <button className="relative p-2 rounded-xl text-white/50 hover:text-white hover:bg-white/[0.07] transition-all duration-150">
+          <Bell className="h-4.5 w-4.5 h-[18px] w-[18px]" />
+          <AnimatePresence>
+            {unreadCount > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                className="absolute top-1 right-1 h-4 w-4 rounded-full bg-indigo-500 text-white text-[9px] flex items-center justify-center font-bold shadow-lg shadow-indigo-500/50"
+              >
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
-        <div className="flex items-center justify-between px-2 py-1.5">
-          <DropdownMenuLabel className="p-0 text-sm">Notifications</DropdownMenuLabel>
+      <DropdownMenuContent
+        align="end"
+        className="w-80 max-h-[420px] overflow-y-auto bg-[#0e0e16]/95 backdrop-blur-2xl border border-white/[0.1] shadow-2xl shadow-black/60 rounded-2xl p-0"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
+          <span className="text-sm font-semibold text-white">Notifications</span>
           {unreadCount > 0 && (
             <button
               onClick={markAllRead}
-              className="text-xs text-blue-600 hover:underline"
+              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
             >
               Mark all read
             </button>
           )}
         </div>
-        <DropdownMenuSeparator />
         {notifications.length === 0 ? (
-          <div className="py-6 text-center text-sm text-gray-400">No notifications</div>
+          <div className="py-10 text-center">
+            <Bell className="h-6 w-6 text-white/20 mx-auto mb-2" />
+            <p className="text-sm text-white/30">All caught up</p>
+          </div>
         ) : (
-          notifications.map((n) => (
-            <DropdownMenuItem
-              key={n.id}
-              className={`flex flex-col items-start gap-0.5 py-2.5 cursor-pointer ${!n.is_read ? "bg-blue-50" : ""}`}
-              onClick={() => markRead(n.id)}
-            >
-              <span className="text-sm font-medium text-gray-900">{n.title}</span>
-              <span className="text-xs text-gray-500">{n.body}</span>
-              <span className="text-xs text-gray-400 mt-0.5">{formatRelative(n.created_at)}</span>
-            </DropdownMenuItem>
-          ))
+          <div>
+            {notifications.map((n) => (
+              <DropdownMenuItem
+                key={n.id}
+                className={`flex flex-col items-start gap-1 px-4 py-3 cursor-pointer border-b border-white/[0.05] last:border-0 focus:bg-white/[0.06] ${
+                  !n.is_read ? "bg-indigo-500/[0.06]" : ""
+                }`}
+                onClick={() => markRead(n.id)}
+              >
+                <div className="flex items-start gap-2 w-full">
+                  {!n.is_read && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0 mt-1.5" />
+                  )}
+                  <div className={!n.is_read ? "" : "pl-3.5"}>
+                    <p className="text-sm font-medium text-white/90 leading-tight">{n.title}</p>
+                    <p className="text-xs text-white/50 mt-0.5 leading-snug">{n.body}</p>
+                    <p className="text-[11px] text-white/30 mt-1">{formatRelative(n.created_at)}</p>
+                  </div>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

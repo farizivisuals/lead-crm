@@ -54,17 +54,17 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
   }, {});
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <div className="space-y-6 animate-slide-up">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <Link href={`/admin/projects/${projectId}`}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4" />
-              {project.name}
+              <span className="hidden sm:inline">{project.name}</span>
             </Button>
           </Link>
-          <span className="text-gray-400">/</span>
-          <h1 className="text-xl font-bold text-gray-900">Tasks</h1>
+          <span className="text-white/20">/</span>
+          <h1 className="text-lg lg:text-xl font-bold text-white">Tasks</h1>
         </div>
         <NewTaskDialog
           projectId={projectId}

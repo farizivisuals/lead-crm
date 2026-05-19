@@ -1,24 +1,37 @@
 import { createClient } from "@/lib/supabase/server";
 import CompanyCalendar from "@/components/calendar/CompanyCalendar";
 import type { CalendarEvent } from "@/lib/types";
-import { Clock } from "lucide-react";
+import { Calendar, Clock, ArrowUpRight } from "lucide-react";
+import MineToggle from "@/components/filters/MineToggle";
 
-export default async function CalendarPage() {
+interface Props {
+  searchParams: Promise<{ mine?: string }>;
+}
+
+export default async function CalendarPage({ searchParams }: Props) {
+  const { mine } = await searchParams;
+  const isMine = mine === "1";
+
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  // Fetch ALL tasks (no date filter — we'll split them client-side)
+  let tasksQuery = supabase
+    .from("tasks")
+    .select("id, title, start_date, due_date, department_id, project_id, priority, assigned_to, department_stages!current_stage_id(color), departments(name)")
+    .order("created_at");
+
+  if (isMine && user) {
+    tasksQuery = tasksQuery.eq("assigned_to", user.id);
+  }
+
   const [{ data: tasks }, { data: projects }] = await Promise.all([
-    supabase
-      .from("tasks")
-      .select("id, title, start_date, due_date, department_id, project_id, priority, department_stages!current_stage_id(color), departments(name)")
-      .order("created_at"),
+    tasksQuery,
     supabase
       .from("projects")
       .select("id, name, start_date, target_end_date, client_id")
       .or("start_date.not.is.null,target_end_date.not.is.null"),
   ]);
 
-  // Tasks WITH at least one date → calendar events
   const datedEvents: CalendarEvent[] = (tasks ?? [])
     .filter((t) => t.start_date || t.due_date)
     .map((t) => ({
@@ -34,89 +47,109 @@ export default async function CalendarPage() {
       project_id: t.project_id,
     }));
 
-  // Tasks WITHOUT any dates → unscheduled list
   const undatedTasks = (tasks ?? []).filter((t) => !t.start_date && !t.due_date);
 
-  const projectEvents: CalendarEvent[] = (projects ?? []).map((p) => ({
-    id: p.id,
-    entity_id: p.id,
-    entity_type: "project" as const,
-    title: `📁 ${p.name}`,
-    start: p.start_date ?? p.target_end_date ?? "",
-    end: p.target_end_date ?? null,
-    color: "#10b981",
-    department_id: null,
-    client_id: p.client_id,
-    project_id: p.id,
-  })).filter((e) => e.start);
+  const projectEvents: CalendarEvent[] = (projects ?? [])
+    .map((p) => ({
+      id: p.id,
+      entity_id: p.id,
+      entity_type: "project" as const,
+      title: `${p.name}`,
+      start: p.start_date ?? p.target_end_date ?? "",
+      end: p.target_end_date ?? null,
+      color: "#10b981",
+      department_id: null,
+      client_id: p.client_id,
+      project_id: p.id,
+    }))
+    .filter((e) => e.start);
 
-  const PRIORITY_DOT: Record<string, string> = {
-    low: "bg-gray-300",
+  const PRIORITY_COLOR: Record<string, string> = {
+    low: "bg-white/20",
     medium: "bg-blue-400",
     high: "bg-orange-400",
-    urgent: "bg-red-500",
+    urgent: "bg-red-400",
   };
 
+  const legend = [
+    { color: "#6366f1", label: "Video tasks" },
+    { color: "#ec4899", label: "Photo tasks" },
+    { color: "#f59e0b", label: "PR tasks" },
+    { color: "#10b981", label: "Projects" },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Company Calendar</h1>
-        <p className="text-gray-500 text-sm mt-1">All tasks, projects, and deadlines across every client</p>
+    <div className="space-y-6 animate-slide-up">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Calendar className="h-4 w-4 text-indigo-400" />
+            <span className="text-xs text-indigo-400 font-medium uppercase tracking-widest">Schedule</span>
+          </div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            {isMine ? "My Calendar" : "Company Calendar"}
+          </h1>
+          <p className="text-white/40 text-sm mt-1">
+            {isMine
+              ? "Tasks assigned to you, plus all project milestones."
+              : "All tasks, projects, and deadlines across every client."}
+          </p>
+        </div>
+
+        <div className="flex-shrink-0 mt-1">
+          <MineToggle isMine={isMine} />
+        </div>
       </div>
 
       {/* Legend */}
-      <div className="flex gap-4 flex-wrap text-sm">
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-indigo-500" />
-          <span className="text-gray-600">Video tasks</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-pink-500" />
-          <span className="text-gray-600">Photo tasks</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-amber-500" />
-          <span className="text-gray-600">PR tasks</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-emerald-500" />
-          <span className="text-gray-600">Projects</span>
-        </div>
+      <div className="flex gap-4 flex-wrap">
+        {legend.map(({ color, label }) => (
+          <div key={label} className="flex items-center gap-2">
+            <span
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}80` }}
+            />
+            <span className="text-sm text-white/40">{label}</span>
+          </div>
+        ))}
       </div>
 
+      {/* Calendar */}
       <CompanyCalendar events={[...datedEvents, ...projectEvents]} />
 
-      {/* Unscheduled tasks panel */}
+      {/* Unscheduled tasks */}
       {undatedTasks.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="h-4 w-4 text-gray-400" />
-            <h2 className="font-semibold text-gray-800">Unscheduled tasks</h2>
-            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+        <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-5">
+          <div className="flex items-center gap-2.5 mb-1">
+            <Clock className="h-4 w-4 text-amber-400" />
+            <h2 className="font-semibold text-white/90">Unscheduled tasks</h2>
+            <span className="text-xs text-white/30 bg-white/[0.07] border border-white/[0.08] px-2 py-0.5 rounded-full font-medium">
               {undatedTasks.length}
             </span>
           </div>
-          <p className="text-xs text-gray-400 mb-4">
-            These tasks have no start or due date — open the task to add one and it will appear on the calendar.
+          <p className="text-xs text-white/30 mb-4 leading-relaxed">
+            These tasks have no start or due date — open the task to schedule it and it will appear on the calendar.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {undatedTasks.map((task) => (
               <a
                 key={task.id}
                 href={`/admin/projects/${task.project_id}/tasks`}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors group"
+                className="group flex items-center gap-3 px-3 py-2.5 rounded-xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.14] transition-all duration-150"
               >
                 <span
-                  className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[task.priority as string] ?? "bg-gray-300"}`}
+                  className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_COLOR[task.priority as string] ?? "bg-white/20"}`}
                 />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-white/70 group-hover:text-white truncate transition-colors">
                     {task.title}
                   </p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-white/30 truncate">
                     {(task.departments as unknown as { name: string } | null)?.name}
                   </p>
                 </div>
+                <ArrowUpRight className="h-3.5 w-3.5 text-white/20 group-hover:text-white/50 flex-shrink-0 transition-colors" />
               </a>
             ))}
           </div>

@@ -2,11 +2,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Zap, Mail, Lock, AlertCircle } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,7 +28,6 @@ export default function LoginPage() {
       return;
     }
 
-    // Fetch user type to redirect correctly
     const { data: profile } = await supabase
       .from("profiles")
       .select("user_type")
@@ -41,37 +39,108 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center px-4 overflow-hidden relative">
+      {/* Animated background orbs */}
+      <div
+        className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-30 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, rgba(99,102,241,0.4) 0%, transparent 70%)",
+          animation: "float 8s ease-in-out infinite",
+        }}
+      />
+      <div
+        className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-20 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, rgba(139,92,246,0.5) 0%, transparent 70%)",
+          animation: "float 10s ease-in-out infinite reverse",
+        }}
+      />
+      <div
+        className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full opacity-15 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, rgba(6,182,212,0.4) 0%, transparent 70%)",
+          animation: "float 12s ease-in-out infinite 2s",
+        }}
+      />
+
+      {/* Grid lines overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.04]"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)
+          `,
+          backgroundSize: "60px 60px",
+        }}
+      />
+
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-sm relative z-10"
+      >
+        {/* Logo mark */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 mb-4">
-            <span className="text-white text-xl font-bold">L</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Lead CRM</h1>
-          <p className="text-gray-500 mt-1">Marketing Agency Platform</p>
+          <motion.div
+            initial={{ scale: 0, rotate: -20 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
+            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 mb-5 shadow-2xl shadow-indigo-500/40"
+          >
+            <Zap className="h-7 w-7 text-white" />
+          </motion.div>
+          <motion.h1
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+            className="text-2xl font-bold text-white tracking-tight"
+          >
+            Lead CRM
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.4 }}
+            className="text-white/40 text-sm mt-1.5"
+          >
+            Marketing Agency Platform
+          </motion.p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign in</CardTitle>
-            <CardDescription>Enter your credentials to access your workspace</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+        {/* Glass card */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          className="rounded-3xl border border-white/[0.1] bg-white/[0.05] backdrop-blur-2xl p-8 shadow-2xl shadow-black/40"
+        >
+          <h2 className="text-lg font-semibold text-white mb-1.5">Sign in</h2>
+          <p className="text-sm text-white/40 mb-6">Enter your credentials to access your workspace</p>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30 pointer-events-none" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="you@agency.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
+                  className="pl-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30 pointer-events-none" />
                 <Input
                   id="password"
                   type="password"
@@ -80,27 +149,41 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
+                  className="pl-9"
                 />
               </div>
-              {error && (
-                <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">{error}</p>
-              )}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                Sign in
-              </Button>
-              <div className="text-center">
-                <a
-                  href="/reset-password"
-                  className="text-sm text-blue-600 hover:underline"
-                >
-                  Forgot your password?
-                </a>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2.5 text-sm text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2.5 rounded-xl"
+              >
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                {error}
+              </motion.div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-medium text-sm shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:from-indigo-400 hover:to-violet-400 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
+              {loading ? "Signing in…" : "Sign in"}
+            </button>
+
+            <div className="text-center pt-1">
+              <a href="/reset-password" className="text-sm text-white/40 hover:text-indigo-400 transition-colors">
+                Forgot your password?
+              </a>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

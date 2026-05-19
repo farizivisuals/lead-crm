@@ -57,10 +57,10 @@ export default async function PortalCalendarPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-slide-up">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
-        <p className="text-gray-500 text-sm mt-1">Your project timelines and deliverables</p>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Calendar</h1>
+        <p className="text-white/40 text-sm mt-1">Your project timelines and deliverables</p>
       </div>
       <CompanyCalendar events={events} />
     </div>

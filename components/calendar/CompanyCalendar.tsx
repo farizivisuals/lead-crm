@@ -1,5 +1,4 @@
 "use client";
-import { useEffect, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -25,7 +24,7 @@ export default function CompanyCalendar({ events }: Props) {
   }));
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
+    <div className="rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] p-3 sm:p-5 overflow-hidden">
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
         initialView="dayGridMonth"
@@ -34,12 +33,20 @@ export default function CompanyCalendar({ events }: Props) {
           center: "title",
           right: "dayGridMonth,timeGridWeek,listWeek",
         }}
+        buttonText={{
+          today: "Today",
+          month: "Month",
+          week: "Week",
+          list: "List",
+        }}
         events={fcEvents}
         height="auto"
         eventClick={(info) => {
           const { entity_type, project_id } = info.event.extendedProps;
           if (project_id) {
-            window.location.href = `/admin/projects/${project_id}/${entity_type === "task" ? "tasks" : entity_type === "deliverable" ? "deliverables" : ""}`;
+            window.location.href = `/admin/projects/${project_id}/${
+              entity_type === "task" ? "tasks" : entity_type === "deliverable" ? "deliverables" : ""
+            }`;
           }
         }}
         eventClassNames="cursor-pointer"
