@@ -4,6 +4,54 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { generatePassword } from "@/lib/utils";
 import type { EmployeeRole } from "@/lib/types";
 
+async function requireRoot() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" as const, user: null, supabase: null };
+  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
+  if (emp?.role !== "root") return { error: "Only root can perform this action" as const, user: null, supabase: null };
+  return { error: null, user, supabase };
+}
+
+export async function getEmployeeEmail(profileId: string) {
+  const { error, user } = await requireRoot();
+  if (error || !user) return { error: error ?? "Unauthorized" };
+  const admin = createAdminClient();
+  const { data: authUser, error: authError } = await admin.auth.admin.getUserById(profileId);
+  if (authError) return { error: authError.message };
+  return { email: authUser.user.email ?? "" };
+}
+
+export async function updateEmployee(profileId: string, input: {
+  full_name: string;
+  email: string;
+  role: EmployeeRole;
+  department_id: string;
+  title: string;
+}) {
+  const { error, user } = await requireRoot();
+  if (error || !user) return { error: error ?? "Unauthorized" };
+  const admin = createAdminClient();
+
+  const { error: authError } = await admin.auth.admin.updateUserById(profileId, {
+    email: input.email,
+    user_metadata: { full_name: input.full_name },
+  });
+  if (authError) return { error: authError.message };
+
+  const { error: profileError } = await admin.from("profiles").update({ full_name: input.full_name }).eq("id", profileId);
+  if (profileError) return { error: profileError.message };
+
+  const { error: empError } = await admin.from("employees").update({
+    role: input.role,
+    department_id: input.department_id || null,
+    title: input.title || null,
+  }).eq("profile_id", profileId);
+  if (empError) return { error: empError.message };
+
+  return { success: true };
+}
+
 export async function addEmployee(input: {
   full_name: string;
   email: string;

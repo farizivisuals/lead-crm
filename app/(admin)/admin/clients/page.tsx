@@ -5,6 +5,7 @@ import { Plus, Building2, Phone, ArrowUpRight, Users, Layers } from "lucide-reac
 import DeptFilter from "@/components/filters/DeptFilter";
 import CredentialsPopover from "@/components/ui/InviteLinkPopover";
 import { resetClientPassword } from "./new/actions";
+import EditClientDialog from "./EditClientDialog";
 
 interface Props {
   searchParams: Promise<{ dept_id?: string }>;
@@ -22,6 +23,7 @@ export default async function ClientsPage({ searchParams }: Props) {
     .single();
 
   const isExec = ["root", "ceo", "cfo"].includes(employee?.role ?? "");
+  const isRoot = employee?.role === "root";
   const myDeptName = (employee?.departments as unknown as { name: string } | null)?.name;
 
   const { data: departments } = isExec
@@ -146,7 +148,18 @@ export default async function ClientsPage({ searchParams }: Props) {
               </Link>
 
               {/* Footer with portal link action */}
-              <div className="relative px-5 pb-3.5 flex items-center justify-end">
+              <div className="relative px-5 pb-3.5 flex items-center justify-end gap-2">
+                {isRoot && (
+                  <EditClientDialog
+                    clientId={client.id}
+                    initialData={{
+                      company_name: client.company_name,
+                      phone: client.phone,
+                      notes: client.notes,
+                      contact_name: (client.profiles as { full_name: string })?.full_name ?? "",
+                    }}
+                  />
+                )}
                 <CredentialsPopover
                   getCredentials={resetClientPassword.bind(null, client.id)}
                   label="Reset password"

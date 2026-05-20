@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ROLE_LABELS } from "@/lib/rbac";
+import type { EmployeeRole } from "@/lib/types";
 import AddEmployeeDialog from "./AddEmployeeDialog";
+import EditEmployeeDialog from "./EditEmployeeDialog";
 import { resetEmployeePassword } from "./actions";
 import CredentialsPopover from "@/components/ui/InviteLinkPopover";
 import { Users } from "lucide-react";
@@ -56,6 +58,16 @@ export default async function TeamPage() {
           {e.title && <p className="text-xs text-white/40 truncate">{e.title}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          <EditEmployeeDialog
+            profileId={e.profile_id}
+            initialData={{
+              full_name: name,
+              role: e.role as EmployeeRole,
+              department_id: e.department_id,
+              title: e.title,
+            }}
+            departments={departments ?? []}
+          />
           <CredentialsPopover getCredentials={resetEmployeePassword.bind(null, e.profile_id)} />
           <Badge variant={roleVariants[e.role as string] ?? "secondary"} className="text-xs">
             {ROLE_LABELS[e.role as keyof typeof ROLE_LABELS]}

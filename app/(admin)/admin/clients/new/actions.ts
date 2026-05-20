@@ -68,6 +68,56 @@ export async function createClientWithPortal(input: CreateClientInput) {
   return { email: input.contact_email, password };
 }
 
+export async function getClientContactEmail(clientId: string) {
+  const supabase = await createClient();
+  const admin = createAdminClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
+  if (emp?.role !== "root") return { error: "Only root can view contact details" };
+  const { data: client } = await supabase.from("clients").select("primary_contact_profile_id").eq("id", clientId).single();
+  if (!client) return { error: "Client not found" };
+  const { data: authUser, error: authError } = await admin.auth.admin.getUserById(client.primary_contact_profile_id);
+  if (authError) return { error: authError.message };
+  return { email: authUser.user.email ?? "" };
+}
+
+export async function updateClient(clientId: string, input: {
+  company_name: string;
+  phone: string;
+  notes: string;
+  contact_name: string;
+  contact_email: string;
+}) {
+  const supabase = await createClient();
+  const admin = createAdminClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
+  if (emp?.role !== "root") return { error: "Only root can edit clients" };
+
+  const { data: client } = await supabase.from("clients").select("primary_contact_profile_id").eq("id", clientId).single();
+  if (!client) return { error: "Client not found" };
+
+  const { error: authError } = await admin.auth.admin.updateUserById(client.primary_contact_profile_id, {
+    email: input.contact_email,
+    user_metadata: { full_name: input.contact_name },
+  });
+  if (authError) return { error: authError.message };
+
+  const { error: profileError } = await admin.from("profiles").update({ full_name: input.contact_name }).eq("id", client.primary_contact_profile_id);
+  if (profileError) return { error: profileError.message };
+
+  const { error: clientError } = await admin.from("clients").update({
+    company_name: input.company_name,
+    phone: input.phone || null,
+    notes: input.notes || null,
+  }).eq("id", clientId);
+  if (clientError) return { error: clientError.message };
+
+  return { success: true };
+}
+
 export async function resetClientPassword(clientId: string) {
   const supabase = await createClient();
   const admin = createAdminClient();
