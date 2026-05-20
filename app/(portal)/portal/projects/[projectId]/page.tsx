@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, ExternalLink, Package, CheckCircle, RotateCcw } from "lucide-react";
 import { formatDate, formatRelative } from "@/lib/utils";
-import { DELIVERABLE_STATUS_LABELS, DELIVERABLE_TYPE_LABELS } from "@/lib/rbac";
+import { DELIVERABLE_STATUS_LABELS, DELIVERABLE_TYPE_LABELS, PRIORITY_LABELS } from "@/lib/rbac";
 import ClientRevisionForm from "./ClientRevisionForm";
 
 const statusVariants: Record<string, "default" | "secondary" | "success" | "warning" | "destructive" | "purple"> = {
@@ -39,6 +39,12 @@ export default async function PortalProjectPage({ params }: { params: Promise<{ 
     .single();
 
   if (!project) notFound();
+
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("id, title, priority, due_date, department_stages(name, color, is_terminal), departments(name)")
+    .eq("project_id", projectId)
+    .order("due_date", { ascending: true });
 
   const { data: deliverables } = await supabase
     .from("deliverables")
@@ -91,6 +97,81 @@ export default async function PortalProjectPage({ params }: { params: Promise<{ 
           <p className="text-sm text-gray-400 mt-2">Target completion: {formatDate(project.target_end_date)}</p>
         )}
       </div>
+
+      {/* Task progress */}
+      {tasks && tasks.length > 0 && (() => {
+        type TaskRow = {
+          id: string;
+          title: string;
+          priority: string;
+          due_date: string | null;
+          department_stages: { name: string; color: string | null; is_terminal: boolean }[] | null;
+          departments: { name: string }[] | null;
+        };
+
+        const byDept: Record<string, TaskRow[]> = {};
+        for (const t of tasks as TaskRow[]) {
+          const dept = t.departments?.[0]?.name ?? "General";
+          (byDept[dept] ??= []).push(t);
+        }
+
+        const priorityDot: Record<string, string> = {
+          low: "bg-gray-300",
+          medium: "bg-blue-400",
+          high: "bg-orange-400",
+          urgent: "bg-red-500",
+        };
+
+        return (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Tasks</h2>
+            <div className="space-y-4">
+              {Object.entries(byDept).map(([dept, deptTasks]) => (
+                <Card key={dept}>
+                  <CardHeader className="pb-2 pt-4 px-5">
+                    <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{dept}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0 pb-2">
+                    <ul className="divide-y divide-gray-50">
+                      {deptTasks.map((t) => {
+                        const stage = t.department_stages?.[0] ?? null;
+                        const done = stage?.is_terminal ?? false;
+                        return (
+                          <li key={t.id} className="flex items-center gap-3 px-5 py-3">
+                            {done
+                              ? <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                              : <span className="h-4 w-4 rounded-full border-2 border-gray-300 shrink-0" />
+                            }
+                            <span className={`flex-1 text-sm font-medium ${done ? "text-gray-400 line-through" : "text-gray-800"}`}>
+                              {t.title}
+                            </span>
+                            {stage && (
+                              <span
+                                className="text-xs font-medium px-2 py-0.5 rounded-full shrink-0"
+                                style={{
+                                  backgroundColor: stage.color ? `${stage.color}22` : "#f3f4f6",
+                                  color: stage.color ?? "#6b7280",
+                                  border: `1px solid ${stage.color ?? "#e5e7eb"}`,
+                                }}
+                              >
+                                {stage.name}
+                              </span>
+                            )}
+                            <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDot[t.priority] ?? "bg-gray-300"}`} title={PRIORITY_LABELS[t.priority as keyof typeof PRIORITY_LABELS]} />
+                            {t.due_date && (
+                              <span className="text-xs text-gray-400 shrink-0">{formatDate(t.due_date)}</span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Deliverables for review */}
       <div>
