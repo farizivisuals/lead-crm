@@ -25,6 +25,7 @@ export interface Department {
   id: string;
   name: string;
   slug: string;
+  can_add_clients: boolean;
   created_at: string;
 }
 

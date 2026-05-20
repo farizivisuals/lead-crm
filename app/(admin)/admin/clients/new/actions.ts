@@ -20,12 +20,13 @@ export async function createClientWithPortal(input: CreateClientInput) {
 
   const { data: emp } = await supabase
     .from("employees")
-    .select("role")
+    .select("role, departments(can_add_clients)")
     .eq("profile_id", user.id)
     .single();
 
+  const deptCanAdd = (emp?.departments as { can_add_clients: boolean } | null)?.can_add_clients ?? false;
   const allowed = ["root", "ceo", "cfo", "manager"];
-  if (!emp || !allowed.includes(emp.role)) return { error: "Insufficient permissions" };
+  if (!emp || (!allowed.includes(emp.role) && !deptCanAdd)) return { error: "Insufficient permissions" };
 
   const password = generatePassword();
 
@@ -74,9 +75,10 @@ export async function resetClientPassword(clientId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
+  const { data: emp } = await supabase.from("employees").select("role, departments(can_add_clients)").eq("profile_id", user.id).single();
+  const deptCanAdd = (emp?.departments as { can_add_clients: boolean } | null)?.can_add_clients ?? false;
   const allowed = ["root", "ceo", "cfo", "manager"];
-  if (!emp || !allowed.includes(emp.role)) return { error: "Insufficient permissions" };
+  if (!emp || (!allowed.includes(emp.role) && !deptCanAdd)) return { error: "Insufficient permissions" };
 
   const { data: client } = await supabase
     .from("clients")
