@@ -50,6 +50,7 @@ export const PROJECT_STATUS_LABELS = {
   on_hold: "On Hold",
   completed: "Completed",
   cancelled: "Cancelled",
+  delivered: "Delivered",
 } as const;
 
 export const PRIORITY_LABELS = {

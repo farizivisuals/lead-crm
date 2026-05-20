@@ -11,6 +11,7 @@ const statusColors: Record<string, "default" | "secondary" | "success" | "warnin
   on_hold: "warning",
   completed: "success",
   cancelled: "destructive",
+  delivered: "success",
 };
 
 export default async function PortalHomePage() {

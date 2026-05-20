@@ -1,6 +1,6 @@
 export type UserType = "employee" | "client";
 export type EmployeeRole = "root" | "ceo" | "cfo" | "manager" | "employee";
-export type ProjectStatus = "planning" | "active" | "on_hold" | "completed" | "cancelled";
+export type ProjectStatus = "planning" | "active" | "on_hold" | "completed" | "cancelled" | "delivered";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 export type DeliverableType = "photo" | "video" | "pr";
 export type DeliverableStatus =

@@ -2,17 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, CheckSquare, Package, Calendar, Activity, ArrowUpRight } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import ProjectStatusSelect from "./ProjectStatusSelect";
+import type { ProjectStatus } from "@/lib/types";
 
-const statusColors: Record<string, "default" | "secondary" | "success" | "warning" | "destructive"> = {
-  planning: "secondary",
-  active: "default",
-  on_hold: "warning",
-  completed: "success",
-  cancelled: "destructive",
-};
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
@@ -88,9 +82,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <p className="text-white/50 mt-2 text-sm leading-relaxed">{project.description}</p>
             )}
             <div className="flex flex-wrap gap-2 mt-3">
-              <Badge variant={statusColors[project.status] ?? "secondary"}>
-                {project.status.replace("_", " ")}
-              </Badge>
+              <ProjectStatusSelect projectId={projectId} currentStatus={project.status as ProjectStatus} />
               {depts.map((pd) => (
                 <span
                   key={pd.departments?.slug}

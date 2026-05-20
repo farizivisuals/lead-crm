@@ -23,6 +23,7 @@ export default async function ProjectsPage() {
     on_hold: "warning",
     completed: "success",
     cancelled: "destructive",
+    delivered: "success",
   };
 
   return (
