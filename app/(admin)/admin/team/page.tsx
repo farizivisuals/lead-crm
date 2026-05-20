@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ROLE_LABELS } from "@/lib/rbac";
 import AddEmployeeDialog from "./AddEmployeeDialog";
-import { regenerateEmployeeLink } from "./actions";
-import InviteLinkPopover from "@/components/ui/InviteLinkPopover";
+import { resetEmployeePassword } from "./actions";
+import CredentialsPopover from "@/components/ui/InviteLinkPopover";
 import { Users } from "lucide-react";
 
 export default async function TeamPage() {
@@ -56,7 +56,7 @@ export default async function TeamPage() {
           {e.title && <p className="text-xs text-white/40 truncate">{e.title}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <InviteLinkPopover getLink={regenerateEmployeeLink.bind(null, e.profile_id)} />
+          <CredentialsPopover getCredentials={resetEmployeePassword.bind(null, e.profile_id)} />
           <Badge variant={roleVariants[e.role as string] ?? "secondary"} className="text-xs">
             {ROLE_LABELS[e.role as keyof typeof ROLE_LABELS]}
           </Badge>

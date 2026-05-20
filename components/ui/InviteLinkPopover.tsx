@@ -1,19 +1,21 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link2, Copy, Check, Loader2, X } from "lucide-react";
+import { KeyRound, Copy, Check, Loader2, X, RefreshCw } from "lucide-react";
+
+interface Credentials { email: string; password: string; }
 
 interface Props {
-  getLink: () => Promise<{ link?: string; error?: string }>;
+  getCredentials: () => Promise<{ email?: string; password?: string; error?: string }>;
   label?: string;
 }
 
-export default function InviteLinkPopover({ getLink, label = "Get login link" }: Props) {
+export default function CredentialsPopover({ getCredentials, label = "Reset password" }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [link, setLink] = useState<string | null>(null);
+  const [creds, setCreds] = useState<Credentials | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<"email" | "password" | "both" | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,19 +29,26 @@ export default function InviteLinkPopover({ getLink, label = "Get login link" }:
   async function handleOpen() {
     if (open) { setOpen(false); return; }
     setOpen(true);
-    if (link) return; // already fetched
     setLoading(true);
     setError(null);
-    const result = await getLink();
-    if (result.error) { setError(result.error); } else { setLink(result.link ?? null); }
+    setCreds(null);
+    const result = await getCredentials();
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setCreds({ email: result.email!, password: result.password! });
+    }
     setLoading(false);
   }
 
-  function copy() {
-    if (!link) return;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  function copy(field: "email" | "password" | "both") {
+    if (!creds) return;
+    const text = field === "both"
+      ? `Email: ${creds.email}\nPassword: ${creds.password}`
+      : field === "email" ? creds.email : creds.password;
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
   }
 
   return (
@@ -53,7 +62,7 @@ export default function InviteLinkPopover({ getLink, label = "Get login link" }:
             : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/70 hover:bg-white/[0.08] hover:border-white/[0.14]"
         }`}
       >
-        <Link2 className="h-3 w-3" />
+        <RefreshCw className="h-3 w-3" />
         <span className="hidden sm:inline">{label}</span>
       </button>
 
@@ -68,13 +77,10 @@ export default function InviteLinkPopover({ getLink, label = "Get login link" }:
           >
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/[0.07]">
               <div className="flex items-center gap-2">
-                <Link2 className="h-3.5 w-3.5 text-indigo-400" />
-                <span className="text-xs font-semibold text-white/80">Login link</span>
+                <KeyRound className="h-3.5 w-3.5 text-indigo-400" />
+                <span className="text-xs font-semibold text-white/80">New credentials</span>
               </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="text-white/30 hover:text-white/60 transition-colors"
-              >
+              <button onClick={() => setOpen(false)} className="text-white/30 hover:text-white/60 transition-colors">
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -83,7 +89,7 @@ export default function InviteLinkPopover({ getLink, label = "Get login link" }:
               {loading && (
                 <div className="flex items-center gap-2 py-2">
                   <Loader2 className="h-4 w-4 text-indigo-400 animate-spin" />
-                  <span className="text-xs text-white/40">Generating link…</span>
+                  <span className="text-xs text-white/40">Generating password…</span>
                 </div>
               )}
 
@@ -93,26 +99,41 @@ export default function InviteLinkPopover({ getLink, label = "Get login link" }:
                 </p>
               )}
 
-              {link && (
+              {creds && (
                 <>
-                  <div className="rounded-lg bg-white/[0.04] border border-white/[0.08] p-2.5">
-                    <p className="text-[11px] text-white/70 font-mono break-all leading-relaxed select-all">
-                      {link}
-                    </p>
+                  <div className="rounded-lg bg-white/[0.04] border border-white/[0.08] divide-y divide-white/[0.06]">
+                    <div className="flex items-center justify-between px-2.5 py-2 gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-white/30 mb-0.5">Email</p>
+                        <p className="text-[11px] text-white/70 font-mono truncate">{creds.email}</p>
+                      </div>
+                      <button onClick={() => copy("email")} className="flex-shrink-0 p-1.5 rounded-md hover:bg-white/[0.08] text-white/30 hover:text-white/60 transition-colors">
+                        {copiedField === "email" ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between px-2.5 py-2 gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-white/30 mb-0.5">Password</p>
+                        <p className="text-[11px] text-white/80 font-mono">{creds.password}</p>
+                      </div>
+                      <button onClick={() => copy("password")} className="flex-shrink-0 p-1.5 rounded-md hover:bg-white/[0.08] text-white/30 hover:text-white/60 transition-colors">
+                        {copiedField === "password" ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                      </button>
+                    </div>
                   </div>
                   <p className="text-[10px] text-white/25 leading-relaxed">
-                    One-time use — each click regenerates a fresh link and invalidates the previous one.
+                    Previous password is now invalid. Share these credentials with the user.
                   </p>
                   <button
-                    onClick={copy}
+                    onClick={() => copy("both")}
                     className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-all duration-150 ${
-                      copied
+                      copiedField === "both"
                         ? "bg-emerald-500/15 border-emerald-500/25 text-emerald-400"
                         : "bg-indigo-500/15 border-indigo-500/25 text-indigo-300 hover:bg-indigo-500/20"
                     }`}
                   >
-                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    {copied ? "Copied!" : "Copy link"}
+                    {copiedField === "both" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedField === "both" ? "Copied!" : "Copy both"}
                   </button>
                 </>
               )}

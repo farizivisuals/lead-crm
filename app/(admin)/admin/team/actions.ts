@@ -20,9 +20,11 @@ export async function addEmployee(input: {
   const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
   if (emp?.role !== "root") return { error: "Only root can add employees" };
 
+  const password = generatePassword();
+
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email: input.email,
-    password: generatePassword(),
+    password,
     email_confirm: true,
     user_metadata: { full_name: input.full_name, user_type: "employee" },
   });
@@ -44,17 +46,10 @@ export async function addEmployee(input: {
   });
   if (empError) return { error: empError.message };
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const { data: linkData } = await admin.auth.admin.generateLink({
-    type: "recovery",
-    email: input.email,
-    options: { redirectTo: `${siteUrl}/auth/callback?next=/update-password` },
-  });
-
-  return { link: linkData?.properties?.action_link ?? `Login: ${input.email}` };
+  return { email: input.email, password };
 }
 
-export async function regenerateEmployeeLink(profileId: string) {
+export async function resetEmployeePassword(profileId: string) {
   const supabase = await createClient();
   const admin = createAdminClient();
 
@@ -62,18 +57,14 @@ export async function regenerateEmployeeLink(profileId: string) {
   if (!user) return { error: "Not authenticated" };
 
   const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
-  if (emp?.role !== "root") return { error: "Only root can regenerate links" };
+  if (emp?.role !== "root") return { error: "Only root can reset passwords" };
 
   const { data: authUser, error: userError } = await admin.auth.admin.getUserById(profileId);
   if (userError || !authUser.user.email) return { error: "User not found" };
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "recovery",
-    email: authUser.user.email,
-    options: { redirectTo: `${siteUrl}/auth/callback?next=/update-password` },
-  });
-  if (linkError) return { error: linkError.message };
+  const password = generatePassword();
+  const { error: updateError } = await admin.auth.admin.updateUserById(profileId, { password });
+  if (updateError) return { error: updateError.message };
 
-  return { link: linkData.properties.action_link };
+  return { email: authUser.user.email, password };
 }

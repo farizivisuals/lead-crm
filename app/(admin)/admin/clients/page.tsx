@@ -3,8 +3,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Plus, Building2, Phone, ArrowUpRight, Users, Layers } from "lucide-react";
 import DeptFilter from "@/components/filters/DeptFilter";
-import InviteLinkPopover from "@/components/ui/InviteLinkPopover";
-import { regenerateClientLink } from "./new/actions";
+import CredentialsPopover from "@/components/ui/InviteLinkPopover";
+import { resetClientPassword } from "./new/actions";
 
 interface Props {
   searchParams: Promise<{ dept_id?: string }>;
@@ -147,9 +147,9 @@ export default async function ClientsPage({ searchParams }: Props) {
 
               {/* Footer with portal link action */}
               <div className="relative px-5 pb-3.5 flex items-center justify-end">
-                <InviteLinkPopover
-                  getLink={regenerateClientLink.bind(null, client.id)}
-                  label="Portal link"
+                <CredentialsPopover
+                  getCredentials={resetClientPassword.bind(null, client.id)}
+                  label="Reset password"
                 />
               </div>
             </div>

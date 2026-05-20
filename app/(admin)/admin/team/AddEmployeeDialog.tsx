@@ -11,13 +11,15 @@ import { ROLE_LABELS } from "@/lib/rbac";
 import type { Department, EmployeeRole } from "@/lib/types";
 import { addEmployee } from "./actions";
 
+interface Credentials { email: string; password: string; }
+
 export default function AddEmployeeDialog({ departments }: { departments: Department[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tempLink, setTempLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [creds, setCreds] = useState<Credentials | null>(null);
+  const [copiedField, setCopiedField] = useState<"email" | "password" | "both" | null>(null);
 
   const [form, setForm] = useState({
     full_name: "",
@@ -35,21 +37,24 @@ export default function AddEmployeeDialog({ departments }: { departments: Depart
     setError(null);
     const result = await addEmployee(form);
     if (result.error) { setError(result.error); setLoading(false); return; }
-    setTempLink(result.link ?? null);
+    setCreds({ email: result.email!, password: result.password! });
     setLoading(false);
     router.refresh();
   }
 
-  function copyLink() {
-    if (!tempLink) return;
-    navigator.clipboard.writeText(tempLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  function copy(field: "email" | "password" | "both") {
+    if (!creds) return;
+    const text = field === "both"
+      ? `Email: ${creds.email}\nPassword: ${creds.password}`
+      : field === "email" ? creds.email : creds.password;
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
   }
 
   function reset() {
-    setTempLink(null);
-    setCopied(false);
+    setCreds(null);
+    setCopiedField(null);
     setForm({ full_name: "", email: "", role: "employee", department_id: "", title: "" });
   }
 
@@ -60,7 +65,7 @@ export default function AddEmployeeDialog({ departments }: { departments: Depart
       </DialogTrigger>
 
       <DialogContent className="max-w-md">
-        {tempLink ? (
+        {creds ? (
           <>
             <DialogHeader>
               <div className="flex items-center gap-3">
@@ -69,42 +74,41 @@ export default function AddEmployeeDialog({ departments }: { departments: Depart
                 </div>
                 <div>
                   <DialogTitle>Employee added!</DialogTitle>
-                  <p className="text-xs text-white/40 mt-0.5">Share the login link with {form.full_name}</p>
+                  <p className="text-xs text-white/40 mt-0.5">Send these credentials to {form.full_name}</p>
                 </div>
               </div>
             </DialogHeader>
 
             <div className="space-y-4 pt-1">
-              <div className="rounded-xl bg-white/[0.04] border border-white/[0.09] p-3 space-y-2">
-                <p className="text-xs text-white/40 font-medium">One-time login link</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-white/80 font-mono break-all flex-1 leading-relaxed select-all">
-                    {tempLink}
-                  </p>
-                  <button
-                    onClick={copyLink}
-                    className={`flex-shrink-0 p-2 rounded-lg border transition-all duration-150 ${
-                      copied
-                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                        : "bg-white/[0.06] border-white/[0.1] text-white/50 hover:text-white hover:bg-white/[0.1]"
-                    }`}
-                    title="Copy link"
-                  >
-                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              <div className="rounded-xl bg-white/[0.04] border border-white/[0.09] divide-y divide-white/[0.06]">
+                <div className="flex items-center justify-between px-3 py-2.5 gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-white/30 mb-0.5">Email</p>
+                    <p className="text-xs text-white/80 font-mono truncate">{creds.email}</p>
+                  </div>
+                  <button onClick={() => copy("email")} className="flex-shrink-0 p-1.5 rounded-md hover:bg-white/[0.08] text-white/30 hover:text-white/60 transition-colors">
+                    {copiedField === "email" ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between px-3 py-2.5 gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-white/30 mb-0.5">Password</p>
+                    <p className="text-xs text-white/90 font-mono">{creds.password}</p>
+                  </div>
+                  <button onClick={() => copy("password")} className="flex-shrink-0 p-1.5 rounded-md hover:bg-white/[0.08] text-white/30 hover:text-white/60 transition-colors">
+                    {copiedField === "password" ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                   </button>
                 </div>
               </div>
+
               <p className="text-xs text-white/30 leading-relaxed">
-                This link lets {form.full_name} set their password and log in. It expires after first use.
+                Share these login details with {form.full_name}. They can change their password after logging in.
               </p>
+
               <div className="flex gap-2">
-                <Button
-                  onClick={copyLink}
-                  variant={copied ? "secondary" : "default"}
-                  className="flex-1"
-                >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  {copied ? "Copied!" : "Copy link"}
+                <Button onClick={() => copy("both")} variant={copiedField === "both" ? "secondary" : "default"} className="flex-1">
+                  {copiedField === "both" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copiedField === "both" ? "Copied!" : "Copy both"}
                 </Button>
                 <Button variant="outline" onClick={() => { setOpen(false); reset(); }}>
                   Done
@@ -158,7 +162,7 @@ export default function AddEmployeeDialog({ departments }: { departments: Depart
               <div className="flex gap-2">
                 <Button type="submit" disabled={loading || !form.full_name || !form.email} className="flex-1">
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Add & generate link
+                  Add & generate credentials
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               </div>
