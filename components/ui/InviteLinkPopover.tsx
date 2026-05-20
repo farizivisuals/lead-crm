@@ -73,7 +73,7 @@ export default function CredentialsPopover({ getCredentials, label = "Reset pass
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: -4 }}
             transition={{ duration: 0.13 }}
-            className="absolute right-0 mt-1.5 w-72 z-50 rounded-xl bg-[#0e0e16]/98 backdrop-blur-2xl border border-white/[0.1] shadow-2xl shadow-black/60 overflow-hidden"
+            className="absolute right-0 bottom-full mb-1.5 w-72 z-50 rounded-xl bg-[#0e0e16]/98 backdrop-blur-2xl border border-white/[0.1] shadow-2xl shadow-black/60 overflow-hidden"
           >
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/[0.07]">
               <div className="flex items-center gap-2">
