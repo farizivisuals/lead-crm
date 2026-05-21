@@ -27,13 +27,14 @@ export default async function PortalLayout({ children }: { children: React.React
       <header className="sticky top-0 z-30 border-b border-white/[0.07] bg-white/[0.03] backdrop-blur-2xl">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
           {/* Brand */}
-          <div className="flex items-center min-w-0">
+          <div className="overflow-hidden flex-shrink-0" style={{ width: '68px', height: '30px' }}>
             <Image
               src="/logo.png"
               alt="lead."
-              width={60}
-              height={23}
+              width={96}
+              height={96}
               className="invert opacity-90"
+              style={{ transform: 'translate(-15px, -30px)' }}
               priority
             />
           </div>

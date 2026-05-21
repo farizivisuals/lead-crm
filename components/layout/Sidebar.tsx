@@ -87,15 +87,18 @@ function SidebarContent({
       <div className="absolute bottom-0 right-0 w-32 h-32 rounded-full bg-violet-600/15 blur-2xl pointer-events-none" />
 
       {/* Logo */}
-      <div className="relative px-5 py-5 border-b border-white/[0.07] flex items-center justify-between">
-        <Image
-          src="/logo.png"
-          alt="lead."
-          width={72}
-          height={28}
-          className="invert opacity-90"
-          priority
-        />
+      <div className="relative px-4 py-4 border-b border-white/[0.07] flex items-center">
+        <div className="overflow-hidden flex-shrink-0" style={{ width: '82px', height: '38px' }}>
+          <Image
+            src="/logo.png"
+            alt="lead."
+            width={116}
+            height={116}
+            className="invert opacity-90"
+            style={{ transform: 'translate(-18px, -36px)' }}
+            priority
+          />
+        </div>
       </div>
 
       {/* Nav */}

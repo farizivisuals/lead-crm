@@ -88,13 +88,16 @@ export default function LoginPage() {
             initial={{ opacity: 0, y: 12, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+            style={{ width: '148px', height: '62px' }}
           >
             <Image
               src="/logo.png"
               alt="lead."
-              width={120}
-              height={46}
+              width={200}
+              height={200}
               className="invert opacity-90"
+              style={{ transform: 'translate(-30px, -62px)' }}
               priority
             />
           </motion.div>
