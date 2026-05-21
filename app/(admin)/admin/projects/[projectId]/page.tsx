@@ -74,7 +74,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {/* Project header */}
-      <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-4 lg:p-6">
+      <div className="relative z-10 rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-4 lg:p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">{project.name}</h1>
