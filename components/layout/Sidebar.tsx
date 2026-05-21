@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, FolderOpen, Calendar, Settings,
-  Building2, LogOut, Layers, UserCircle, Zap, Menu, X,
+  Building2, LogOut, Layers, UserCircle, Menu, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Employee, Profile } from "@/lib/types";
@@ -87,15 +88,14 @@ function SidebarContent({
 
       {/* Logo */}
       <div className="relative px-5 py-5 border-b border-white/[0.07] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/30">
-            <Zap className="h-4 w-4 text-white" />
-          </div>
-          <div>
-            <p className="font-bold text-white text-sm leading-none tracking-tight">Lead CRM</p>
-            <p className="text-[11px] text-white/40 mt-0.5 font-medium">Marketing Agency</p>
-          </div>
-        </div>
+        <Image
+          src="/logo.png"
+          alt="lead."
+          width={72}
+          height={28}
+          className="invert opacity-90"
+          priority
+        />
       </div>
 
       {/* Nav */}

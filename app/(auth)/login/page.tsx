@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Zap, Mail, Lock, AlertCircle } from "lucide-react";
+import { Loader2, Mail, Lock, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -81,32 +82,22 @@ export default function LoginPage() {
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="w-full max-w-sm relative z-10"
       >
-        {/* Logo mark */}
-        <div className="text-center mb-8">
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
           <motion.div
-            initial={{ scale: 0, rotate: -20 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
-            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 mb-5 shadow-2xl shadow-indigo-500/40"
+            initial={{ opacity: 0, y: 12, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ delay: 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
-            <Zap className="h-7 w-7 text-white" />
+            <Image
+              src="/logo.png"
+              alt="lead."
+              width={120}
+              height={46}
+              className="invert opacity-90"
+              priority
+            />
           </motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
-            className="text-2xl font-bold text-white tracking-tight"
-          >
-            Lead CRM
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25, duration: 0.4 }}
-            className="text-white/40 text-sm mt-1.5"
-          >
-            Marketing Agency Platform
-          </motion.p>
         </div>
 
         {/* Glass card */}

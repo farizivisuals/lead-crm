@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { FolderOpen, Calendar, LogOut, Zap } from "lucide-react";
+import Image from "next/image";
+import { FolderOpen, Calendar, LogOut } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import CommandPalette from "@/components/search/CommandPalette";
 
@@ -26,13 +27,15 @@ export default async function PortalLayout({ children }: { children: React.React
       <header className="sticky top-0 z-30 border-b border-white/[0.07] bg-white/[0.03] backdrop-blur-2xl">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
           {/* Brand */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/30">
-              <Zap className="h-3.5 w-3.5 text-white" />
-            </div>
-            <span className="font-semibold text-white/90 text-sm truncate hidden sm:block">
-              {clientName ?? "Client Portal"}
-            </span>
+          <div className="flex items-center min-w-0">
+            <Image
+              src="/logo.png"
+              alt="lead."
+              width={60}
+              height={23}
+              className="invert opacity-90"
+              priority
+            />
           </div>
 
           {/* Desktop nav links */}
