@@ -2,9 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Phone, Plus, FolderOpen } from "lucide-react";
+import {
+  ArrowLeft, ArrowUpRight, Building2, Calendar,
+  FolderOpen, Phone, FileText, Plus, User,
+} from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ clientId: string }> }) {
@@ -31,50 +33,70 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
     on_hold: "warning",
     completed: "success",
     cancelled: "destructive",
+    delivered: "success",
   };
 
+  const primaryContact = client.profiles as { full_name: string } | null;
+
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center gap-4">
+    <div className="space-y-6 animate-slide-up max-w-4xl">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 flex-wrap">
         <Link href="/admin/clients">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4" />
-            Clients
+          <Button variant="ghost" size="sm" className="gap-1.5">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Clients</span>
           </Button>
         </Link>
+        <span className="text-white/20">/</span>
+        <span className="text-sm text-white/40 truncate max-w-[200px]">{client.company_name}</span>
       </div>
 
-      {/* Client Info */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-xl">{client.company_name}</CardTitle>
-              <p className="text-gray-500 text-sm mt-1">
-                Primary contact: {(client.profiles as { full_name: string })?.full_name}
-              </p>
-            </div>
+      {/* Client info card */}
+      <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-5 lg:p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+            <Building2 className="h-5 w-5 text-indigo-400" />
           </div>
-        </CardHeader>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">{client.company_name}</h1>
+            {primaryContact && (
+              <div className="flex items-center gap-1.5 mt-1.5 text-sm text-white/40">
+                <User className="h-3.5 w-3.5" />
+                <span>{primaryContact.full_name}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
         {(client.phone || client.notes) && (
-          <CardContent className="pt-0 space-y-2">
+          <div className="mt-4 pt-4 border-t border-white/[0.07] space-y-3">
             {client.phone && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Phone className="h-4 w-4" />
+              <div className="flex items-center gap-2 text-sm text-white/50">
+                <Phone className="h-3.5 w-3.5 text-white/30" />
                 {client.phone}
               </div>
             )}
             {client.notes && (
-              <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{client.notes}</p>
+              <div className="flex items-start gap-2 text-sm text-white/50">
+                <FileText className="h-3.5 w-3.5 text-white/30 mt-0.5 flex-shrink-0" />
+                <p className="leading-relaxed">{client.notes}</p>
+              </div>
             )}
-          </CardContent>
+          </div>
         )}
-      </Card>
+      </div>
 
-      {/* Projects */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Projects</h2>
-        <Link href={`/admin/projects?client=${clientId}`}>
+      {/* Projects header */}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <FolderOpen className="h-3.5 w-3.5 text-violet-400" />
+            <span className="text-xs text-violet-400 font-medium uppercase tracking-widest">Projects</span>
+          </div>
+          <p className="text-white/40 text-sm">{projects?.length ?? 0} projects</p>
+        </div>
+        <Link href="/admin/projects">
           <Button size="sm">
             <Plus className="h-4 w-4" />
             New Project
@@ -82,51 +104,55 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
         </Link>
       </div>
 
+      {/* Projects list */}
       {projects?.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center">
-            <FolderOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">No projects yet for this client</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] py-16 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center mx-auto mb-3">
+            <FolderOpen className="h-6 w-6 text-white/20" />
+          </div>
+          <p className="text-white/50 font-medium">No projects yet</p>
+          <p className="text-sm text-white/30 mt-1">Projects for this client will appear here</p>
+        </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {projects?.map((project) => {
             const depts = (project.project_departments as { departments?: { name: string; slug: string } }[]) ?? [];
             return (
               <Link key={project.id} href={`/admin/projects/${project.id}`}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-gray-900">{project.name}</p>
-                        {project.description && (
-                          <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{project.description}</p>
-                        )}
-                        <div className="flex gap-2 mt-2 flex-wrap">
-                          {depts.map((pd) => (
-                            <span
-                              key={pd.departments?.slug}
-                              className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"
-                            >
-                              {pd.departments?.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                        <Badge variant={statusColors[project.status] ?? "secondary"}>
-                          {project.status.replace("_", " ")}
-                        </Badge>
-                        {project.target_end_date && (
-                          <span className="text-xs text-gray-400">
-                            Due {formatDate(project.target_end_date)}
+                <div className="group flex items-center justify-between gap-4 rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-5 hover:bg-white/[0.07] hover:border-white/[0.14] hover:shadow-xl hover:shadow-black/20 hover:-translate-y-px transition-all duration-200 cursor-pointer">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white/90 group-hover:text-white transition-colors">
+                      {project.name}
+                    </p>
+                    {project.description && (
+                      <p className="text-sm text-white/30 mt-0.5 line-clamp-1">{project.description}</p>
+                    )}
+                    {depts.length > 0 && (
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        {depts.map((pd) => (
+                          <span
+                            key={pd.departments?.slug}
+                            className="text-xs bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full font-medium"
+                          >
+                            {pd.departments?.name}
                           </span>
-                        )}
+                        ))}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    <Badge variant={statusColors[project.status] ?? "secondary"}>
+                      {project.status.replace("_", " ")}
+                    </Badge>
+                    {project.target_end_date && (
+                      <span className="flex items-center gap-1 text-xs text-white/30">
+                        <Calendar className="h-3 w-3" />
+                        {formatDate(project.target_end_date)}
+                      </span>
+                    )}
+                    <ArrowUpRight className="h-4 w-4 text-white/20 group-hover:text-white/50 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200" />
+                  </div>
+                </div>
               </Link>
             );
           })}
