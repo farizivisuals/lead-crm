@@ -51,7 +51,7 @@ export default async function TeamPage() {
       <div className="flex items-center gap-3 py-3 border-b border-white/[0.05] last:border-0">
         <Avatar className="h-8 w-8 flex-shrink-0 ring-1 ring-white/10">
           <AvatarImage src={(e.profiles as unknown as { avatar_url: string | null })?.avatar_url ?? undefined} />
-          <AvatarFallback className="text-xs bg-indigo-500/30 text-indigo-300 font-semibold">{initials}</AvatarFallback>
+          <AvatarFallback className="text-xs bg-white/[0.1] text-zinc-300 font-semibold">{initials}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-white/90 truncate">{name}</p>
@@ -97,8 +97,8 @@ export default async function TeamPage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Users className="h-3.5 w-3.5 text-indigo-400" />
-            <span className="text-xs text-indigo-400 font-medium uppercase tracking-widest">Team</span>
+            <Users className="h-3.5 w-3.5 text-zinc-400" />
+            <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Team</span>
           </div>
           <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">Team Members</h1>
           <p className="text-white/40 text-sm mt-1">{employees?.length ?? 0} members across all departments</p>

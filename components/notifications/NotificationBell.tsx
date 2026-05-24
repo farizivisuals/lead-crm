@@ -70,7 +70,7 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
-                className="absolute top-1 right-1 h-4 w-4 rounded-full bg-indigo-500 text-white text-[9px] flex items-center justify-center font-bold shadow-lg shadow-indigo-500/50"
+                className="absolute top-1 right-1 h-4 w-4 rounded-full bg-white text-zinc-900 text-[9px] flex items-center justify-center font-bold shadow-lg shadow-white/20"
               >
                 {unreadCount > 9 ? "9+" : unreadCount}
               </motion.span>
@@ -87,7 +87,7 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
           {unreadCount > 0 && (
             <button
               onClick={markAllRead}
-              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+              className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
             >
               Mark all read
             </button>
@@ -104,13 +104,13 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
               <DropdownMenuItem
                 key={n.id}
                 className={`flex flex-col items-start gap-1 px-4 py-3 cursor-pointer border-b border-white/[0.05] last:border-0 focus:bg-white/[0.06] ${
-                  !n.is_read ? "bg-indigo-500/[0.06]" : ""
+                  !n.is_read ? "bg-white/[0.04]" : ""
                 }`}
                 onClick={() => markRead(n.id)}
               >
                 <div className="flex items-start gap-2 w-full">
                   {!n.is_read && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0 mt-1.5" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0 mt-1.5" />
                   )}
                   <div className={!n.is_read ? "" : "pl-3.5"}>
                     <p className="text-sm font-medium text-white/90 leading-tight">{n.title}</p>

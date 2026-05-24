@@ -58,7 +58,7 @@ export default function UpdatePasswordPage() {
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-6 w-6 text-indigo-400 animate-spin" />
+        <Loader2 className="h-6 w-6 text-zinc-300 animate-spin" />
       </div>
     );
   }
@@ -67,11 +67,11 @@ export default function UpdatePasswordPage() {
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
       <div
         className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full opacity-20 pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(99,102,241,0.5) 0%, transparent 70%)", animation: "float 8s ease-in-out infinite" }}
+        style={{ background: "radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)", animation: "float 8s ease-in-out infinite" }}
       />
       <div
         className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] rounded-full opacity-15 pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(139,92,246,0.5) 0%, transparent 70%)", animation: "float 10s ease-in-out infinite reverse" }}
+        style={{ background: "radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%)", animation: "float 10s ease-in-out infinite reverse" }}
       />
 
       <motion.div
@@ -81,7 +81,7 @@ export default function UpdatePasswordPage() {
         className="w-full max-w-sm relative z-10"
       >
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 mb-5 shadow-2xl shadow-indigo-500/40">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/[0.1] border border-white/[0.2] mb-5 shadow-2xl shadow-black/40">
             <Zap className="h-7 w-7 text-white" />
           </div>
         </div>
@@ -96,7 +96,7 @@ export default function UpdatePasswordPage() {
                 <p className="font-semibold text-white text-lg">Password set!</p>
                 <p className="text-sm text-white/50 mt-1.5">Taking you to your dashboard…</p>
               </div>
-              <Loader2 className="h-4 w-4 text-indigo-400 animate-spin mt-1" />
+              <Loader2 className="h-4 w-4 text-zinc-300 animate-spin mt-1" />
             </div>
           ) : (
             <>
@@ -142,7 +142,7 @@ export default function UpdatePasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-medium text-sm shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
+                  className="w-full h-11 rounded-xl bg-gradient-to-b from-white to-zinc-100 text-zinc-900 font-medium text-sm shadow-md shadow-black/30 hover:brightness-105 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
                 >
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                   {loading ? "Saving…" : "Set password & continue"}

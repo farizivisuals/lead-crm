@@ -37,8 +37,8 @@ export default async function PortalHomePage() {
     <div className="space-y-8 animate-slide-up">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <FolderOpen className="h-4 w-4 text-indigo-400" />
-          <span className="text-xs text-indigo-400 font-medium uppercase tracking-widest">Your Projects</span>
+          <FolderOpen className="h-4 w-4 text-zinc-400" />
+          <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Your Projects</span>
         </div>
         <h1 className="text-2xl font-bold text-white tracking-tight">
           {(contact.clients as unknown as { company_name: string })?.company_name}
@@ -73,7 +73,7 @@ export default async function PortalHomePage() {
                         {depts.map((pd, i) => (
                           <span
                             key={i}
-                            className="text-xs bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full font-medium"
+                            className="text-xs bg-white/[0.07] text-zinc-300 border border-white/[0.12] px-2 py-0.5 rounded-full font-medium"
                           >
                             {pd.departments?.name}
                           </span>

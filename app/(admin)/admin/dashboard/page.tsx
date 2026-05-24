@@ -90,27 +90,27 @@ export default async function DashboardPage({ searchParams }: Props) {
       label: isExec && filterDeptId ? "Dept Clients" : "Total Clients",
       value: clientCount ?? 0,
       icon: Building2,
-      color: "from-indigo-500/20 to-indigo-600/5",
-      iconColor: "text-indigo-400",
-      border: "border-indigo-500/20",
+      color: "from-white/[0.08] to-white/[0.02]",
+      iconColor: "text-zinc-300",
+      border: "border-white/[0.12]",
       href: "/admin/clients",
     },
     {
       label: isExec && filterDeptId ? "Dept Projects" : "Active Projects",
       value: projectCount ?? 0,
       icon: FolderOpen,
-      color: "from-violet-500/20 to-violet-600/5",
-      iconColor: "text-violet-400",
-      border: "border-violet-500/20",
+      color: "from-white/[0.08] to-white/[0.02]",
+      iconColor: "text-zinc-300",
+      border: "border-white/[0.12]",
       href: "/admin/projects",
     },
     {
       label: "Open Tasks",
       value: taskCount ?? 0,
       icon: CheckSquare,
-      color: "from-cyan-500/20 to-cyan-600/5",
-      iconColor: "text-cyan-400",
-      border: "border-cyan-500/20",
+      color: "from-white/[0.08] to-white/[0.02]",
+      iconColor: "text-zinc-300",
+      border: "border-white/[0.12]",
       href: "/admin/projects",
     },
   ];
@@ -129,8 +129,8 @@ export default async function DashboardPage({ searchParams }: Props) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-            <span className="text-xs text-indigo-400 font-medium uppercase tracking-widest">Overview</span>
+            <Sparkles className="h-3.5 w-3.5 text-zinc-400" />
+            <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Overview</span>
           </div>
           <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">Dashboard</h1>
           <p className="text-white/40 text-sm mt-1">
@@ -143,9 +143,9 @@ export default async function DashboardPage({ searchParams }: Props) {
         <div className="flex items-center gap-2 flex-shrink-0 mt-1">
           {/* Non-exec dept badge */}
           {!isExec && myDeptName && (
-            <div className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-              <Layers className="h-3.5 w-3.5 text-indigo-400" />
-              <span className="text-xs font-medium text-indigo-300">{myDeptName}</span>
+            <div className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-white/[0.07] border border-white/[0.12]">
+              <Layers className="h-3.5 w-3.5 text-zinc-400" />
+              <span className="text-xs font-medium text-zinc-300">{myDeptName}</span>
             </div>
           )}
           {/* Exec dept filter */}
@@ -191,10 +191,10 @@ export default async function DashboardPage({ searchParams }: Props) {
         <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] overflow-hidden">
           <div className="flex items-center justify-between px-4 lg:px-5 py-4 border-b border-white/[0.07]">
             <div className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4 text-violet-400" />
+              <FolderOpen className="h-4 w-4 text-zinc-300" />
               <span className="text-sm font-semibold text-white">Recent Projects</span>
             </div>
-            <Link href="/admin/projects" className="text-xs text-white/30 hover:text-indigo-400 transition-colors flex items-center gap-1">
+            <Link href="/admin/projects" className="text-xs text-white/30 hover:text-zinc-200 transition-colors flex items-center gap-1">
               View all <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
@@ -232,7 +232,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         {/* Recent Activity */}
         <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] overflow-hidden">
           <div className="flex items-center gap-2 px-4 lg:px-5 py-4 border-b border-white/[0.07]">
-            <Activity className="h-4 w-4 text-cyan-400" />
+            <Activity className="h-4 w-4 text-zinc-300" />
             <span className="text-sm font-semibold text-white">Recent Activity</span>
           </div>
           {!recentActivity?.length ? (
@@ -245,7 +245,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               {recentActivity?.map((log) => (
                 <li key={log.id} className="px-4 lg:px-5 py-3 border-b border-white/[0.04] last:border-0">
                   <div className="flex items-start gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/60 mt-2 flex-shrink-0" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/30 mt-2 flex-shrink-0" />
                     <div className="min-w-0">
                       <p className="text-sm text-white/70 leading-snug">
                         <span className="font-medium text-white/90">

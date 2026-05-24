@@ -19,10 +19,10 @@ interface SearchResult {
 }
 
 const TYPE_META: Record<ResultType, { icon: React.ElementType; color: string; label: string }> = {
-  client:      { icon: Building2,   color: "text-indigo-400",  label: "Clients" },
-  project:     { icon: FolderOpen,  color: "text-violet-400",  label: "Projects" },
-  task:        { icon: CheckSquare, color: "text-cyan-400",    label: "Tasks" },
-  deliverable: { icon: Package,     color: "text-amber-400",   label: "Deliverables" },
+  client:      { icon: Building2,   color: "text-zinc-300",  label: "Clients" },
+  project:     { icon: FolderOpen,  color: "text-zinc-300",  label: "Projects" },
+  task:        { icon: CheckSquare, color: "text-zinc-300",  label: "Tasks" },
+  deliverable: { icon: Package,     color: "text-zinc-300",  label: "Deliverables" },
 };
 
 interface Props {
@@ -210,7 +210,7 @@ export default function CommandPalette({ portalMode = false }: Props) {
                 {/* Search input */}
                 <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/[0.07]">
                   {loading
-                    ? <Loader2 className="h-4 w-4 text-indigo-400 animate-spin flex-shrink-0" />
+                    ? <Loader2 className="h-4 w-4 text-zinc-300 animate-spin flex-shrink-0" />
                     : <Search className="h-4 w-4 text-white/35 flex-shrink-0" />
                   }
                   <input

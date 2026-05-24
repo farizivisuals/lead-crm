@@ -69,8 +69,8 @@ export default async function ClientsPage({ searchParams }: Props) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Building2 className="h-4 w-4 text-indigo-400" />
-            <span className="text-xs text-indigo-400 font-medium uppercase tracking-widest">Clients</span>
+            <Building2 className="h-4 w-4 text-zinc-400" />
+            <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Clients</span>
           </div>
           <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">
             {isExec && dept_id
@@ -82,9 +82,9 @@ export default async function ClientsPage({ searchParams }: Props) {
 
         <div className="flex items-center gap-2 flex-shrink-0 mt-1">
           {!isExec && myDeptName && (
-            <div className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-              <Layers className="h-3.5 w-3.5 text-indigo-400" />
-              <span className="text-xs font-medium text-indigo-300">{myDeptName}</span>
+            <div className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-white/[0.07] border border-white/[0.12]">
+              <Layers className="h-3.5 w-3.5 text-zinc-400" />
+              <span className="text-xs font-medium text-zinc-300">{myDeptName}</span>
             </div>
           )}
           {isExec && (
@@ -121,11 +121,11 @@ export default async function ClientsPage({ searchParams }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {clients?.map((client) => (
             <div key={client.id} className="group relative rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] hover:bg-white/[0.07] hover:border-white/[0.14] hover:shadow-xl hover:shadow-black/30 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl bg-indigo-500/5 group-hover:bg-indigo-500/10 transition-all duration-500" />
+              <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl bg-white/[0.02] group-hover:bg-white/[0.04] transition-all duration-500" />
 
               <Link href={`/admin/clients/${client.id}`} className="relative flex items-start gap-4 p-5 pb-3">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500/20 to-violet-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                  <Building2 className="h-5 w-5 text-indigo-400" />
+                <div className="w-11 h-11 rounded-xl bg-white/[0.07] border border-white/[0.12] flex items-center justify-center flex-shrink-0">
+                  <Building2 className="h-5 w-5 text-zinc-300" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white/90 group-hover:text-white transition-colors truncate">

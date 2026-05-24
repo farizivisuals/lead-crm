@@ -53,8 +53,8 @@ export default async function ProjectsPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <FolderOpen className="h-4 w-4 text-violet-400" />
-            <span className="text-xs text-violet-400 font-medium uppercase tracking-widest">Projects</span>
+            <FolderOpen className="h-4 w-4 text-zinc-400" />
+            <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Projects</span>
           </div>
           <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">All Projects</h1>
           <p className="text-white/40 text-sm mt-1">{projects?.length ?? 0} projects</p>
@@ -84,8 +84,8 @@ export default async function ProjectsPage() {
                 <div className="group rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-5 hover:bg-white/[0.07] hover:border-white/[0.14] hover:shadow-xl hover:shadow-black/20 hover:-translate-y-px transition-all duration-200 cursor-pointer">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-start gap-4 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-                        <FolderOpen className="h-[18px] w-[18px] text-violet-400" />
+                      <div className="w-10 h-10 rounded-xl bg-white/[0.07] border border-white/[0.12] flex items-center justify-center flex-shrink-0">
+                        <FolderOpen className="h-[18px] w-[18px] text-zinc-300" />
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold text-white/90 group-hover:text-white transition-colors leading-tight">
@@ -102,7 +102,7 @@ export default async function ProjectsPage() {
                             {depts.map((pd) => (
                               <span
                                 key={pd.departments?.slug}
-                                className="text-xs bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full font-medium"
+                                className="text-xs bg-white/[0.07] text-zinc-300 border border-white/[0.12] px-2 py-0.5 rounded-full font-medium"
                               >
                                 {pd.departments?.name}
                               </span>
@@ -136,7 +136,7 @@ export default async function ProjectsPage() {
                       </div>
                       <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
+                          className="h-full rounded-full bg-gradient-to-r from-zinc-400 to-zinc-300 transition-all duration-500"
                           style={{ width: `${pct}%` }}
                         />
                       </div>

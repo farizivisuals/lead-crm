@@ -55,8 +55,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
       {/* Client info card */}
       <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-5 lg:p-6">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-            <Building2 className="h-5 w-5 text-indigo-400" />
+          <div className="w-12 h-12 rounded-2xl bg-white/[0.07] border border-white/[0.12] flex items-center justify-center flex-shrink-0">
+            <Building2 className="h-5 w-5 text-zinc-300" />
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">{client.company_name}</h1>
@@ -91,8 +91,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <FolderOpen className="h-3.5 w-3.5 text-violet-400" />
-            <span className="text-xs text-violet-400 font-medium uppercase tracking-widest">Projects</span>
+            <FolderOpen className="h-3.5 w-3.5 text-zinc-400" />
+            <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Projects</span>
           </div>
           <p className="text-white/40 text-sm">{projects?.length ?? 0} projects</p>
         </div>
@@ -132,7 +132,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
                         {depts.map((pd) => (
                           <span
                             key={pd.departments?.slug}
-                            className="text-xs bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full font-medium"
+                            className="text-xs bg-white/[0.07] text-zinc-300 border border-white/[0.12] px-2 py-0.5 rounded-full font-medium"
                           >
                             {pd.departments?.name}
                           </span>

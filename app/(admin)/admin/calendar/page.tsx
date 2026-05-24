@@ -84,8 +84,8 @@ export default async function CalendarPage({ searchParams }: Props) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Calendar className="h-4 w-4 text-indigo-400" />
-            <span className="text-xs text-indigo-400 font-medium uppercase tracking-widest">Schedule</span>
+            <Calendar className="h-4 w-4 text-zinc-400" />
+            <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Schedule</span>
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
             {isMine ? "My Calendar" : "Company Calendar"}

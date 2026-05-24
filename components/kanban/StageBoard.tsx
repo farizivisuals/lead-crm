@@ -140,7 +140,7 @@ export default function StageBoard({ stages, tasks, employees, deptName, onTaskM
                       className={cn(
                         "rounded-b-xl min-h-[200px] p-2 space-y-2 border border-t-0 transition-all duration-150",
                         snapshot.isDraggingOver
-                          ? "bg-indigo-500/[0.07] border-indigo-500/20"
+                          ? "bg-white/[0.06] border-white/[0.18]"
                           : "bg-white/[0.02] border-white/[0.06]"
                       )}
                     >
@@ -155,7 +155,7 @@ export default function StageBoard({ stages, tasks, employees, deptName, onTaskM
                                 className={cn(
                                   "rounded-xl border p-3 select-none group transition-all duration-150",
                                   snapshot.isDragging
-                                    ? "bg-white/[0.1] border-indigo-500/40 shadow-2xl shadow-black/50 rotate-1 scale-105"
+                                    ? "bg-white/[0.1] border-white/40 shadow-2xl shadow-black/50 rotate-1 scale-105"
                                     : overdue
                                       ? "bg-red-500/[0.06] border-red-500/25 hover:bg-red-500/[0.09] hover:border-red-500/40 hover:shadow-lg hover:shadow-black/20"
                                       : "bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] hover:border-white/[0.14] hover:shadow-lg hover:shadow-black/20"
@@ -181,7 +181,7 @@ export default function StageBoard({ stages, tasks, employees, deptName, onTaskM
                                   )}
                                   <button
                                     onClick={() => setEditingTask(task)}
-                                    className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-indigo-400 transition-all flex-shrink-0"
+                                    className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-zinc-200 transition-all flex-shrink-0"
                                   >
                                     <Pencil className="h-3 w-3" />
                                   </button>

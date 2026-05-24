@@ -89,7 +89,7 @@ export default function CredentialsPopover({ getCredentials, label = "Reset pass
         >
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/[0.07]">
             <div className="flex items-center gap-2">
-              <KeyRound className="h-3.5 w-3.5 text-indigo-400" />
+              <KeyRound className="h-3.5 w-3.5 text-zinc-400" />
               <span className="text-xs font-semibold text-white/80">New credentials</span>
             </div>
             <button onClick={() => setOpen(false)} className="text-white/30 hover:text-white/60 transition-colors">
@@ -100,7 +100,7 @@ export default function CredentialsPopover({ getCredentials, label = "Reset pass
           <div className="p-3 space-y-2.5">
             {loading && (
               <div className="flex items-center gap-2 py-2">
-                <Loader2 className="h-4 w-4 text-indigo-400 animate-spin" />
+                <Loader2 className="h-4 w-4 text-zinc-300 animate-spin" />
                 <span className="text-xs text-white/40">Generating password…</span>
               </div>
             )}
@@ -137,7 +137,7 @@ export default function CredentialsPopover({ getCredentials, label = "Reset pass
                   className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-all duration-150 ${
                     copiedField === "both"
                       ? "bg-emerald-500/15 border-emerald-500/25 text-emerald-400"
-                      : "bg-indigo-500/15 border-indigo-500/25 text-indigo-300 hover:bg-indigo-500/20"
+                      : "bg-white/[0.07] border-white/[0.14] text-zinc-300 hover:bg-white/[0.1]"
                   }`}
                 >
                   {copiedField === "both" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -159,7 +159,7 @@ export default function CredentialsPopover({ getCredentials, label = "Reset pass
         title={label}
         className={`flex items-center gap-1.5 h-7 px-2.5 rounded-lg border text-xs font-medium transition-all duration-150 ${
           open
-            ? "bg-indigo-500/20 border-indigo-500/30 text-indigo-300"
+            ? "bg-white/[0.1] border-white/[0.2] text-zinc-200"
             : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/70 hover:bg-white/[0.08] hover:border-white/[0.14]"
         }`}
       >

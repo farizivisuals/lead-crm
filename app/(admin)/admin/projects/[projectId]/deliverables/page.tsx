@@ -82,7 +82,7 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
                   <div className="min-w-0 flex-1">
                     {/* Type + version */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full font-medium">
+                      <span className="text-xs bg-white/[0.07] text-zinc-300 border border-white/[0.12] px-2 py-0.5 rounded-full font-medium">
                         {DELIVERABLE_TYPE_LABELS[d.type as keyof typeof DELIVERABLE_TYPE_LABELS]}
                       </span>
                       <span className="text-xs text-white/25 font-medium">v{d.version}</span>
@@ -121,7 +121,7 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
                       href={d.dropbox_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                      className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                       Open in Dropbox
@@ -147,7 +147,7 @@ function SendToClientButton({ deliverableId }: { deliverableId: string }) {
     <form action={`/api/deliverables/${deliverableId}/send-to-client`} method="POST" className="mt-4 pt-4 border-t border-white/[0.07]">
       <button
         type="submit"
-        className="flex items-center gap-1.5 text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+        className="flex items-center gap-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
       >
         Send to client for review
         <ArrowRight className="h-3.5 w-3.5" />

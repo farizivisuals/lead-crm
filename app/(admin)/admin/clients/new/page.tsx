@@ -121,8 +121,8 @@ export default function NewClientPage() {
       <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] overflow-hidden">
         <div className="px-5 py-4 border-b border-white/[0.07]">
           <div className="flex items-center gap-2 mb-1">
-            <Building2 className="h-3.5 w-3.5 text-indigo-400" />
-            <span className="text-xs text-indigo-400 font-medium uppercase tracking-widest">New Client</span>
+            <Building2 className="h-3.5 w-3.5 text-zinc-400" />
+            <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">New Client</span>
           </div>
           <h2 className="font-semibold text-white">Add New Client</h2>
           <p className="text-xs text-white/40 mt-0.5">A portal account will be automatically created for the primary contact.</p>

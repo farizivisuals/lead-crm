@@ -55,7 +55,7 @@ function CallbackHandler() {
           <p className="text-white/60 text-sm">{error}</p>
           <a
             href="/login"
-            className="inline-block text-indigo-400 text-sm hover:text-indigo-300 underline underline-offset-4"
+            className="inline-block text-zinc-400 text-sm hover:text-zinc-200 underline underline-offset-4"
           >
             Back to login
           </a>
@@ -66,14 +66,14 @@ function CallbackHandler() {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <Loader2 className="h-6 w-6 text-indigo-400 animate-spin" />
+      <Loader2 className="h-6 w-6 text-zinc-300 animate-spin" />
     </div>
   );
 }
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center">
-    <Loader2 className="h-6 w-6 text-indigo-400 animate-spin" />
+    <Loader2 className="h-6 w-6 text-zinc-300 animate-spin" />
   </div>
 );
 

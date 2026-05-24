@@ -45,9 +45,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       icon: CheckSquare,
       count: taskCount,
       done: taskDone,
-      color: "from-indigo-500/20 to-indigo-600/5",
-      border: "border-indigo-500/20",
-      iconColor: "text-indigo-400",
+      color: "from-white/[0.08] to-white/[0.02]",
+      border: "border-white/[0.12]",
+      iconColor: "text-zinc-300",
     },
     {
       href: `/admin/projects/${projectId}/deliverables`,
@@ -55,9 +55,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       icon: Package,
       count: deliverableCount ?? 0,
       done: undefined as number | undefined,
-      color: "from-violet-500/20 to-violet-600/5",
-      border: "border-violet-500/20",
-      iconColor: "text-violet-400",
+      color: "from-white/[0.08] to-white/[0.02]",
+      border: "border-white/[0.12]",
+      iconColor: "text-zinc-300",
     },
     {
       href: `/admin/projects/${projectId}/activity`,
@@ -65,9 +65,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       icon: Activity,
       count: undefined as number | undefined,
       done: undefined as number | undefined,
-      color: "from-cyan-500/20 to-cyan-600/5",
-      border: "border-cyan-500/20",
-      iconColor: "text-cyan-400",
+      color: "from-white/[0.08] to-white/[0.02]",
+      border: "border-white/[0.12]",
+      iconColor: "text-zinc-300",
     },
   ];
 
@@ -100,7 +100,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               {depts.map((pd) => (
                 <span
                   key={pd.departments?.slug}
-                  className="text-xs bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-2.5 py-0.5 rounded-full font-medium"
+                  className="text-xs bg-white/[0.07] text-zinc-300 border border-white/[0.12] px-2.5 py-0.5 rounded-full font-medium"
                 >
                   {pd.departments?.name}
                 </span>

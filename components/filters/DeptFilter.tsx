@@ -42,7 +42,7 @@ export default function DeptFilter({ departments, currentDeptId }: Props) {
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 h-8 px-3 rounded-xl bg-white/[0.05] border border-white/[0.09] text-xs font-medium text-white/60 hover:text-white/90 hover:bg-white/[0.08] hover:border-white/[0.15] transition-all duration-150"
       >
-        <Building2 className="h-3.5 w-3.5 flex-shrink-0 text-indigo-400" />
+        <Building2 className="h-3.5 w-3.5 flex-shrink-0 text-zinc-400" />
         <span>{current?.name ?? "All Departments"}</span>
         <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
       </button>
@@ -63,7 +63,7 @@ export default function DeptFilter({ departments, currentDeptId }: Props) {
               }`}
             >
               <span>All Departments</span>
-              {!currentDeptId && <Check className="h-3.5 w-3.5 text-indigo-400" />}
+              {!currentDeptId && <Check className="h-3.5 w-3.5 text-zinc-300" />}
             </button>
             {departments.map((dept) => (
               <button
@@ -76,7 +76,7 @@ export default function DeptFilter({ departments, currentDeptId }: Props) {
                 }`}
               >
                 <span>{dept.name}</span>
-                {currentDeptId === dept.id && <Check className="h-3.5 w-3.5 text-indigo-400" />}
+                {currentDeptId === dept.id && <Check className="h-3.5 w-3.5 text-zinc-300" />}
               </button>
             ))}
           </motion.div>

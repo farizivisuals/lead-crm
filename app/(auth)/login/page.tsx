@@ -162,7 +162,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-medium text-sm shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:from-indigo-400 hover:to-violet-400 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
+              className="w-full h-11 rounded-xl bg-gradient-to-b from-white to-zinc-100 text-zinc-900 font-medium text-sm shadow-md shadow-black/30 hover:brightness-105 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -171,7 +171,7 @@ export default function LoginPage() {
             </button>
 
             <div className="text-center pt-1">
-              <a href="/reset-password" className="text-sm text-white/40 hover:text-indigo-400 transition-colors">
+              <a href="/reset-password" className="text-sm text-white/40 hover:text-zinc-300 transition-colors">
                 Forgot your password?
               </a>
             </div>

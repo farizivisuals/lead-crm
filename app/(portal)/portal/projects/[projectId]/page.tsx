@@ -89,7 +89,7 @@ export default async function PortalProjectPage({ params }: { params: Promise<{ 
             {project.status.replace("_", " ")}
           </Badge>
           {depts.map((pd, i) => (
-            <span key={i} className="text-xs bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full font-medium">
+            <span key={i} className="text-xs bg-white/[0.07] text-zinc-300 border border-white/[0.12] px-2 py-0.5 rounded-full font-medium">
               {pd.departments?.name}
             </span>
           ))}
@@ -213,7 +213,7 @@ export default async function PortalProjectPage({ params }: { params: Promise<{ 
                           href={d.dropbox_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300"
+                          className="flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-200"
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
                           View file
