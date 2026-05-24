@@ -8,9 +8,19 @@ import {
 } from "@hello-pangea/dnd";
 import { createClient } from "@/lib/supabase/browser";
 import type { Task, DepartmentStage } from "@/lib/types";
-import { Calendar, User, GripVertical, Pencil, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Calendar, User, GripVertical, Pencil, CheckCircle2 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import EditTaskDialog from "./EditTaskDialog";
+
+/** Returns true when a task is past its due date and not yet in a terminal stage. */
+function isTaskOverdue(task: Task, stages: DepartmentStage[]): boolean {
+  if (!task.due_date) return false;
+  const stage = stages.find((s) => s.id === task.current_stage_id);
+  if (stage?.is_terminal) return false;
+  // Compare ISO date strings lexicographically — safe and timezone-agnostic.
+  const today = new Date().toISOString().split("T")[0]!;
+  return task.due_date < today;
+}
 
 interface Employee {
   profile_id: string;
@@ -134,66 +144,78 @@ export default function StageBoard({ stages, tasks, employees, deptName, onTaskM
                           : "bg-white/[0.02] border-white/[0.06]"
                       )}
                     >
-                      {stageTasks.map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              className={cn(
-                                "rounded-xl border p-3 select-none group transition-all duration-150",
-                                snapshot.isDragging
-                                  ? "bg-white/[0.1] border-indigo-500/40 shadow-2xl shadow-black/50 rotate-1 scale-105"
-                                  : "bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] hover:border-white/[0.14] hover:shadow-lg hover:shadow-black/20"
-                              )}
-                            >
-                              <div className="flex items-start gap-2">
-                                <span
-                                  {...provided.dragHandleProps}
-                                  className="mt-0.5 text-white/20 hover:text-white/50 cursor-grab active:cursor-grabbing flex-shrink-0 transition-colors"
-                                >
-                                  <GripVertical className="h-3.5 w-3.5" />
-                                </span>
-
-                                <p
-                                  className="text-sm font-medium text-white/80 leading-snug flex-1 cursor-pointer hover:text-white transition-colors"
-                                  onClick={() => setEditingTask(task)}
-                                >
-                                  {task.title}
-                                </p>
-
-                                <button
-                                  onClick={() => setEditingTask(task)}
-                                  className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-indigo-400 transition-all flex-shrink-0"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                              </div>
-
-                              <div className="flex items-center gap-2 mt-2.5 pl-5 flex-wrap">
-                                <span className={cn(
-                                  "text-[10px] font-medium px-1.5 py-0.5 rounded-full border",
-                                  PRIORITY_STYLES[task.priority]
-                                )}>
-                                  {task.priority}
-                                </span>
-                                {task.due_date && (
-                                  <span className="flex items-center gap-1 text-[10px] text-white/30">
-                                    <Calendar className="h-2.5 w-2.5" />
-                                    {formatDate(task.due_date)}
-                                  </span>
+                      {stageTasks.map((task, index) => {
+                        const overdue = isTaskOverdue(task, stages);
+                        return (
+                          <Draggable key={task.id} draggableId={task.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={cn(
+                                  "rounded-xl border p-3 select-none group transition-all duration-150",
+                                  snapshot.isDragging
+                                    ? "bg-white/[0.1] border-indigo-500/40 shadow-2xl shadow-black/50 rotate-1 scale-105"
+                                    : overdue
+                                      ? "bg-red-500/[0.06] border-red-500/25 hover:bg-red-500/[0.09] hover:border-red-500/40 hover:shadow-lg hover:shadow-black/20"
+                                      : "bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] hover:border-white/[0.14] hover:shadow-lg hover:shadow-black/20"
                                 )}
-                                {task.assigned_to && (
-                                  <span className="flex items-center gap-1 text-[10px] text-white/30">
-                                    <User className="h-2.5 w-2.5" />
-                                    {(task.employees as { profiles?: { full_name: string } })?.profiles?.full_name?.split(" ")[0]}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <span
+                                    {...provided.dragHandleProps}
+                                    className="mt-0.5 text-white/20 hover:text-white/50 cursor-grab active:cursor-grabbing flex-shrink-0 transition-colors"
+                                  >
+                                    <GripVertical className="h-3.5 w-3.5" />
                                   </span>
-                                )}
+
+                                  <p
+                                    className="text-sm font-medium text-white/80 leading-snug flex-1 cursor-pointer hover:text-white transition-colors"
+                                    onClick={() => setEditingTask(task)}
+                                  >
+                                    {task.title}
+                                  </p>
+
+                                  {overdue && (
+                                    <AlertCircle className="h-3.5 w-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                                  )}
+                                  <button
+                                    onClick={() => setEditingTask(task)}
+                                    className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-indigo-400 transition-all flex-shrink-0"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </button>
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-2.5 pl-5 flex-wrap">
+                                  <span className={cn(
+                                    "text-[10px] font-medium px-1.5 py-0.5 rounded-full border",
+                                    PRIORITY_STYLES[task.priority]
+                                  )}>
+                                    {task.priority}
+                                  </span>
+                                  {task.due_date && (
+                                    <span className={cn(
+                                      "flex items-center gap-1 text-[10px]",
+                                      overdue ? "text-red-400 font-medium" : "text-white/30"
+                                    )}>
+                                      <Calendar className="h-2.5 w-2.5" />
+                                      {formatDate(task.due_date)}
+                                      {overdue && <span>· Overdue</span>}
+                                    </span>
+                                  )}
+                                  {task.assigned_to && (
+                                    <span className="flex items-center gap-1 text-[10px] text-white/30">
+                                      <User className="h-2.5 w-2.5" />
+                                      {(task.employees as { profiles?: { full_name: string } })?.profiles?.full_name?.split(" ")[0]}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
+                            )}
+                          </Draggable>
+                        );
+                      })}
                       {provided.placeholder}
                     </div>
                   )}

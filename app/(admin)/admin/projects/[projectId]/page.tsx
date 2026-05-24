@@ -20,10 +20,21 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   if (!project) notFound();
 
-  const [{ count: taskCount }, { count: deliverableCount }] = await Promise.all([
-    supabase.from("tasks").select("*", { count: "exact", head: true }).eq("project_id", projectId),
+  const [{ data: taskRows }, { count: deliverableCount }] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("department_stages(is_terminal)")
+      .eq("project_id", projectId),
     supabase.from("deliverables").select("*", { count: "exact", head: true }).eq("project_id", projectId),
   ]);
+  const taskCount = taskRows?.length ?? 0;
+  // Supabase returns the join as an array; take the first element.
+  const taskDone = (taskRows ?? []).filter((t) => {
+    const stage = Array.isArray(t.department_stages)
+      ? (t.department_stages as { is_terminal: boolean }[])[0]
+      : (t.department_stages as { is_terminal: boolean } | null);
+    return stage?.is_terminal === true;
+  }).length;
 
   const depts = (project.project_departments as { departments?: { name: string; slug: string } }[]) ?? [];
 
@@ -32,7 +43,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       href: `/admin/projects/${projectId}/tasks`,
       label: "Tasks",
       icon: CheckSquare,
-      count: taskCount ?? 0,
+      count: taskCount,
+      done: taskDone,
       color: "from-indigo-500/20 to-indigo-600/5",
       border: "border-indigo-500/20",
       iconColor: "text-indigo-400",
@@ -42,6 +54,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       label: "Deliverables",
       icon: Package,
       count: deliverableCount ?? 0,
+      done: undefined as number | undefined,
       color: "from-violet-500/20 to-violet-600/5",
       border: "border-violet-500/20",
       iconColor: "text-violet-400",
@@ -50,7 +63,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       href: `/admin/projects/${projectId}/activity`,
       label: "Activity",
       icon: Activity,
-      count: undefined,
+      count: undefined as number | undefined,
+      done: undefined as number | undefined,
       color: "from-cyan-500/20 to-cyan-600/5",
       border: "border-cyan-500/20",
       iconColor: "text-cyan-400",
@@ -112,25 +126,48 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
       {/* Sub-nav — 1 col on mobile, 3 col on sm+ */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {navItems.map(({ href, label, icon: Icon, count, color, border, iconColor }) => (
-          <Link key={href} href={href}>
-            <div className={`group relative rounded-2xl bg-gradient-to-br ${color} border ${border} p-4 lg:p-5 hover:scale-[1.02] hover:shadow-xl hover:shadow-black/20 transition-all duration-300 overflow-hidden cursor-pointer`}>
-              <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl bg-white/5 group-hover:bg-white/10 transition-all" />
-              <div className="relative flex items-center justify-between">
-                <div className={`p-2 rounded-xl bg-white/[0.08] border border-white/[0.1] ${iconColor}`}>
-                  <Icon className="h-[18px] w-[18px]" />
+        {navItems.map(({ href, label, icon: Icon, count, done, color, border, iconColor }) => {
+          const pct = done !== undefined && count !== undefined && count > 0
+            ? Math.round((done / count) * 100)
+            : null;
+          return (
+            <Link key={href} href={href}>
+              <div className={`group relative rounded-2xl bg-gradient-to-br ${color} border ${border} p-4 lg:p-5 hover:scale-[1.02] hover:shadow-xl hover:shadow-black/20 transition-all duration-300 overflow-hidden cursor-pointer`}>
+                <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl bg-white/5 group-hover:bg-white/10 transition-all" />
+                <div className="relative flex items-center justify-between">
+                  <div className={`p-2 rounded-xl bg-white/[0.08] border border-white/[0.1] ${iconColor}`}>
+                    <Icon className="h-[18px] w-[18px]" />
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-white/20 group-hover:text-white/50 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                 </div>
-                <ArrowUpRight className="h-4 w-4 text-white/20 group-hover:text-white/50 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                <div className="relative mt-3">
+                  <p className="font-semibold text-white/90 group-hover:text-white transition-colors">{label}</p>
+                  {count !== undefined && pct === null && (
+                    <p className="text-sm text-white/40 mt-0.5">{count} items</p>
+                  )}
+                  {/* Progress bar (Tasks card only) */}
+                  {pct !== null && count !== undefined && done !== undefined && (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-white/40">{done} / {count} done</span>
+                        <span className="text-xs text-white/40 tabular-nums">{pct}%</span>
+                      </div>
+                      <div className="h-1 rounded-full bg-white/[0.1] overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-white/50 transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {pct !== null && count === 0 && (
+                    <p className="text-sm text-white/40 mt-0.5">0 tasks</p>
+                  )}
+                </div>
               </div>
-              <div className="relative mt-3">
-                <p className="font-semibold text-white/90 group-hover:text-white transition-colors">{label}</p>
-                {count !== undefined && (
-                  <p className="text-sm text-white/40 mt-0.5">{count} items</p>
-                )}
-              </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
