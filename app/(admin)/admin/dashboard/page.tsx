@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2, FolderOpen, CheckSquare, Clock,
-  ArrowUpRight, Sparkles, Activity, Layers,
+  ArrowUpRight, Activity, Layers, TrendingUp,
 } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 import Link from "next/link";
@@ -26,16 +26,12 @@ export default async function DashboardPage({ searchParams }: Props) {
   const isExec = ["root", "ceo", "cfo"].includes(employee?.role ?? "");
   const myDeptId = employee?.department_id as string | null;
   const myDeptName = (employee?.departments as unknown as { name: string } | null)?.name;
-
-  // For exec dept filtering: resolve which dept_id to apply to queries
   const filterDeptId = isExec ? (dept_id ?? null) : myDeptId;
 
-  // Fetch all departments for the filter dropdown (exec only)
   const { data: departments } = isExec
     ? await supabase.from("departments").select("id, name").order("name")
     : { data: null };
 
-  // Build counts — RLS already scopes non-execs to their dept
   const [
     { count: clientCount },
     { count: projectCount },
@@ -44,7 +40,6 @@ export default async function DashboardPage({ searchParams }: Props) {
     { data: recentProjects },
   ] = await Promise.all([
     filterDeptId && isExec
-      // Count clients that have projects in this dept (via project_departments)
       ? supabase
           .from("project_departments")
           .select("projects!inner(client_id)", { count: "exact", head: true })
@@ -90,28 +85,22 @@ export default async function DashboardPage({ searchParams }: Props) {
       label: isExec && filterDeptId ? "Dept Clients" : "Total Clients",
       value: clientCount ?? 0,
       icon: Building2,
-      color: "from-white/[0.08] to-white/[0.02]",
-      iconColor: "text-zinc-300",
-      border: "border-white/[0.12]",
       href: "/admin/clients",
+      description: "Active client accounts",
     },
     {
       label: isExec && filterDeptId ? "Dept Projects" : "Active Projects",
       value: projectCount ?? 0,
       icon: FolderOpen,
-      color: "from-white/[0.08] to-white/[0.02]",
-      iconColor: "text-zinc-300",
-      border: "border-white/[0.12]",
       href: "/admin/projects",
+      description: "Projects in progress",
     },
     {
       label: "Open Tasks",
       value: taskCount ?? 0,
       icon: CheckSquare,
-      color: "from-white/[0.08] to-white/[0.02]",
-      iconColor: "text-zinc-300",
-      border: "border-white/[0.12]",
       href: "/admin/projects",
+      description: "Tasks across all projects",
     },
   ];
 
@@ -124,102 +113,104 @@ export default async function DashboardPage({ searchParams }: Props) {
   };
 
   return (
-    <div className="space-y-6 animate-slide-up">
+    <div className="space-y-8 animate-slide-up">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="h-3.5 w-3.5 text-zinc-400" />
-            <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Overview</span>
-          </div>
-          <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">Dashboard</h1>
-          <p className="text-white/40 text-sm mt-1">
-            {isExec
-              ? "Agency-wide metrics across all departments."
-              : `Showing data for your department.`}
+          <p className="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em] mb-2">Overview</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
+          <p className="text-white/35 text-sm mt-1">
+            {isExec ? "Agency-wide metrics across all departments." : `Your department at a glance.`}
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0 mt-1">
-          {/* Non-exec dept badge */}
           {!isExec && myDeptName && (
-            <div className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-white/[0.07] border border-white/[0.12]">
-              <Layers className="h-3.5 w-3.5 text-zinc-400" />
-              <span className="text-xs font-medium text-zinc-300">{myDeptName}</span>
+            <div className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-white/[0.06] border border-white/[0.1]">
+              <Layers className="h-3.5 w-3.5 text-white/40" />
+              <span className="text-xs font-medium text-white/60">{myDeptName}</span>
             </div>
           )}
-          {/* Exec dept filter */}
           {isExec && (
-            <DeptFilter
-              departments={departments ?? []}
-              currentDeptId={dept_id}
-            />
+            <DeptFilter departments={departments ?? []} currentDeptId={dept_id} />
           )}
         </div>
       </div>
 
-      {/* Stats — 1 col mobile, 3 col sm+ */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4">
-        {stats.map(({ label, value, icon: Icon, color, iconColor, border, href }, i) => (
+      {/* Stats grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {stats.map(({ label, value, icon: Icon, href, description }, i) => (
           <Link key={label} href={href}>
             <div
-              className={`group relative rounded-2xl bg-gradient-to-br ${color} border ${border} p-5 lg:p-6 shadow-xl backdrop-blur-xl hover:scale-[1.02] transition-all duration-300 overflow-hidden cursor-pointer`}
+              className="group relative rounded-2xl bg-white/[0.04] border border-white/[0.07] p-5 hover:bg-white/[0.07] hover:border-white/[0.12] hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30 transition-all duration-300 overflow-hidden cursor-pointer"
               style={{ animationDelay: `${i * 80}ms` }}
             >
-              <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl bg-white/5 group-hover:bg-white/10 transition-all duration-500" />
-              <div className="relative flex items-start justify-between">
-                <div>
-                  <p className="text-2xl lg:text-3xl font-bold text-white tracking-tight tabular-nums">{value}</p>
-                  <p className="text-sm text-white/50 mt-1 font-medium">{label}</p>
+              {/* Subtle top highlight */}
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent" />
+
+              <div className="flex items-start justify-between mb-4">
+                <div className="p-2 rounded-xl bg-white/[0.06] border border-white/[0.08] group-hover:bg-white/[0.1] transition-colors">
+                  <Icon className="h-4 w-4 text-zinc-300" />
                 </div>
-                <div className={`p-2.5 rounded-xl bg-white/[0.07] border border-white/[0.08] ${iconColor}`}>
-                  <Icon className="h-4 w-4 lg:h-5 lg:w-5" />
-                </div>
+                <TrendingUp className="h-3.5 w-3.5 text-white/15 group-hover:text-white/30 transition-colors" />
               </div>
-              <div className="relative mt-3 flex items-center gap-1.5 text-xs text-white/30 group-hover:text-white/50 transition-colors">
-                <span>View all</span>
-                <ArrowUpRight className="h-3 w-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+
+              <div className="space-y-0.5">
+                <p className="text-3xl font-bold text-white tracking-tight tabular-nums">{value}</p>
+                <p className="text-sm font-medium text-white/50">{label}</p>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-white/[0.05] flex items-center justify-between">
+                <p className="text-xs text-white/25">{description}</p>
+                <ArrowUpRight className="h-3 w-3 text-white/20 group-hover:text-white/50 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200" />
               </div>
             </div>
           </Link>
         ))}
       </div>
 
-      {/* Recent panels — 1 col mobile, 2 col lg+ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-        {/* Recent Projects */}
-        <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] overflow-hidden">
-          <div className="flex items-center justify-between px-4 lg:px-5 py-4 border-b border-white/[0.07]">
-            <div className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4 text-zinc-300" />
+      {/* Lower panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Recent Projects — wider */}
+        <div className="lg:col-span-3 rounded-2xl bg-white/[0.04] border border-white/[0.07] overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08]">
+                <FolderOpen className="h-3.5 w-3.5 text-zinc-300" />
+              </div>
               <span className="text-sm font-semibold text-white">Recent Projects</span>
             </div>
-            <Link href="/admin/projects" className="text-xs text-white/30 hover:text-zinc-200 transition-colors flex items-center gap-1">
-              View all <ArrowUpRight className="h-3 w-3" />
+            <Link
+              href="/admin/projects"
+              className="text-xs text-white/25 hover:text-white/60 transition-colors flex items-center gap-1 group"
+            >
+              View all
+              <ArrowUpRight className="h-3 w-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </Link>
           </div>
+
           {!recentProjects?.length ? (
-            <div className="px-5 py-10 text-center">
-              <FolderOpen className="h-8 w-8 text-white/10 mx-auto mb-2" />
-              <p className="text-sm text-white/30">No projects yet</p>
+            <div className="px-5 py-12 text-center">
+              <FolderOpen className="h-8 w-8 text-white/[0.08] mx-auto mb-3" />
+              <p className="text-sm text-white/25">No projects yet</p>
             </div>
           ) : (
-            <ul>
-              {recentProjects?.map((project) => (
+            <ul className="divide-y divide-white/[0.04]">
+              {recentProjects.map((project) => (
                 <li key={project.id}>
                   <Link
                     href={`/admin/projects/${project.id}`}
-                    className="flex items-center justify-between px-4 lg:px-5 py-3.5 hover:bg-white/[0.04] transition-colors border-b border-white/[0.04] last:border-0 group"
+                    className="flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.03] transition-colors group"
                   >
-                    <div className="min-w-0 mr-3">
-                      <p className="text-sm font-medium text-white/80 group-hover:text-white transition-colors truncate">
+                    <div className="min-w-0 mr-4">
+                      <p className="text-sm font-medium text-white/75 group-hover:text-white transition-colors truncate">
                         {project.name}
                       </p>
                       <p className="text-xs text-white/30 mt-0.5 truncate">
                         {(project.clients as { company_name: string })?.company_name}
                       </p>
                     </div>
-                    <Badge variant={statusColors[project.status] ?? "secondary"} className="flex-shrink-0">
+                    <Badge variant={statusColors[project.status] ?? "secondary"} className="flex-shrink-0 text-[10px]">
                       {project.status.replace("_", " ")}
                     </Badge>
                   </Link>
@@ -229,31 +220,34 @@ export default async function DashboardPage({ searchParams }: Props) {
           )}
         </div>
 
-        {/* Recent Activity */}
-        <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] overflow-hidden">
-          <div className="flex items-center gap-2 px-4 lg:px-5 py-4 border-b border-white/[0.07]">
-            <Activity className="h-4 w-4 text-zinc-300" />
-            <span className="text-sm font-semibold text-white">Recent Activity</span>
+        {/* Recent Activity — narrower */}
+        <div className="lg:col-span-2 rounded-2xl bg-white/[0.04] border border-white/[0.07] overflow-hidden">
+          <div className="flex items-center gap-2.5 px-5 py-4 border-b border-white/[0.06]">
+            <div className="p-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08]">
+              <Activity className="h-3.5 w-3.5 text-zinc-300" />
+            </div>
+            <span className="text-sm font-semibold text-white">Activity</span>
           </div>
+
           {!recentActivity?.length ? (
-            <div className="px-5 py-10 text-center">
-              <Clock className="h-8 w-8 text-white/10 mx-auto mb-2" />
-              <p className="text-sm text-white/30">No activity yet</p>
+            <div className="px-5 py-12 text-center">
+              <Clock className="h-8 w-8 text-white/[0.08] mx-auto mb-3" />
+              <p className="text-sm text-white/25">No activity yet</p>
             </div>
           ) : (
-            <ul>
-              {recentActivity?.map((log) => (
-                <li key={log.id} className="px-4 lg:px-5 py-3 border-b border-white/[0.04] last:border-0">
+            <ul className="divide-y divide-white/[0.04]">
+              {recentActivity.map((log) => (
+                <li key={log.id} className="px-5 py-3">
                   <div className="flex items-start gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white/30 mt-2 flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm text-white/70 leading-snug">
-                        <span className="font-medium text-white/90">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20 mt-[7px] flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-white/55 leading-snug">
+                        <span className="font-semibold text-white/80">
                           {(log.profiles as { full_name: string })?.full_name}
                         </span>{" "}
                         {log.action}
                       </p>
-                      <p className="text-xs text-white/30 mt-0.5">{formatRelative(log.created_at)}</p>
+                      <p className="text-[10px] text-white/25 mt-0.5">{formatRelative(log.created_at)}</p>
                     </div>
                   </div>
                 </li>

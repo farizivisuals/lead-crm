@@ -41,7 +41,7 @@ export default async function CalendarPage({ searchParams }: Props) {
       title: t.title,
       start: t.start_date ?? t.due_date ?? "",
       end: t.due_date ?? null,
-      color: (t.department_stages as unknown as { color: string } | null)?.color ?? "#6366f1",
+      color: (t.department_stages as unknown as { color: string } | null)?.color ?? "#71717a",
       department_id: t.department_id,
       client_id: null,
       project_id: t.project_id,
@@ -72,7 +72,7 @@ export default async function CalendarPage({ searchParams }: Props) {
   };
 
   const legend = [
-    { color: "#6366f1", label: "Video tasks" },
+    { color: "#71717a", label: "Video tasks" },
     { color: "#ec4899", label: "Photo tasks" },
     { color: "#f59e0b", label: "PR tasks" },
     { color: "#10b981", label: "Projects" },

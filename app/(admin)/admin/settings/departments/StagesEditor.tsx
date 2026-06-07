@@ -27,7 +27,7 @@ export default function StagesEditor({ departmentId, initialStages }: Props) {
         name: "",
         position: maxPos + 1,
         is_terminal: false,
-        color: "#6366f1",
+        color: "#71717a",
         created_at: new Date().toISOString(),
       },
     ]);
@@ -84,7 +84,7 @@ export default function StagesEditor({ departmentId, initialStages }: Props) {
           />
           <input
             type="color"
-            value={stage.color ?? "#6366f1"}
+            value={stage.color ?? "#71717a"}
             onChange={(e) => updateStage(stage.id, "color", e.target.value)}
             className="h-8 w-8 rounded cursor-pointer border border-gray-200"
             title="Stage color"

@@ -87,7 +87,7 @@ export default function StageBoard({ stages, tasks, employees, deptName, onTaskM
     setLocalTasks((prev) => prev.filter((t) => t.id !== taskId));
   }
 
-  const deptColor = stages[0]?.color ?? "#6366f1";
+  const deptColor = stages[0]?.color ?? "#71717a";
 
   return (
     <div className="space-y-3">
@@ -104,7 +104,7 @@ export default function StageBoard({ stages, tasks, employees, deptName, onTaskM
         <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1 touch-pan-x" style={{ WebkitOverflowScrolling: "touch" }}>
           {stages.map((stage) => {
             const stageTasks = tasksByStage(stage.id);
-            const stageColor = stage.color ?? "#6366f1";
+            const stageColor = stage.color ?? "#71717a";
             return (
               <div key={stage.id} className="flex-shrink-0 w-72">
                 {/* Column header */}

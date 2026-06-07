@@ -37,24 +37,29 @@ function NavItem({ href, label, icon: Icon, active, onClick }: {
   href: string; label: string; icon: React.ElementType; active: boolean; onClick?: () => void;
 }) {
   return (
-    <Link href={href} onClick={onClick} className="relative block">
+    <Link href={href} onClick={onClick} className="relative block group">
       {active && (
         <motion.div
           layoutId="sidebar-active"
-          className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/[0.1] to-white/[0.04] border border-white/[0.18]"
-          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+          className="absolute inset-0 rounded-xl bg-white/[0.08] border border-white/[0.12]"
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
         />
       )}
       <span
         className={cn(
-          "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150",
-          active ? "text-white" : "text-white/50 hover:text-white/80 hover:bg-white/[0.05]"
+          "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors duration-150",
+          active
+            ? "text-white font-medium"
+            : "text-white/40 hover:text-white/70 hover:bg-white/[0.04] font-medium"
         )}
       >
-        <Icon className={cn("h-4 w-4 flex-shrink-0 transition-colors", active ? "text-zinc-200" : "text-current")} />
+        <Icon className={cn(
+          "h-4 w-4 flex-shrink-0 transition-colors",
+          active ? "text-white/90" : "text-current"
+        )} />
         {label}
         {active && (
-          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-zinc-300 shadow-[0_0_6px_2px_rgba(255,255,255,0.2)]" />
+          <span className="ml-auto w-1 h-1 rounded-full bg-white/60" />
         )}
       </span>
     </Link>
@@ -62,17 +67,9 @@ function NavItem({ href, label, icon: Icon, active, onClick }: {
 }
 
 function SidebarContent({
-  profile,
-  employee,
-  pathname,
-  onNavClick,
-  onSignOut,
+  profile, employee, pathname, onNavClick, onSignOut,
 }: {
-  profile: Profile;
-  employee: Employee;
-  pathname: string;
-  onNavClick?: () => void;
-  onSignOut: () => void;
+  profile: Profile; employee: Employee; pathname: string; onNavClick?: () => void; onSignOut: () => void;
 }) {
   const initials = profile.full_name
     .split(" ")
@@ -83,33 +80,30 @@ function SidebarContent({
 
   return (
     <div className="relative flex flex-col h-full">
-      <div className="absolute -top-16 -left-16 w-48 h-48 rounded-full bg-white/[0.025] blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-32 h-32 rounded-full bg-white/[0.02] blur-2xl pointer-events-none" />
-
       {/* Logo */}
-      <div className="relative px-4 py-4 border-b border-white/[0.07] flex items-center">
-        <div className="overflow-hidden flex-shrink-0" style={{ width: '82px', height: '38px' }}>
+      <div className="px-4 py-4 border-b border-white/[0.06] flex items-center flex-shrink-0">
+        <div className="overflow-hidden flex-shrink-0" style={{ width: "82px", height: "38px" }}>
           <Image
             src="/logo.png"
             alt="lead."
             width={116}
             height={116}
             className="invert opacity-90"
-            style={{ transform: 'translate(-18px, -36px)' }}
+            style={{ transform: "translate(-18px, -36px)" }}
             priority
           />
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="relative flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map(({ href, label, icon }) => {
           const active = pathname === href || (href !== "/admin/dashboard" && pathname.startsWith(href));
           return <NavItem key={href} href={href} label={label} icon={icon} active={active} onClick={onNavClick} />;
         })}
 
-        <div className="pt-5 pb-1 px-3">
-          <p className="text-[10px] font-semibold text-white/25 uppercase tracking-widest">Settings</p>
+        <div className="pt-5 pb-1.5 px-3">
+          <p className="text-[10px] font-semibold text-white/[0.2] uppercase tracking-[0.12em]">Settings</p>
         </div>
 
         {SETTINGS_ITEMS.map(({ href, label, icon }) => {
@@ -118,25 +112,25 @@ function SidebarContent({
         })}
       </nav>
 
-      {/* User */}
-      <div className="relative border-t border-white/[0.07] px-3 py-3">
-        <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/[0.05] transition-colors group">
-          <Avatar className="h-8 w-8 flex-shrink-0 ring-1 ring-white/10">
+      {/* User footer */}
+      <div className="border-t border-white/[0.06] px-3 py-3 flex-shrink-0">
+        <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/[0.05] transition-colors group cursor-default">
+          <Avatar className="h-8 w-8 flex-shrink-0 ring-1 ring-white/[0.1]">
             <AvatarImage src={profile.avatar_url ?? undefined} />
-            <AvatarFallback className="text-xs bg-white/[0.1] text-zinc-300 font-semibold">
+            <AvatarFallback className="text-xs bg-white/[0.08] text-zinc-200 font-semibold">
               {initials}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white/90 truncate leading-tight">{profile.full_name}</p>
-            <p className="text-[11px] text-white/40 truncate mt-0.5">{ROLE_LABELS[employee.role]}</p>
+            <p className="text-sm font-medium text-white/80 truncate leading-tight">{profile.full_name}</p>
+            <p className="text-[11px] text-white/30 truncate mt-0.5">{ROLE_LABELS[employee.role]}</p>
           </div>
           <button
             onClick={onSignOut}
-            className="text-white/30 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+            className="text-white/20 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
             title="Sign out"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
@@ -149,10 +143,8 @@ export default function Sidebar({ profile, employee }: SidebarProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Close drawer on route change
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-  // Lock body scroll when mobile drawer is open
   useEffect(() => {
     if (mobileOpen) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
@@ -169,22 +161,25 @@ export default function Sidebar({ profile, employee }: SidebarProps) {
 
   return (
     <>
-      {/* ── Desktop sidebar ─────────────────────────────── */}
+      {/* Desktop sidebar */}
       <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col z-40 overflow-hidden">
-        <div className="absolute inset-0 bg-white/[0.03] backdrop-blur-2xl border-r border-white/[0.07]" />
-        <SidebarContent {...commonProps} />
+        <div className="absolute inset-0 bg-white/[0.025] backdrop-blur-2xl border-r border-white/[0.06]" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
+        <div className="relative flex flex-col h-full">
+          <SidebarContent {...commonProps} />
+        </div>
       </aside>
 
-      {/* ── Mobile hamburger button ──────────────────────── */}
+      {/* Mobile hamburger */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-3.5 left-4 z-50 w-9 h-9 rounded-xl bg-white/[0.07] border border-white/[0.1] text-white/70 flex items-center justify-center hover:bg-white/[0.12] active:scale-95 transition-all"
+        className="lg:hidden fixed top-3.5 left-4 z-50 w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.1] text-white/60 flex items-center justify-center hover:bg-white/[0.1] active:scale-95 transition-all"
         aria-label="Open menu"
       >
-        <Menu className="h-4.5 w-4.5 h-[18px] w-[18px]" />
+        <Menu className="h-[18px] w-[18px]" />
       </button>
 
-      {/* ── Mobile backdrop ──────────────────────────────── */}
+      {/* Mobile backdrop */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -193,13 +188,13 @@ export default function Sidebar({ profile, employee }: SidebarProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            className="lg:hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
         )}
       </AnimatePresence>
 
-      {/* ── Mobile drawer ────────────────────────────────── */}
+      {/* Mobile drawer */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.aside
@@ -210,16 +205,17 @@ export default function Sidebar({ profile, employee }: SidebarProps) {
             transition={{ type: "spring", stiffness: 320, damping: 32 }}
             className="lg:hidden fixed inset-y-0 left-0 w-[280px] z-50 flex flex-col overflow-hidden"
           >
-            <div className="absolute inset-0 bg-[#0b0b12]/95 backdrop-blur-2xl border-r border-white/[0.1]" />
-            {/* Close button */}
+            <div className="absolute inset-0 bg-[#0a0a0f]/95 backdrop-blur-2xl border-r border-white/[0.08]" />
             <button
               onClick={() => setMobileOpen(false)}
-              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-lg bg-white/[0.07] border border-white/[0.1] text-white/50 hover:text-white flex items-center justify-center transition-colors"
+              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.1] text-white/40 hover:text-white flex items-center justify-center transition-colors"
               aria-label="Close menu"
             >
               <X className="h-4 w-4" />
             </button>
-            <SidebarContent {...commonProps} onNavClick={() => setMobileOpen(false)} />
+            <div className="relative flex flex-col h-full">
+              <SidebarContent {...commonProps} onNavClick={() => setMobileOpen(false)} />
+            </div>
           </motion.aside>
         )}
       </AnimatePresence>
