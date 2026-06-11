@@ -81,6 +81,7 @@ export interface Project {
   clients?: Client;
   profiles?: Profile;
   project_departments?: ProjectDepartment[];
+  project_creatives?: ProjectCreative[];
 }
 
 export interface ProjectDepartment {
@@ -88,6 +89,20 @@ export interface ProjectDepartment {
   department_id: string;
   is_primary: boolean;
   departments?: Department;
+}
+
+export interface ProjectCreative {
+  project_id: string;
+  profile_id: string;
+  added_at: string;
+  employees?: { profiles?: { full_name: string } | null } | null;
+}
+
+export interface TaskCreative {
+  task_id: string;
+  profile_id: string;
+  added_at: string;
+  employees?: { profiles?: { full_name: string } | null } | null;
 }
 
 export interface Task {
@@ -107,6 +122,7 @@ export interface Task {
   department_stages?: DepartmentStage;
   departments?: Department;
   employees?: { profiles?: Profile };
+  task_creatives?: TaskCreative[];
 }
 
 export interface TaskStageHistory {

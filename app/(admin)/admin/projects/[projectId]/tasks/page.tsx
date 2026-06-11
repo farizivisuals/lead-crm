@@ -26,7 +26,7 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
 
   const deptIds = depts.map((d) => d.department_id);
 
-  const [{ data: stages }, { data: tasks }, { data: employees }] = await Promise.all([
+  const [{ data: stages }, { data: tasks }, { data: employees }, { data: creativeRows }] = await Promise.all([
     supabase
       .from("department_stages")
       .select("*")
@@ -34,14 +34,24 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
       .order("position"),
     supabase
       .from("tasks")
-      .select("*, department_stages(*), departments(name), employees(profiles(full_name))")
+      .select("*, department_stages(*), departments(name), employees(profiles(full_name)), task_creatives(profile_id, employees(profiles(full_name)))")
       .eq("project_id", projectId)
       .order("created_at"),
     supabase
       .from("employees")
       .select("profile_id, profiles(full_name), department_id")
       .in("department_id", deptIds),
+    supabase
+      .from("project_creatives")
+      .select("profile_id, employees(profiles(full_name))")
+      .eq("project_id", projectId),
   ]);
+
+  const projectCreatives = (creativeRows ?? []).map((c) => ({
+    profile_id: c.profile_id as string,
+    full_name:
+      (c.employees as unknown as { profiles?: { full_name: string } } | null)?.profiles?.full_name ?? "Unknown",
+  }));
 
   const stagesByDept = depts.reduce<
     Record<string, { stages: typeof stages; dept: { id: string; name: string; slug: string } }>
@@ -71,6 +81,7 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
           departments={depts.map((d) => d.departments)}
           stages={stages ?? []}
           employees={(employees ?? []) as unknown as { profile_id: string; profiles?: { full_name: string } | null; department_id: string | null }[]}
+          creatives={projectCreatives}
         />
       </div>
 
@@ -86,6 +97,7 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
                 employees={(employees ?? []).filter(
                   (e) => (e as unknown as { department_id: string | null }).department_id === dept.id
                 ) as unknown as { profile_id: string; profiles?: { full_name: string } | null; department_id: string | null }[]}
+                creatives={projectCreatives}
                 deptName={dept.name}
                 deptSlug={dept.slug}
               />

@@ -8,14 +8,23 @@ import NewProjectDialog from "./NewProjectDialog";
 export default async function ProjectsPage() {
   const supabase = await createClient();
 
-  const [{ data: projects }, { data: clients }, { data: departments }] = await Promise.all([
+  const [{ data: projects }, { data: clients }, { data: departments }, { data: creativeRows }] = await Promise.all([
     supabase
       .from("projects")
       .select("*, clients(company_name), project_departments(*, departments(name, slug))")
       .order("updated_at", { ascending: false }),
     supabase.from("clients").select("id, company_name").order("company_name"),
     supabase.from("departments").select("*").order("name"),
+    supabase
+      .from("employees")
+      .select("profile_id, profiles(full_name), departments!inner(slug)")
+      .eq("departments.slug", "creatives"),
   ]);
+
+  const creatives = (creativeRows ?? []).map((c) => ({
+    profile_id: c.profile_id as string,
+    full_name: (c.profiles as unknown as { full_name: string } | null)?.full_name ?? "Unknown",
+  }));
 
   // Fetch task progress for all projects in one query
   const projectIds = (projects ?? []).map((p) => p.id);
@@ -59,7 +68,7 @@ export default async function ProjectsPage() {
           <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">All Projects</h1>
           <p className="text-white/40 text-sm mt-1">{projects?.length ?? 0} projects</p>
         </div>
-        <NewProjectDialog clients={clients ?? []} departments={departments ?? []} />
+        <NewProjectDialog clients={clients ?? []} departments={departments ?? []} creatives={creatives} />
       </div>
 
       {projects?.length === 0 ? (

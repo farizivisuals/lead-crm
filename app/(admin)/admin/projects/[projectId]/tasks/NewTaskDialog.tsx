@@ -16,14 +16,16 @@ interface Props {
   departments: { id: string; name: string; slug: string }[];
   stages: DepartmentStage[];
   employees: { profile_id: string; profiles?: { full_name: string } | null; department_id: string | null }[];
+  creatives: { profile_id: string; full_name: string }[];
 }
 
-export default function NewTaskDialog({ projectId, departments, stages, employees }: Props) {
+export default function NewTaskDialog({ projectId, departments, stages, employees, creatives }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState("");
+  const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
 
   const [form, setForm] = useState({
     title: "",
@@ -40,6 +42,12 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     (e) => !selectedDeptId || e.department_id === selectedDeptId
   );
 
+  function toggleCreative(id: string) {
+    setSelectedCreatives((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!firstStage) { setError("Department stages not configured"); return; }
@@ -49,7 +57,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { error: tErr } = await supabase.from("tasks").insert({
+    const { data: task, error: tErr } = await supabase.from("tasks").insert({
       project_id: projectId,
       department_id: selectedDeptId,
       current_stage_id: firstStage.id,
@@ -60,9 +68,16 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
       due_date: form.due_date || null,
       assigned_to: form.assigned_to || null,
       created_by: user?.id,
-    });
+    }).select("id").single();
 
     if (tErr) { setError(tErr.message); setLoading(false); return; }
+
+    if (selectedCreatives.length > 0) {
+      await supabase.from("task_creatives").insert(
+        selectedCreatives.map((profile_id) => ({ task_id: task.id, profile_id }))
+      );
+    }
+
     setOpen(false);
     router.refresh();
   }
@@ -137,6 +152,28 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
               </Select>
             </div>
           </div>
+
+          {creatives.length > 0 && (
+            <div className="space-y-2">
+              <Label>Creatives</Label>
+              <div className="flex gap-2 flex-wrap">
+                {creatives.map((c) => (
+                  <button
+                    key={c.profile_id}
+                    type="button"
+                    onClick={() => toggleCreative(c.profile_id)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                      selectedCreatives.includes(c.profile_id)
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
+                    }`}
+                  >
+                    {c.full_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">

@@ -31,6 +31,7 @@ interface Props {
   task: Task;
   stages: DepartmentStage[];
   employees: Employee[];
+  creatives?: { profile_id: string; full_name: string }[];
   open: boolean;
   onClose: () => void;
   onSaved: (updated: Partial<Task>) => void;
@@ -41,6 +42,7 @@ export default function EditTaskDialog({
   task,
   stages,
   employees,
+  creatives = [],
   open,
   onClose,
   onSaved,
@@ -50,6 +52,9 @@ export default function EditTaskDialog({
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCreatives, setSelectedCreatives] = useState<string[]>(
+    (task.task_creatives ?? []).map((tc) => tc.profile_id)
+  );
 
   const [form, setForm] = useState({
     title: task.title,
@@ -63,6 +68,12 @@ export default function EditTaskDialog({
 
   function field<K extends keyof typeof form>(key: K, value: typeof form[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function toggleCreative(id: string) {
+    setSelectedCreatives((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -85,9 +96,33 @@ export default function EditTaskDialog({
       .update(patch)
       .eq("id", task.id);
 
+    if (err) { setLoading(false); setError(err.message); return; }
+
+    // Replace the task's creatives with the current selection
+    let { error: cErr } = await supabase
+      .from("task_creatives")
+      .delete()
+      .eq("task_id", task.id);
+    if (!cErr && selectedCreatives.length > 0) {
+      ({ error: cErr } = await supabase.from("task_creatives").insert(
+        selectedCreatives.map((profile_id) => ({ task_id: task.id, profile_id }))
+      ));
+    }
+
     setLoading(false);
-    if (err) { setError(err.message); return; }
-    onSaved(patch);
+    if (cErr) { setError(cErr.message); return; }
+
+    const task_creatives = selectedCreatives.map((profile_id) => ({
+      task_id: task.id,
+      profile_id,
+      added_at: new Date().toISOString(),
+      employees: {
+        profiles: {
+          full_name: creatives.find((c) => c.profile_id === profile_id)?.full_name ?? "?",
+        },
+      },
+    }));
+    onSaved({ ...patch, task_creatives });
     onClose();
   }
 
@@ -176,6 +211,28 @@ export default function EditTaskDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {creatives.length > 0 && (
+            <div className="space-y-2">
+              <Label>Creatives</Label>
+              <div className="flex gap-2 flex-wrap">
+                {creatives.map((c) => (
+                  <button
+                    key={c.profile_id}
+                    type="button"
+                    onClick={() => toggleCreative(c.profile_id)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                      selectedCreatives.includes(c.profile_id)
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
+                    }`}
+                  >
+                    {c.full_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">

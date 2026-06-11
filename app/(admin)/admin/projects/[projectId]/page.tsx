@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckSquare, Package, Calendar, Activity, ArrowUpRight } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import ProjectStatusSelect from "./ProjectStatusSelect";
+import ProjectCreatives from "./ProjectCreatives";
 import type { ProjectStatus } from "@/lib/types";
 
 
@@ -20,13 +21,29 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   if (!project) notFound();
 
-  const [{ data: taskRows }, { count: deliverableCount }] = await Promise.all([
+  const [{ data: taskRows }, { count: deliverableCount }, { data: creativeRows }, { data: allCreativeRows }] = await Promise.all([
     supabase
       .from("tasks")
       .select("department_stages(is_terminal)")
       .eq("project_id", projectId),
     supabase.from("deliverables").select("*", { count: "exact", head: true }).eq("project_id", projectId),
+    supabase
+      .from("project_creatives")
+      .select("profile_id, employees(profiles(full_name))")
+      .eq("project_id", projectId),
+    supabase
+      .from("employees")
+      .select("profile_id, profiles(full_name), departments!inner(slug)")
+      .eq("departments.slug", "creatives"),
   ]);
+
+  const toName = (row: { profile_id: string; profiles?: unknown; employees?: unknown }) => {
+    const profiles = (row.employees as { profiles?: { full_name: string } } | null)?.profiles
+      ?? (row.profiles as { full_name: string } | null);
+    return { profile_id: row.profile_id, full_name: profiles?.full_name ?? "Unknown" };
+  };
+  const assignedCreatives = (creativeRows ?? []).map(toName);
+  const allCreatives = (allCreativeRows ?? []).map(toName);
   const taskCount = taskRows?.length ?? 0;
   // Supabase returns the join as an array; take the first element.
   const taskDone = (taskRows ?? []).filter((t) => {
@@ -122,6 +139,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             )}
           </div>
         </div>
+        <ProjectCreatives
+          projectId={projectId}
+          assigned={assignedCreatives}
+          allCreatives={allCreatives}
+        />
       </div>
 
       {/* Sub-nav — 1 col on mobile, 3 col on sm+ */}

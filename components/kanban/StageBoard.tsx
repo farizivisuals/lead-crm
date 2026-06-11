@@ -8,7 +8,7 @@ import {
 } from "@hello-pangea/dnd";
 import { createClient } from "@/lib/supabase/browser";
 import type { Task, DepartmentStage } from "@/lib/types";
-import { AlertCircle, Calendar, User, GripVertical, Pencil, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Calendar, User, Users, GripVertical, Pencil, CheckCircle2 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import EditTaskDialog from "./EditTaskDialog";
 
@@ -32,6 +32,7 @@ interface Props {
   stages: DepartmentStage[];
   tasks: Task[];
   employees: Employee[];
+  creatives?: { profile_id: string; full_name: string }[];
   deptName: string;
   deptSlug: string;
   onTaskMoved?: () => void;
@@ -44,7 +45,7 @@ const PRIORITY_STYLES: Record<string, string> = {
   urgent: "text-red-400 bg-red-500/10 border-red-500/20",
 };
 
-export default function StageBoard({ stages, tasks, employees, deptName, onTaskMoved }: Props) {
+export default function StageBoard({ stages, tasks, employees, creatives = [], deptName, onTaskMoved }: Props) {
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const supabase = createClient();
@@ -218,6 +219,14 @@ export default function StageBoard({ stages, tasks, employees, deptName, onTaskM
                                       {(task.employees as { profiles?: { full_name: string } })?.profiles?.full_name?.split(" ")[0]}
                                     </span>
                                   )}
+                                  {(task.task_creatives?.length ?? 0) > 0 && (
+                                    <span className="flex items-center gap-1 text-[10px] text-violet-300/60">
+                                      <Users className="h-2.5 w-2.5" />
+                                      {task.task_creatives!
+                                        .map((tc) => tc.employees?.profiles?.full_name?.split(" ")[0] ?? "?")
+                                        .join(", ")}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -239,6 +248,7 @@ export default function StageBoard({ stages, tasks, employees, deptName, onTaskM
           task={editingTask}
           stages={stages}
           employees={employees}
+          creatives={creatives}
           open={!!editingTask}
           onClose={() => setEditingTask(null)}
           onSaved={(patch) => handleSaved(editingTask.id, patch)}

@@ -14,14 +14,16 @@ import type { Department } from "@/lib/types";
 interface Props {
   clients: { id: string; company_name: string }[];
   departments: Department[];
+  creatives: { profile_id: string; full_name: string }[];
 }
 
-export default function NewProjectDialog({ clients, departments }: Props) {
+export default function NewProjectDialog({ clients, departments, creatives }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
+  const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
 
   const [form, setForm] = useState({
     client_id: "",
@@ -35,6 +37,12 @@ export default function NewProjectDialog({ clients, departments }: Props) {
   function toggleDept(id: string) {
     setSelectedDepts((prev) =>
       prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
+    );
+  }
+
+  function toggleCreative(id: string) {
+    setSelectedCreatives((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
     );
   }
 
@@ -68,6 +76,15 @@ export default function NewProjectDialog({ clients, departments }: Props) {
         is_primary: i === 0,
       }))
     );
+
+    if (selectedCreatives.length > 0) {
+      await supabase.from("project_creatives").insert(
+        selectedCreatives.map((profile_id) => ({
+          project_id: project.id,
+          profile_id,
+        }))
+      );
+    }
 
     setOpen(false);
     router.push(`/admin/projects/${project.id}`);
@@ -137,6 +154,28 @@ export default function NewProjectDialog({ clients, departments }: Props) {
               ))}
             </div>
           </div>
+
+          {creatives.length > 0 && (
+            <div className="space-y-2">
+              <Label>Creatives</Label>
+              <div className="flex gap-2 flex-wrap">
+                {creatives.map((c) => (
+                  <button
+                    key={c.profile_id}
+                    type="button"
+                    onClick={() => toggleCreative(c.profile_id)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                      selectedCreatives.includes(c.profile_id)
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
+                    }`}
+                  >
+                    {c.full_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
