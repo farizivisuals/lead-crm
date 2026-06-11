@@ -115,7 +115,7 @@ export default function EditDeliverableDialog({ deliverable }: Props) {
               <Label>Dropbox link *</Label>
               <button
                 type="button"
-                onClick={() => setForm((f) => ({ ...f, version: f.version + 1 }))}
+                onClick={() => setForm((f) => ({ ...f, version: f.version + 1, status: "client_review" }))}
                 className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
               >
                 <ChevronsUp className="h-3.5 w-3.5" />
