@@ -49,6 +49,14 @@ export default function StageBoard({ stages, tasks, employees, deptName, onTaskM
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const supabase = createClient();
 
+  // Re-sync when the server sends fresh data (e.g. after router.refresh()),
+  // otherwise newly created tasks never show up until a full page reload.
+  const [prevTasks, setPrevTasks] = useState(tasks);
+  if (prevTasks !== tasks) {
+    setPrevTasks(tasks);
+    setLocalTasks(tasks);
+  }
+
   const tasksByStage = useCallback(
     (stageId: string) => localTasks.filter((t) => t.current_stage_id === stageId),
     [localTasks]

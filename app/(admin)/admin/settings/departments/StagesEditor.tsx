@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +14,18 @@ interface Props {
 }
 
 export default function StagesEditor({ departmentId, initialStages }: Props) {
+  const router = useRouter();
   const [stages, setStages] = useState(initialStages);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Re-sync after router.refresh() so saved stages pick up their real DB ids —
+  // keeping the temporary "new-*" ids would insert duplicates on the next save.
+  const [prevInitial, setPrevInitial] = useState(initialStages);
+  if (prevInitial !== initialStages) {
+    setPrevInitial(initialStages);
+    setStages(initialStages);
+  }
 
   function addStage() {
     const maxPos = Math.max(0, ...stages.map((s) => s.position));
@@ -65,6 +75,7 @@ export default function StagesEditor({ departmentId, initialStages }: Props) {
 
     await supabase.from("department_stages").upsert(upsertData, { onConflict: "id" });
 
+    router.refresh();
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);

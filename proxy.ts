@@ -1,6 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// The proxy only does fast, optimistic auth checks (local JWT verification —
+// no network round trips). Real authorization lives in Postgres RLS, and the
+// (admin)/(portal) layouts enforce user_type with verified server-side data.
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -23,7 +26,8 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getClaims();
+  const isAuthed = !!data?.claims;
   const pathname = request.nextUrl.pathname;
 
   // Public / auth-utility routes — always pass through
@@ -33,49 +37,24 @@ export async function proxy(request: NextRequest) {
 
   // Public routes
   if (pathname.startsWith("/login") || pathname.startsWith("/reset-password")) {
-    if (user) {
-      // Already logged in — redirect to correct home
-      const profile = await getProfile(supabase, user.id);
-      const dest = profile?.user_type === "client" ? "/portal" : "/admin/dashboard";
-      return NextResponse.redirect(new URL(dest, request.url));
+    if (isAuthed) {
+      // Clients get bounced to /portal by the admin layout
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
     }
     return supabaseResponse;
   }
 
   // Require auth for everything else
-  if (!user) {
+  if (!isAuthed) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const profile = await getProfile(supabase, user.id);
-  if (!profile) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  // Cross-area guards
-  if (pathname.startsWith("/admin") && profile.user_type !== "employee") {
-    return NextResponse.redirect(new URL("/portal", request.url));
-  }
-  if (pathname.startsWith("/portal") && profile.user_type !== "client") {
+  // Root → admin/dashboard by default (admin layout redirects clients to /portal)
+  if (pathname === "/") {
     return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
-  // Root → admin/dashboard by default
-  if (pathname === "/") {
-    const dest = profile.user_type === "client" ? "/portal" : "/admin/dashboard";
-    return NextResponse.redirect(new URL(dest, request.url));
-  }
-
   return supabaseResponse;
-}
-
-async function getProfile(supabase: ReturnType<typeof createServerClient>, userId: string) {
-  const { data } = await supabase
-    .from("profiles")
-    .select("user_type")
-    .eq("id", userId)
-    .single();
-  return data;
 }
 
 export const config = {
