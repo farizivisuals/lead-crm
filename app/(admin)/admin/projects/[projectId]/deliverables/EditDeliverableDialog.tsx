@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Pencil, Loader2 } from "lucide-react";
+import { Pencil, Loader2, ChevronsUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 
 interface Props {
@@ -40,9 +40,8 @@ export default function EditDeliverableDialog({ deliverable }: Props) {
     dropbox_url: deliverable.dropbox_url,
     thumbnail_url: deliverable.thumbnail_url ?? "",
     status: deliverable.status,
+    version: deliverable.version,
   });
-
-  const urlChanged = form.dropbox_url.trim() !== deliverable.dropbox_url;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,20 +50,15 @@ export default function EditDeliverableDialog({ deliverable }: Props) {
 
     const supabase = createClient();
 
-    const update: Record<string, unknown> = {
-      title: form.title,
-      dropbox_url: form.dropbox_url,
-      thumbnail_url: form.thumbnail_url || null,
-      status: form.status,
-    };
-
-    if (urlChanged) {
-      update.version = deliverable.version + 1;
-    }
-
     const { error: err } = await supabase
       .from("deliverables")
-      .update(update)
+      .update({
+        title: form.title,
+        dropbox_url: form.dropbox_url,
+        thumbnail_url: form.thumbnail_url || null,
+        status: form.status,
+        version: form.version,
+      })
       .eq("id", deliverable.id);
 
     if (err) {
@@ -84,6 +78,7 @@ export default function EditDeliverableDialog({ deliverable }: Props) {
         dropbox_url: deliverable.dropbox_url,
         thumbnail_url: deliverable.thumbnail_url ?? "",
         status: deliverable.status,
+        version: deliverable.version,
       });
       setError(null);
     }
@@ -116,14 +111,17 @@ export default function EditDeliverableDialog({ deliverable }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label>
-              Dropbox link *
-              {urlChanged && (
-                <span className="ml-2 text-xs font-normal text-amber-400">
-                  → will become v{deliverable.version + 1}
-                </span>
-              )}
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label>Dropbox link *</Label>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, version: f.version + 1 }))}
+                className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
+              >
+                <ChevronsUp className="h-3.5 w-3.5" />
+                v{form.version} → v{form.version + 1}
+              </button>
+            </div>
             <Input
               type="url"
               value={form.dropbox_url}
@@ -164,7 +162,7 @@ export default function EditDeliverableDialog({ deliverable }: Props) {
               className="flex-1"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {urlChanged ? `Save as v${deliverable.version + 1}` : "Save changes"}
+              {form.version !== deliverable.version ? `Save as v${form.version}` : "Save changes"}
             </Button>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
