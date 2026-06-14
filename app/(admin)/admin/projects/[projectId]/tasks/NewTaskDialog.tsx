@@ -40,13 +40,16 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
 
   const deptStages = stages.filter((s) => s.department_id === selectedDeptId);
   const firstStage = deptStages[0];
+  const isShootStage = firstStage?.name.toLowerCase() === "shoot";
+
   const deptEmployees = employees.filter(
     (e) => !selectedDeptId || e.department_id === selectedDeptId
   );
 
   // Real-time availability check
   useEffect(() => {
-    if (!form.assigned_to || !form.start_date || !form.due_date) {
+    const dueDate = isShootStage ? form.start_date : form.due_date;
+    if (!form.assigned_to || !form.start_date || !dueDate) {
       setConflicting([]);
       return;
     }
@@ -57,13 +60,13 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
       .eq("assigned_to", form.assigned_to)
       .not("start_date", "is", null)
       .not("due_date", "is", null)
-      .lte("start_date", form.due_date)
+      .lte("start_date", dueDate)
       .gte("due_date", form.start_date)
       .then(({ data }) => {
         if (!cancelled) setConflicting(data ?? []);
       });
     return () => { cancelled = true; };
-  }, [form.assigned_to, form.start_date, form.due_date]);
+  }, [form.assigned_to, form.start_date, form.due_date, isShootStage]);
 
   function toggleCreative(id: string) {
     setSelectedCreatives((prev) =>
@@ -88,7 +91,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
       description: form.description || null,
       priority: form.priority,
       start_date: form.start_date,
-      due_date: form.due_date,
+      due_date: isShootStage ? form.start_date : form.due_date,
       assigned_to: form.assigned_to || null,
       created_by: user?.id,
     }).select("id").single();
@@ -114,7 +117,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     !!form.title &&
     !!selectedDeptId &&
     !!form.start_date &&
-    !!form.due_date &&
+    (isShootStage || !!form.due_date) &&
     conflicting.length === 0;
 
   return (
@@ -210,9 +213,10 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Date fields: single shoot date vs start+due range */}
+          {isShootStage ? (
             <div className="space-y-2">
-              <Label>Start date *</Label>
+              <Label>Shoot date *</Label>
               <Input
                 type="date"
                 value={form.start_date}
@@ -220,16 +224,28 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label>Due date *</Label>
-              <Input
-                type="date"
-                value={form.due_date}
-                onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
-                required
-              />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Start date *</Label>
+                <Input
+                  type="date"
+                  value={form.start_date}
+                  onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Due date *</Label>
+                <Input
+                  type="date"
+                  value={form.due_date}
+                  onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
+                  required
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Availability conflict warning */}
           {conflicting.length > 0 && assigneeName && (

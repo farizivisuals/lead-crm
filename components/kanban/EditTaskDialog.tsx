@@ -67,13 +67,23 @@ export default function EditTaskDialog({
     due_date: task.due_date?.slice(0, 10) ?? "",
   });
 
+  const currentStage = stages.find((s) => s.id === form.current_stage_id);
+  const isShootStage = currentStage?.name.toLowerCase() === "shoot";
+
   function field<K extends keyof typeof form>(key: K, value: typeof form[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  // Real-time availability check — exclude the task being edited
+  function toggleCreative(id: string) {
+    setSelectedCreatives((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  }
+
+  // Real-time availability check — excludes the task being edited
   useEffect(() => {
-    if (!form.assigned_to || !form.start_date || !form.due_date) {
+    const dueDate = isShootStage ? form.start_date : form.due_date;
+    if (!form.assigned_to || !form.start_date || !dueDate) {
       setConflicting([]);
       return;
     }
@@ -85,19 +95,13 @@ export default function EditTaskDialog({
       .neq("id", task.id)
       .not("start_date", "is", null)
       .not("due_date", "is", null)
-      .lte("start_date", form.due_date)
+      .lte("start_date", dueDate)
       .gte("due_date", form.start_date)
       .then(({ data }) => {
         if (!cancelled) setConflicting(data ?? []);
       });
     return () => { cancelled = true; };
-  }, [form.assigned_to, form.start_date, form.due_date]);
-
-  function toggleCreative(id: string) {
-    setSelectedCreatives((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
-    );
-  }
+  }, [form.assigned_to, form.start_date, form.due_date, isShootStage]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -112,7 +116,7 @@ export default function EditTaskDialog({
       assigned_to: form.assigned_to || null,
       current_stage_id: form.current_stage_id,
       start_date: form.start_date || null,
-      due_date: form.due_date || null,
+      due_date: isShootStage ? (form.start_date || null) : (form.due_date || null),
     };
 
     const { error: err } = await supabase
@@ -159,6 +163,17 @@ export default function EditTaskDialog({
     onDeleted(task.id);
     onClose();
   }
+
+  const assigneeName = form.assigned_to
+    ? (employees.find((e) => e.profile_id === form.assigned_to)?.profiles as { full_name: string } | null)?.full_name
+    : null;
+
+  const canSave =
+    !loading &&
+    !!form.title &&
+    !!form.start_date &&
+    (isShootStage || !!form.due_date) &&
+    conflicting.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -258,9 +273,10 @@ export default function EditTaskDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Date fields: single shoot date vs start+due range */}
+          {isShootStage ? (
             <div className="space-y-2">
-              <Label>Start date *</Label>
+              <Label>Shoot date *</Label>
               <Input
                 type="date"
                 value={form.start_date}
@@ -268,24 +284,36 @@ export default function EditTaskDialog({
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label>Due date *</Label>
-              <Input
-                type="date"
-                value={form.due_date}
-                onChange={(e) => field("due_date", e.target.value)}
-                required
-              />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Start date *</Label>
+                <Input
+                  type="date"
+                  value={form.start_date}
+                  onChange={(e) => field("start_date", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Due date *</Label>
+                <Input
+                  type="date"
+                  value={form.due_date}
+                  onChange={(e) => field("due_date", e.target.value)}
+                  required
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Availability conflict warning */}
-          {conflicting.length > 0 && form.assigned_to && (
+          {conflicting.length > 0 && assigneeName && (
             <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
               <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
                 <p className="font-medium text-amber-300">
-                  {(employees.find((e) => e.profile_id === form.assigned_to)?.profiles as { full_name: string } | null)?.full_name ?? "Assignee"} is already assigned during this period
+                  {assigneeName} is already assigned during this period
                 </p>
                 <ul className="mt-1 space-y-0.5 text-amber-400/80">
                   {conflicting.map((t) => (
@@ -299,7 +327,7 @@ export default function EditTaskDialog({
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex gap-2 pt-1">
-            <Button type="submit" disabled={loading || !form.title || !form.start_date || !form.due_date || conflicting.length > 0} className="flex-1">
+            <Button type="submit" disabled={!canSave} className="flex-1">
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               Save changes
             </Button>
