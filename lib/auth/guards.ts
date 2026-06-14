@@ -21,14 +21,20 @@ export async function requireEmployee(minRole?: EmployeeRole) {
 
   if (!profile || profile.user_type !== "employee") redirect("/portal");
 
+  // `employees` is embedded via a PK foreign key, so Supabase returns it as a
+  // single object (one-to-one), not an array. Normalize for either shape.
+  const employee = (Array.isArray(profile.employees)
+    ? profile.employees[0]
+    : profile.employees) as { role?: EmployeeRole } | undefined;
+
   if (minRole) {
     const hierarchy: EmployeeRole[] = ["employee", "manager", "cfo", "ceo", "root"];
-    const userLevel = hierarchy.indexOf(profile.employees?.[0]?.role ?? "employee");
+    const userLevel = hierarchy.indexOf(employee?.role ?? "employee");
     const requiredLevel = hierarchy.indexOf(minRole);
     if (userLevel < requiredLevel) redirect("/admin/dashboard");
   }
 
-  return { user, profile, employee: profile.employees?.[0] };
+  return { user, profile, employee };
 }
 
 // Executive tier (root/ceo/cfo/manager) — full admin access.
