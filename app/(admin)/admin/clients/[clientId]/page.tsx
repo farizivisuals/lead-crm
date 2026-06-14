@@ -10,6 +10,7 @@ import {
 import { formatDate } from "@/lib/utils";
 import QuoteDialog from "./QuoteDialog";
 import EditQuoteDialog from "./EditQuoteDialog";
+import DeleteQuoteButton from "./DeleteQuoteButton";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
@@ -139,6 +140,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
                       <span className="text-sm font-semibold text-white">
                         KD {total.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                       </span>
+                      <DeleteQuoteButton quoteId={quote.id} />
                       <EditQuoteDialog quote={{ id: quote.id, title: quote.title, valid_until: quote.valid_until, notes: quote.notes, quote_line_items: items }} />
                       <a
                         href={`/print/quotes/${quote.id}`}

@@ -59,6 +59,17 @@ export async function createQuote(input: CreateQuoteInput): Promise<{ quoteId?: 
   return { quoteId: quote.id };
 }
 
+export async function deleteQuote(quoteId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("quotes").delete().eq("id", quoteId);
+  if (error) return { error: error.message };
+  return {};
+}
+
 interface UpdateQuoteInput {
   quoteId: string;
   title: string;
