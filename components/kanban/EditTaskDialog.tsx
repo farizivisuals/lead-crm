@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import type { Task, DepartmentStage } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 interface Employee {
   profile_id: string;
@@ -52,6 +52,7 @@ export default function EditTaskDialog({
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflicting, setConflicting] = useState<{ id: string; title: string }[]>([]);
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>(
     (task.task_creatives ?? []).map((tc) => tc.profile_id)
   );
@@ -70,6 +71,28 @@ export default function EditTaskDialog({
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  // Real-time availability check — exclude the task being edited
+  useEffect(() => {
+    if (!form.assigned_to || !form.start_date || !form.due_date) {
+      setConflicting([]);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("tasks")
+      .select("id, title")
+      .eq("assigned_to", form.assigned_to)
+      .neq("id", task.id)
+      .not("start_date", "is", null)
+      .not("due_date", "is", null)
+      .lte("start_date", form.due_date)
+      .gte("due_date", form.start_date)
+      .then(({ data }) => {
+        if (!cancelled) setConflicting(data ?? []);
+      });
+    return () => { cancelled = true; };
+  }, [form.assigned_to, form.start_date, form.due_date]);
+
   function toggleCreative(id: string) {
     setSelectedCreatives((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
@@ -78,6 +101,7 @@ export default function EditTaskDialog({
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (conflicting.length > 0) return;
     setLoading(true);
     setError(null);
 
@@ -236,27 +260,46 @@ export default function EditTaskDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Start date</Label>
+              <Label>Start date *</Label>
               <Input
                 type="date"
                 value={form.start_date}
                 onChange={(e) => field("start_date", e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label>Due date</Label>
+              <Label>Due date *</Label>
               <Input
                 type="date"
                 value={form.due_date}
                 onChange={(e) => field("due_date", e.target.value)}
+                required
               />
             </div>
           </div>
 
+          {/* Availability conflict warning */}
+          {conflicting.length > 0 && form.assigned_to && (
+            <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+              <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-300">
+                  {(employees.find((e) => e.profile_id === form.assigned_to)?.profiles as { full_name: string } | null)?.full_name ?? "Assignee"} is already assigned during this period
+                </p>
+                <ul className="mt-1 space-y-0.5 text-amber-400/80">
+                  {conflicting.map((t) => (
+                    <li key={t.id}>· {t.title}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex gap-2 pt-1">
-            <Button type="submit" disabled={loading || !form.title} className="flex-1">
+            <Button type="submit" disabled={loading || !form.title || !form.start_date || !form.due_date || conflicting.length > 0} className="flex-1">
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               Save changes
             </Button>

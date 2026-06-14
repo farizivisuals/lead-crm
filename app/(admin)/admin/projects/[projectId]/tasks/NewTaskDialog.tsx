@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import type { DepartmentStage } from "@/lib/types";
 
@@ -21,11 +21,13 @@ interface Props {
 
 export default function NewTaskDialog({ projectId, departments, stages, employees, creatives }: Props) {
   const router = useRouter();
+  const supabase = createClient();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState("");
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
+  const [conflicting, setConflicting] = useState<{ id: string; title: string }[]>([]);
 
   const [form, setForm] = useState({
     title: "",
@@ -42,6 +44,27 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     (e) => !selectedDeptId || e.department_id === selectedDeptId
   );
 
+  // Real-time availability check
+  useEffect(() => {
+    if (!form.assigned_to || !form.start_date || !form.due_date) {
+      setConflicting([]);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("tasks")
+      .select("id, title")
+      .eq("assigned_to", form.assigned_to)
+      .not("start_date", "is", null)
+      .not("due_date", "is", null)
+      .lte("start_date", form.due_date)
+      .gte("due_date", form.start_date)
+      .then(({ data }) => {
+        if (!cancelled) setConflicting(data ?? []);
+      });
+    return () => { cancelled = true; };
+  }, [form.assigned_to, form.start_date, form.due_date]);
+
   function toggleCreative(id: string) {
     setSelectedCreatives((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
@@ -51,10 +74,10 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!firstStage) { setError("Department stages not configured"); return; }
+    if (conflicting.length > 0) return;
     setLoading(true);
     setError(null);
 
-    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     const { data: task, error: tErr } = await supabase.from("tasks").insert({
@@ -64,8 +87,8 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
       title: form.title,
       description: form.description || null,
       priority: form.priority,
-      start_date: form.start_date || null,
-      due_date: form.due_date || null,
+      start_date: form.start_date,
+      due_date: form.due_date,
       assigned_to: form.assigned_to || null,
       created_by: user?.id,
     }).select("id").single();
@@ -81,6 +104,18 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     setOpen(false);
     router.refresh();
   }
+
+  const assigneeName = form.assigned_to
+    ? (deptEmployees.find((e) => e.profile_id === form.assigned_to)?.profiles as { full_name: string } | null)?.full_name
+    : null;
+
+  const canSubmit =
+    !loading &&
+    !!form.title &&
+    !!selectedDeptId &&
+    !!form.start_date &&
+    !!form.due_date &&
+    conflicting.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -177,14 +212,41 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Start date</Label>
-              <Input type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} />
+              <Label>Start date *</Label>
+              <Input
+                type="date"
+                value={form.start_date}
+                onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
+                required
+              />
             </div>
             <div className="space-y-2">
-              <Label>Due date</Label>
-              <Input type="date" value={form.due_date} onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))} />
+              <Label>Due date *</Label>
+              <Input
+                type="date"
+                value={form.due_date}
+                onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
+                required
+              />
             </div>
           </div>
+
+          {/* Availability conflict warning */}
+          {conflicting.length > 0 && assigneeName && (
+            <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+              <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-300">
+                  {assigneeName} is already assigned during this period
+                </p>
+                <ul className="mt-1 space-y-0.5 text-amber-400/80">
+                  {conflicting.map((t) => (
+                    <li key={t.id}>· {t.title}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
 
           {firstStage && (
             <p className="text-xs text-gray-400">
@@ -195,7 +257,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={loading || !form.title || !selectedDeptId} className="flex-1">
+            <Button type="submit" disabled={!canSubmit} className="flex-1">
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               Create task
             </Button>
