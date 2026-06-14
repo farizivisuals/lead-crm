@@ -145,15 +145,19 @@ $$;
 DROP POLICY IF EXISTS "tasks_select" ON tasks;
 CREATE POLICY "tasks_select" ON tasks FOR SELECT TO authenticated
   USING (
-    current_user_type() = 'employee'
-    AND (
-      -- Executives and creatives see all tasks in projects they can see
-      ((is_executive() OR is_creative()) AND can_see_project(project_id))
-      -- Team members see only the tasks assigned to them
-      OR assigned_to = auth.uid()
-      OR EXISTS (
-        SELECT 1 FROM task_creatives tc
-        WHERE tc.task_id = tasks.id AND tc.profile_id = auth.uid()
+    -- Clients keep portal timeline visibility for their own projects
+    (current_user_type() = 'client' AND can_see_project(project_id))
+    OR (
+      current_user_type() = 'employee'
+      AND (
+        -- Executives and creatives see all tasks in projects they can see
+        ((is_executive() OR is_creative()) AND can_see_project(project_id))
+        -- Team members see only the tasks assigned to them
+        OR assigned_to = auth.uid()
+        OR EXISTS (
+          SELECT 1 FROM task_creatives tc
+          WHERE tc.task_id = tasks.id AND tc.profile_id = auth.uid()
+        )
       )
     )
   );
