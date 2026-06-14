@@ -131,10 +131,10 @@ export default async function QuotePrintPage({
                   {item.quantity % 1 === 0 ? item.quantity : item.quantity.toFixed(2)}
                 </td>
                 <td style={{ padding: "14px 0", fontSize: "14px", color: "#555", textAlign: "right" }}>
-                  ${fmt(item.unit_price)}
+                  {fmt(item.unit_price)}
                 </td>
                 <td style={{ padding: "14px 0", fontSize: "14px", fontWeight: 500, color: "#111", textAlign: "right" }}>
-                  ${fmt(item.quantity * item.unit_price)}
+                  {fmt(item.quantity * item.unit_price)}
                 </td>
               </tr>
             ))}
@@ -146,7 +146,7 @@ export default async function QuotePrintPage({
           <div style={{ minWidth: "240px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "16px 0", borderTop: "2px solid #111" }}>
               <span style={{ fontSize: "16px", fontWeight: 700, color: "#111" }}>Total</span>
-              <span style={{ fontSize: "18px", fontWeight: 800, color: "#111" }}>${fmt(subtotal)}</span>
+              <span style={{ fontSize: "18px", fontWeight: 800, color: "#111" }}>{fmt(subtotal)}</span>
             </div>
           </div>
         </div>

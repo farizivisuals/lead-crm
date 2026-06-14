@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import QuoteDialog from "./QuoteDialog";
+import EditQuoteDialog from "./EditQuoteDialog";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
@@ -30,7 +31,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
 
   const { data: quotes } = await supabase
     .from("quotes")
-    .select("*, quote_line_items(quantity, unit_price)")
+    .select("*, quote_line_items(description, quantity, unit_price, position)")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
 
@@ -111,7 +112,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
           <div className="rounded-2xl border border-white/[0.08] overflow-hidden">
             <div className="divide-y divide-white/[0.05]">
               {quotes.map((quote) => {
-                const items = (quote.quote_line_items ?? []) as { quantity: number; unit_price: number }[];
+                const items = (quote.quote_line_items ?? []) as { description: string; quantity: number; unit_price: number; position: number }[];
                 const total = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
                 const quoteStatusColors: Record<string, string> = {
                   draft: "text-white/40 bg-white/[0.05] border-white/[0.08]",
@@ -138,6 +139,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
                       <span className="text-sm font-semibold text-white">
                         KD {total.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                       </span>
+                      <EditQuoteDialog quote={{ id: quote.id, title: quote.title, valid_until: quote.valid_until, notes: quote.notes, quote_line_items: items }} />
                       <a
                         href={`/print/quotes/${quote.id}`}
                         target="_blank"
