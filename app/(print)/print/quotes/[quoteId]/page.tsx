@@ -62,9 +62,9 @@ export default async function QuotePrintPage({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "48px" }}>
           <div>
             <div style={{ fontSize: "22px", fontWeight: 700, color: "#111", letterSpacing: "-0.5px" }}>
-              Your Agency
+              LEAD
             </div>
-            <div style={{ fontSize: "13px", color: "#666", marginTop: "4px" }}>hello@youragency.com</div>
+            <div style={{ fontSize: "13px", color: "#666", marginTop: "4px" }}>info@leadsolution.co</div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: "28px", fontWeight: 800, color: "#111", letterSpacing: "-1px" }}>QUOTE</div>
