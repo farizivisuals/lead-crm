@@ -34,7 +34,7 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
       .order("position"),
     supabase
       .from("tasks")
-      .select("*, department_stages(*), departments(name), employees(profiles(full_name)), task_creatives(profile_id, employees(profiles(full_name)))")
+      .select("*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name)))")
       .eq("project_id", projectId)
       .order("created_at"),
     supabase
