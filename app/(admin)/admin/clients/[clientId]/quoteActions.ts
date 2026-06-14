@@ -32,6 +32,7 @@ export async function createQuote(input: CreateQuoteInput): Promise<{ quoteId?: 
       title: input.title,
       valid_until: input.valid_until || null,
       notes: input.notes || null,
+      status: "sent",
       created_by: user.id,
     })
     .select("id")
