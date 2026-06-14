@@ -17,7 +17,7 @@ export default async function CalendarPage({ searchParams }: Props) {
 
   let tasksQuery = supabase
     .from("tasks")
-    .select("id, title, start_date, due_date, department_id, project_id, priority, assigned_to, department_stages!current_stage_id(color), departments(name)")
+    .select("id, title, start_date, due_date, department_id, project_id, priority, assigned_to, department_stages!current_stage_id(color), departments(name), projects(clients(company_name))")
     .order("created_at");
 
   if (isMine && user) {
@@ -34,18 +34,21 @@ export default async function CalendarPage({ searchParams }: Props) {
 
   const datedEvents: CalendarEvent[] = (tasks ?? [])
     .filter((t) => t.start_date || t.due_date)
-    .map((t) => ({
-      id: t.id,
-      entity_id: t.id,
-      entity_type: "task" as const,
-      title: t.title,
-      start: t.start_date ?? t.due_date ?? "",
-      end: t.due_date ?? null,
-      color: (t.department_stages as unknown as { color: string } | null)?.color ?? "#71717a",
-      department_id: t.department_id,
-      client_id: null,
-      project_id: t.project_id,
-    }));
+    .map((t) => {
+      const clientName = (t.projects as unknown as { clients?: { company_name: string } } | null)?.clients?.company_name;
+      return {
+        id: t.id,
+        entity_id: t.id,
+        entity_type: "task" as const,
+        title: clientName ? `${t.title} - ${clientName}` : t.title,
+        start: t.start_date ?? t.due_date ?? "",
+        end: t.due_date ?? null,
+        color: (t.department_stages as unknown as { color: string } | null)?.color ?? "#71717a",
+        department_id: t.department_id,
+        client_id: null,
+        project_id: t.project_id,
+      };
+    });
 
   const undatedTasks = (tasks ?? []).filter((t) => !t.start_date && !t.due_date);
 
