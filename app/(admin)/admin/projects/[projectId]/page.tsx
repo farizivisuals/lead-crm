@@ -6,6 +6,7 @@ import { ArrowLeft, CheckSquare, Package, Calendar, Activity, ArrowUpRight } fro
 import { formatDate } from "@/lib/utils";
 import ProjectStatusSelect from "./ProjectStatusSelect";
 import ProjectCreatives from "./ProjectCreatives";
+import MoodboardEditor from "./MoodboardEditor";
 import type { ProjectStatus } from "@/lib/types";
 
 
@@ -144,6 +145,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           assigned={assignedCreatives}
           allCreatives={allCreatives}
         />
+      </div>
+
+      {/* Moodboard */}
+      <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-4 lg:p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xs font-semibold text-white/30 uppercase tracking-widest">Moodboard</span>
+        </div>
+        <MoodboardEditor projectId={projectId} initialUrl={(project as { moodboard_url?: string | null }).moodboard_url ?? null} />
       </div>
 
       {/* Sub-nav — 1 col on mobile, 3 col on sm+ */}

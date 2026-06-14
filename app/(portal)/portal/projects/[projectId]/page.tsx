@@ -99,6 +99,37 @@ export default async function PortalProjectPage({ params }: { params: Promise<{ 
         )}
       </div>
 
+      {/* Moodboard */}
+      {(project as { moodboard_url?: string | null }).moodboard_url && (() => {
+        const rawUrl = (project as { moodboard_url: string }).moodboard_url;
+        const embedUrl = rawUrl.includes("canva.com") ? rawUrl.split("?")[0] + "?embed" : rawUrl;
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-white">Moodboard</h2>
+              <a
+                href={rawUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open in Canva
+              </a>
+            </div>
+            <div className="relative w-full rounded-xl overflow-hidden border border-white/[0.08]" style={{ paddingBottom: "56.25%" }}>
+              <iframe
+                src={embedUrl}
+                className="absolute inset-0 w-full h-full"
+                allow="fullscreen"
+                allowFullScreen
+                loading="lazy"
+              />
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Task progress */}
       {tasks && tasks.length > 0 && (() => {
         type TaskRow = {
