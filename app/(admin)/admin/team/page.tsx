@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ROLE_LABELS } from "@/lib/rbac";
@@ -9,13 +8,11 @@ import EditEmployeeDialog from "./EditEmployeeDialog";
 import { resetEmployeePassword } from "./actions";
 import CredentialsPopover from "@/components/ui/InviteLinkPopover";
 import { Users } from "lucide-react";
+import { requireExecutive } from "@/lib/auth/guards";
 
 export default async function TeamPage() {
+  await requireExecutive();
   const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user!.id).single();
-  if (emp?.role !== "root") redirect("/admin/dashboard");
 
   const [{ data: employees }, { data: departments }] = await Promise.all([
     supabase.from("employees").select("*, profiles(*), departments(name)").order("role"),

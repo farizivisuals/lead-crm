@@ -4,17 +4,21 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { generatePassword } from "@/lib/utils";
 import type { EmployeeRole } from "@/lib/types";
 
-async function requireRoot() {
+const EXECUTIVE_ROLES = ["root", "ceo", "cfo", "manager"];
+
+async function requireExec() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" as const, user: null, supabase: null };
   const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
-  if (emp?.role !== "root") return { error: "Only root can perform this action" as const, user: null, supabase: null };
+  if (!emp || !EXECUTIVE_ROLES.includes(emp.role)) {
+    return { error: "Only executives can perform this action" as const, user: null, supabase: null };
+  }
   return { error: null, user, supabase };
 }
 
 export async function getEmployeeEmail(profileId: string) {
-  const { error, user } = await requireRoot();
+  const { error, user } = await requireExec();
   if (error || !user) return { error: error ?? "Unauthorized" };
   const admin = createAdminClient();
   const { data: authUser, error: authError } = await admin.auth.admin.getUserById(profileId);
@@ -29,7 +33,7 @@ export async function updateEmployee(profileId: string, input: {
   department_id: string;
   title: string;
 }) {
-  const { error, user } = await requireRoot();
+  const { error, user } = await requireExec();
   if (error || !user) return { error: error ?? "Unauthorized" };
   const admin = createAdminClient();
 
@@ -66,7 +70,7 @@ export async function addEmployee(input: {
   if (!user) return { error: "Not authenticated" };
 
   const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
-  if (emp?.role !== "root") return { error: "Only root can add employees" };
+  if (!emp || !EXECUTIVE_ROLES.includes(emp.role)) return { error: "Only executives can add employees" };
 
   const password = generatePassword();
 
@@ -105,7 +109,7 @@ export async function resetEmployeePassword(profileId: string) {
   if (!user) return { error: "Not authenticated" };
 
   const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
-  if (emp?.role !== "root") return { error: "Only root can reset passwords" };
+  if (!emp || !EXECUTIVE_ROLES.includes(emp.role)) return { error: "Only executives can reset passwords" };
 
   const { data: authUser, error: userError } = await admin.auth.admin.getUserById(profileId);
   if (userError || !authUser.user.email) return { error: "User not found" };
