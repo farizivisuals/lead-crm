@@ -10,18 +10,29 @@ interface Props {
   events: CalendarEvent[];
 }
 
+// FullCalendar all-day end dates are exclusive (the day *after* the last visible day).
+// Adding 1 day ensures the event bar spans the full intended range.
+function exclusiveEnd(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split("T")[0]!;
+}
+
 export default function CompanyCalendar({ events }: Props) {
-  const fcEvents = events.map((e) => ({
-    id: e.entity_id,
-    title: e.title,
-    start: e.start,
-    end: e.end ?? e.start,
-    color: e.color,
-    extendedProps: {
-      entity_type: e.entity_type,
-      project_id: e.project_id,
-    },
-  }));
+  const fcEvents = events.map((e) => {
+    const endBase = e.end ?? e.start;
+    return {
+      id: e.entity_id,
+      title: e.title,
+      start: e.start,
+      end: endBase ? exclusiveEnd(endBase) : undefined,
+      color: e.color,
+      extendedProps: {
+        entity_type: e.entity_type,
+        project_id: e.project_id,
+      },
+    };
+  });
 
   return (
     <div className="rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] p-3 sm:p-5 overflow-hidden">
