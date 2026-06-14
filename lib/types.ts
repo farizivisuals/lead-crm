@@ -58,6 +58,33 @@ export interface Client {
   profiles?: Profile;
 }
 
+export type QuoteStatus = "draft" | "sent" | "accepted" | "declined";
+
+export interface QuoteLineItem {
+  id: string;
+  quote_id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  position: number;
+  created_at: string;
+}
+
+export interface Quote {
+  id: string;
+  client_id: string;
+  quote_number: string;
+  title: string;
+  valid_until: string | null;
+  notes: string | null;
+  status: QuoteStatus;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  clients?: Client;
+  quote_line_items?: QuoteLineItem[];
+}
+
 export interface ClientContact {
   id: string;
   client_id: string;

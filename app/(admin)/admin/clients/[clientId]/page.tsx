@@ -8,6 +8,7 @@ import {
   FolderOpen, Phone, FileText, Plus, User,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import QuoteDialog from "./QuoteDialog";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
@@ -59,7 +60,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
             <Building2 className="h-5 w-5 text-zinc-300" />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">{client.company_name}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">{client.company_name}</h1>
+              <QuoteDialog clientId={client.id} clientName={client.company_name} />
+            </div>
             {primaryContact && (
               <div className="flex items-center gap-1.5 mt-1.5 text-sm text-white/40">
                 <User className="h-3.5 w-3.5" />
