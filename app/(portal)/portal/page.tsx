@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { FolderOpen, ArrowUpRight, Calendar } from "lucide-react";
+import { FolderOpen, ArrowUpRight, Calendar, Receipt, Download } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 const statusColors: Record<string, "default" | "secondary" | "success" | "warning" | "destructive"> = {
@@ -32,6 +32,12 @@ export default async function PortalHomePage() {
     .select("*, project_departments(*, departments(name, slug))")
     .eq("client_id", contact.client_id)
     .order("updated_at", { ascending: false });
+
+  const { data: quotes } = await supabase
+    .from("quotes")
+    .select("*, quote_line_items(quantity, unit_price)")
+    .eq("client_id", contact.client_id)
+    .order("created_at", { ascending: false });
 
   return (
     <div className="space-y-8 animate-slide-up">
@@ -97,6 +103,60 @@ export default async function PortalHomePage() {
               </Link>
             );
           })}
+        </div>
+      )}
+      {/* Quotes */}
+      {quotes && quotes.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-zinc-400" />
+            <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Quotes</span>
+          </div>
+          <div className="rounded-2xl border border-white/[0.08] overflow-hidden">
+            <div className="divide-y divide-white/[0.05]">
+              {quotes.map((quote) => {
+                const items = (quote.quote_line_items ?? []) as { quantity: number; unit_price: number }[];
+                const total = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
+                const statusColors: Record<string, string> = {
+                  draft: "text-white/40 bg-white/[0.05] border-white/[0.08]",
+                  sent: "text-blue-300 bg-blue-500/10 border-blue-500/20",
+                  accepted: "text-emerald-300 bg-emerald-500/10 border-emerald-500/20",
+                  declined: "text-red-300 bg-red-500/10 border-red-500/20",
+                };
+                return (
+                  <div key={quote.id} className="flex items-center justify-between gap-4 px-5 py-4 bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-white/30">{quote.quote_number}</span>
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border capitalize ${statusColors[quote.status] ?? statusColors.draft}`}>
+                          {quote.status}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-white/80 mt-0.5">{quote.title}</p>
+                      <p className="text-xs text-white/30 mt-0.5">
+                        {new Date(quote.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                        {quote.valid_until && ` · valid until ${new Date(quote.valid_until).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-sm font-semibold text-white">
+                        KD {total.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                      </span>
+                      <a
+                        href={`/print/quotes/${quote.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg border bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/70 hover:bg-white/[0.08] hover:border-white/[0.14] text-xs font-medium transition-all duration-150"
+                      >
+                        <Download className="h-3 w-3" />
+                        <span className="hidden sm:inline">PDF</span>
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>

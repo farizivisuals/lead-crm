@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, ArrowUpRight, Building2, Calendar,
-  FolderOpen, Phone, FileText, Plus, User,
+  FolderOpen, Phone, FileText, Plus, User, Receipt, Download,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import QuoteDialog from "./QuoteDialog";
@@ -25,6 +25,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
   const { data: projects } = await supabase
     .from("projects")
     .select("*, project_departments(*, departments(name, slug))")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+
+  const { data: quotes } = await supabase
+    .from("quotes")
+    .select("*, quote_line_items(quantity, unit_price)")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
 
@@ -60,10 +66,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
             <Building2 className="h-5 w-5 text-zinc-300" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-3">
-              <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">{client.company_name}</h1>
-              <QuoteDialog clientId={client.id} clientName={client.company_name} />
-            </div>
+            <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">{client.company_name}</h1>
             {primaryContact && (
               <div className="flex items-center gap-1.5 mt-1.5 text-sm text-white/40">
                 <User className="h-3.5 w-3.5" />
@@ -87,6 +90,68 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
                 <p className="leading-relaxed">{client.notes}</p>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Quotes section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Receipt className="h-3.5 w-3.5 text-zinc-400" />
+              <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Quotes</span>
+            </div>
+            <p className="text-white/40 text-sm">{quotes?.length ?? 0} quotes</p>
+          </div>
+          <QuoteDialog clientId={client.id} clientName={client.company_name} />
+        </div>
+
+        {quotes && quotes.length > 0 && (
+          <div className="rounded-2xl border border-white/[0.08] overflow-hidden">
+            <div className="divide-y divide-white/[0.05]">
+              {quotes.map((quote) => {
+                const items = (quote.quote_line_items ?? []) as { quantity: number; unit_price: number }[];
+                const total = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
+                const quoteStatusColors: Record<string, string> = {
+                  draft: "text-white/40 bg-white/[0.05] border-white/[0.08]",
+                  sent: "text-blue-300 bg-blue-500/10 border-blue-500/20",
+                  accepted: "text-emerald-300 bg-emerald-500/10 border-emerald-500/20",
+                  declined: "text-red-300 bg-red-500/10 border-red-500/20",
+                };
+                return (
+                  <div key={quote.id} className="flex items-center justify-between gap-4 px-5 py-4 bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-white/30">{quote.quote_number}</span>
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border capitalize ${quoteStatusColors[quote.status] ?? quoteStatusColors.draft}`}>
+                          {quote.status}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-white/80 mt-0.5">{quote.title}</p>
+                      <p className="text-xs text-white/30 mt-0.5">
+                        {new Date(quote.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                        {quote.valid_until && ` · valid until ${new Date(quote.valid_until).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-sm font-semibold text-white">
+                        KD {total.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                      </span>
+                      <a
+                        href={`/print/quotes/${quote.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg border bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/70 hover:bg-white/[0.08] hover:border-white/[0.14] text-xs font-medium transition-all duration-150"
+                      >
+                        <Download className="h-3 w-3" />
+                        <span className="hidden sm:inline">PDF</span>
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
