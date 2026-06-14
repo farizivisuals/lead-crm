@@ -42,7 +42,7 @@ export default async function QuotePrintPage({
     : null;
 
   const fmt = (n: number) =>
-    n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    "KD " + n.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
   return (
     <>
