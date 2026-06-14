@@ -31,6 +31,11 @@ export async function requireEmployee(minRole?: EmployeeRole) {
   return { user, profile, employee: profile.employees?.[0] };
 }
 
+// Executive tier (root/ceo/cfo/manager) — full admin access.
+export async function requireExecutive() {
+  return requireEmployee("manager");
+}
+
 export async function requireClient() {
   const user = await requireAuth();
   const supabase = await createClient();

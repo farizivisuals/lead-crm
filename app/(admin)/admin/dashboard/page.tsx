@@ -7,6 +7,7 @@ import {
 import { formatRelative } from "@/lib/utils";
 import Link from "next/link";
 import DeptFilter from "@/components/filters/DeptFilter";
+import { isExecutive } from "@/lib/rbac";
 
 interface Props {
   searchParams: Promise<{ dept_id?: string }>;
@@ -23,7 +24,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     .eq("profile_id", user!.id)
     .single();
 
-  const isExec = ["root", "ceo", "cfo"].includes(employee?.role ?? "");
+  const isExec = isExecutive(employee?.role ?? "employee");
   const myDeptId = employee?.department_id as string | null;
   const myDeptName = (employee?.departments as unknown as { name: string } | null)?.name;
   const filterDeptId = isExec ? (dept_id ?? null) : myDeptId;

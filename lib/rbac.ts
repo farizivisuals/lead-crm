@@ -14,6 +14,11 @@ export function isExec(role: EmployeeRole): boolean {
   return hasMinRole(role, "cfo");
 }
 
+// Executive tier (full admin): root, ceo, cfo, manager.
+export function isExecutive(role: EmployeeRole): boolean {
+  return hasMinRole(role, "manager");
+}
+
 export function canManageClients(role: EmployeeRole): boolean {
   return hasMinRole(role, "manager");
 }

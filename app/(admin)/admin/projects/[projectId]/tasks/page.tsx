@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import StageBoard from "@/components/kanban/StageBoard";
 import NewTaskDialog from "./NewTaskDialog";
+import { requireEmployee } from "@/lib/auth/guards";
+import { isExecutive } from "@/lib/rbac";
 
 export default async function TasksPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const { employee } = await requireEmployee();
+  const canManage = isExecutive(employee?.role ?? "employee");
   const supabase = await createClient();
 
   const { data: project } = await supabase
@@ -76,13 +80,15 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
           <span className="text-white/20">/</span>
           <h1 className="text-lg lg:text-xl font-bold text-white">Tasks</h1>
         </div>
-        <NewTaskDialog
-          projectId={projectId}
-          departments={depts.map((d) => d.departments)}
-          stages={stages ?? []}
-          employees={(employees ?? []) as unknown as { profile_id: string; profiles?: { full_name: string } | null; department_id: string | null }[]}
-          creatives={projectCreatives}
-        />
+        {canManage && (
+          <NewTaskDialog
+            projectId={projectId}
+            departments={depts.map((d) => d.departments)}
+            stages={stages ?? []}
+            employees={(employees ?? []) as unknown as { profile_id: string; profiles?: { full_name: string } | null; department_id: string | null }[]}
+            creatives={projectCreatives}
+          />
+        )}
       </div>
 
       {/* Kanban boards per department */}

@@ -8,11 +8,25 @@ import ProjectStatusSelect from "./ProjectStatusSelect";
 import ProjectCreatives from "./ProjectCreatives";
 import MoodboardEditor from "./MoodboardEditor";
 import type { ProjectStatus } from "@/lib/types";
+import { requireEmployee } from "@/lib/auth/guards";
+import { isExecutive, PROJECT_STATUS_LABELS } from "@/lib/rbac";
 
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const { user, employee } = await requireEmployee();
+  const canManage = isExecutive(employee?.role ?? "employee");
   const supabase = await createClient();
+
+  const { data: myEmp } = await supabase
+    .from("employees")
+    .select("role, departments(slug)")
+    .eq("profile_id", user.id)
+    .single();
+  const isCreative =
+    myEmp?.role === "employee" &&
+    (myEmp.departments as unknown as { slug: string } | null)?.slug === "creatives";
+  const canEditMoodboard = canManage || isCreative;
 
   const { data: project } = await supabase
     .from("projects")
@@ -114,7 +128,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <p className="text-white/50 mt-2 text-sm leading-relaxed">{project.description}</p>
             )}
             <div className="flex flex-wrap gap-2 mt-3">
-              <ProjectStatusSelect projectId={projectId} currentStatus={project.status as ProjectStatus} />
+              {canManage ? (
+                <ProjectStatusSelect projectId={projectId} currentStatus={project.status as ProjectStatus} />
+              ) : (
+                <span className="inline-flex items-center rounded-md bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-white/70">
+                  {PROJECT_STATUS_LABELS[project.status as keyof typeof PROJECT_STATUS_LABELS]}
+                </span>
+              )}
               {depts.map((pd) => (
                 <span
                   key={pd.departments?.slug}
@@ -140,11 +160,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             )}
           </div>
         </div>
-        <ProjectCreatives
-          projectId={projectId}
-          assigned={assignedCreatives}
-          allCreatives={allCreatives}
-        />
+        {canManage && (
+          <ProjectCreatives
+            projectId={projectId}
+            assigned={assignedCreatives}
+            allCreatives={allCreatives}
+          />
+        )}
       </div>
 
       {/* Moodboard */}
@@ -152,7 +174,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <div className="flex items-center gap-2 mb-4">
           <span className="text-xs font-semibold text-white/30 uppercase tracking-widest">Moodboard</span>
         </div>
-        <MoodboardEditor projectId={projectId} initialUrl={(project as { moodboard_url?: string | null }).moodboard_url ?? null} />
+        {canEditMoodboard ? (
+          <MoodboardEditor projectId={projectId} initialUrl={(project as { moodboard_url?: string | null }).moodboard_url ?? null} />
+        ) : (project as { moodboard_url?: string | null }).moodboard_url ? (
+          <a
+            href={(project as { moodboard_url: string }).moodboard_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-indigo-300 hover:underline break-all"
+          >
+            {(project as { moodboard_url: string }).moodboard_url}
+          </a>
+        ) : (
+          <span className="text-sm text-white/30">No moodboard linked yet</span>
+        )}
       </div>
 
       {/* Sub-nav — 1 col on mobile, 3 col on sm+ */}

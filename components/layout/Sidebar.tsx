@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Employee, Profile } from "@/lib/types";
-import { ROLE_LABELS } from "@/lib/rbac";
+import { ROLE_LABELS, isExecutive } from "@/lib/rbac";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/browser";
 import { useRouter } from "next/navigation";
@@ -20,16 +20,17 @@ interface SidebarProps {
   employee: Employee;
 }
 
+// execOnly items are visible only to the executive tier (root/ceo/cfo/manager).
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/clients", label: "Clients", icon: Building2 },
+  { href: "/admin/clients", label: "Clients", icon: Building2, execOnly: true },
   { href: "/admin/projects", label: "Projects", icon: FolderOpen },
   { href: "/admin/calendar", label: "Calendar", icon: Calendar },
 ];
 
 const SETTINGS_ITEMS = [
-  { href: "/admin/team", label: "Team", icon: Users },
-  { href: "/admin/settings/departments", label: "Stages", icon: Layers },
+  { href: "/admin/team", label: "Team", icon: Users, execOnly: true },
+  { href: "/admin/settings/departments", label: "Stages", icon: Layers, execOnly: true },
   { href: "/admin/settings/profile", label: "Profile", icon: UserCircle },
 ];
 
@@ -78,6 +79,8 @@ function SidebarContent({
     .toUpperCase()
     .slice(0, 2);
 
+  const isExec = isExecutive(employee.role);
+
   return (
     <div className="relative flex flex-col h-full">
       {/* Logo */}
@@ -97,7 +100,7 @@ function SidebarContent({
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ href, label, icon }) => {
+        {NAV_ITEMS.filter((item) => isExec || !item.execOnly).map(({ href, label, icon }) => {
           const active = pathname === href || (href !== "/admin/dashboard" && pathname.startsWith(href));
           return <NavItem key={href} href={href} label={label} icon={icon} active={active} onClick={onNavClick} />;
         })}
@@ -106,7 +109,7 @@ function SidebarContent({
           <p className="text-[10px] font-semibold text-white/[0.2] uppercase tracking-[0.12em]">Settings</p>
         </div>
 
-        {SETTINGS_ITEMS.map(({ href, label, icon }) => {
+        {SETTINGS_ITEMS.filter((item) => isExec || !item.execOnly).map(({ href, label, icon }) => {
           const active = pathname.startsWith(href);
           return <NavItem key={href} href={href} label={label} icon={icon} active={active} onClick={onNavClick} />;
         })}

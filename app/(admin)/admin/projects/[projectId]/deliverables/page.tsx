@@ -8,6 +8,8 @@ import { formatDate } from "@/lib/utils";
 import { DELIVERABLE_STATUS_LABELS, DELIVERABLE_TYPE_LABELS } from "@/lib/rbac";
 import NewDeliverableDialog from "./NewDeliverableDialog";
 import EditDeliverableDialog from "./EditDeliverableDialog";
+import { requireEmployee } from "@/lib/auth/guards";
+import { isExecutive } from "@/lib/rbac";
 
 const statusVariants: Record<string, "default" | "secondary" | "success" | "warning" | "destructive" | "purple"> = {
   draft: "secondary",
@@ -19,7 +21,19 @@ const statusVariants: Record<string, "default" | "secondary" | "success" | "warn
 
 export default async function DeliverablesPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const { user, employee } = await requireEmployee();
   const supabase = await createClient();
+
+  // Only executives and assigned creatives may review (edit / approve for client).
+  const { data: myEmp } = await supabase
+    .from("employees")
+    .select("departments(slug)")
+    .eq("profile_id", user.id)
+    .single();
+  const isCreative =
+    employee?.role === "employee" &&
+    (myEmp?.departments as unknown as { slug: string } | null)?.slug === "creatives";
+  const canReview = isExecutive(employee?.role ?? "employee") || isCreative;
 
   const { data: project } = await supabase
     .from("projects")
@@ -127,20 +141,22 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
                       <ExternalLink className="h-3.5 w-3.5" />
                       Open in Dropbox
                     </a>
-                    <EditDeliverableDialog deliverable={{
-                      id: d.id,
-                      title: d.title,
-                      type: d.type,
-                      dropbox_url: d.dropbox_url,
-                      thumbnail_url: d.thumbnail_url ?? null,
-                      status: d.status,
-                      version: d.version,
-                    }} />
+                    {canReview && (
+                      <EditDeliverableDialog deliverable={{
+                        id: d.id,
+                        title: d.title,
+                        type: d.type,
+                        dropbox_url: d.dropbox_url,
+                        thumbnail_url: d.thumbnail_url ?? null,
+                        status: d.status,
+                        version: d.version,
+                      }} />
+                    )}
                   </div>
                 </div>
 
-                {/* Send to client */}
-                {d.status === "internal_review" && (
+                {/* Send to client (internal approval) — executives & creatives only */}
+                {canReview && d.status === "internal_review" && (
                   <SendToClientButton deliverableId={d.id} />
                 )}
               </div>

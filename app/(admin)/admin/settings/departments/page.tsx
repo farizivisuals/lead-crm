@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import StagesEditor from "./StagesEditor";
+import { requireExecutive } from "@/lib/auth/guards";
 
 export default async function DepartmentsSettingsPage() {
+  await requireExecutive();
   const supabase = await createClient();
 
   const [{ data: departments }, { data: stages }] = await Promise.all([

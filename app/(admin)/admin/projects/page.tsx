@@ -4,8 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { FolderOpen, ArrowUpRight, Calendar } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import NewProjectDialog from "./NewProjectDialog";
+import { requireEmployee } from "@/lib/auth/guards";
+import { isExecutive } from "@/lib/rbac";
 
 export default async function ProjectsPage() {
+  const { employee } = await requireEmployee();
+  const canManage = isExecutive(employee?.role ?? "employee");
   const supabase = await createClient();
 
   const [{ data: projects }, { data: clients }, { data: departments }, { data: creativeRows }] = await Promise.all([
@@ -68,7 +72,9 @@ export default async function ProjectsPage() {
           <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight">All Projects</h1>
           <p className="text-white/40 text-sm mt-1">{projects?.length ?? 0} projects</p>
         </div>
-        <NewProjectDialog clients={clients ?? []} departments={departments ?? []} creatives={creatives} />
+        {canManage && (
+          <NewProjectDialog clients={clients ?? []} departments={departments ?? []} creatives={creatives} />
+        )}
       </div>
 
       {projects?.length === 0 ? (

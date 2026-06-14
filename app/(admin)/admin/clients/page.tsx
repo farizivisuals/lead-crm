@@ -6,6 +6,7 @@ import DeptFilter from "@/components/filters/DeptFilter";
 import CredentialsPopover from "@/components/ui/InviteLinkPopover";
 import { resetClientPassword } from "./new/actions";
 import EditClientDialog from "./EditClientDialog";
+import { isExecutive } from "@/lib/rbac";
 
 interface Props {
   searchParams: Promise<{ dept_id?: string }>;
@@ -22,7 +23,7 @@ export default async function ClientsPage({ searchParams }: Props) {
     .eq("profile_id", user!.id)
     .single();
 
-  const isExec = ["root", "ceo", "cfo"].includes(employee?.role ?? "");
+  const isExec = isExecutive(employee?.role ?? "employee");
   const isRoot = employee?.role === "root";
   const myDeptName = (employee?.departments as unknown as { name: string } | null)?.name;
 
