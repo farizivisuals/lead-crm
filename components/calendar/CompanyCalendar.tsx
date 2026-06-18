@@ -8,6 +8,8 @@ import type { CalendarEvent } from "@/lib/types";
 
 interface Props {
   events: CalendarEvent[];
+  // Clients live under /portal and can't reach /admin routes; default is admin.
+  portal?: boolean;
 }
 
 // FullCalendar all-day end dates are exclusive (the day *after* the last visible day).
@@ -18,7 +20,7 @@ function exclusiveEnd(dateStr: string): string {
   return d.toISOString().split("T")[0]!;
 }
 
-export default function CompanyCalendar({ events }: Props) {
+export default function CompanyCalendar({ events, portal = false }: Props) {
   const fcEvents = events.map((e) => {
     const endBase = e.end ?? e.start;
     return {
@@ -54,7 +56,11 @@ export default function CompanyCalendar({ events }: Props) {
         height="auto"
         eventClick={(info) => {
           const { entity_type, project_id } = info.event.extendedProps;
-          if (project_id) {
+          if (!project_id) return;
+          if (portal) {
+            // Portal has a single project page; no per-section sub-routes.
+            window.location.href = `/portal/projects/${project_id}`;
+          } else {
             window.location.href = `/admin/projects/${project_id}/${
               entity_type === "task" ? "tasks" : entity_type === "deliverable" ? "deliverables" : ""
             }`;

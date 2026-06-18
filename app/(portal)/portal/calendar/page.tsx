@@ -23,11 +23,17 @@ export default async function PortalCalendarPage() {
 
   const projectIds = (projects ?? []).map((p) => p.id);
 
-  const { data: deliverables } = await supabase
-    .from("deliverables")
-    .select("id, title, submitted_at, project_id")
-    .in("project_id", projectIds)
-    .in("status", ["client_review", "approved"]);
+  const [{ data: deliverables }, { data: tasks }] = await Promise.all([
+    supabase
+      .from("deliverables")
+      .select("id, title, submitted_at, project_id")
+      .in("project_id", projectIds)
+      .in("status", ["client_review", "approved"]),
+    supabase
+      .from("tasks")
+      .select("id, title, start_date, due_date, project_id, department_stages!current_stage_id(color)")
+      .in("project_id", projectIds),
+  ]);
 
   const events: CalendarEvent[] = [
     ...(projects ?? []).filter((p) => p.start_date || p.target_end_date).map((p) => ({
@@ -54,6 +60,20 @@ export default async function PortalCalendarPage() {
       client_id: contact.client_id,
       project_id: d.project_id,
     })),
+    ...(tasks ?? [])
+      .filter((t) => t.start_date || t.due_date)
+      .map((t) => ({
+        id: t.id,
+        entity_id: t.id,
+        entity_type: "task" as const,
+        title: `✅ ${t.title}`,
+        start: t.start_date ?? t.due_date ?? "",
+        end: t.due_date ?? null,
+        color: (t.department_stages as unknown as { color: string } | null)?.color ?? "#6366f1",
+        department_id: null,
+        client_id: contact.client_id,
+        project_id: t.project_id,
+      })),
   ];
 
   return (
@@ -62,7 +82,7 @@ export default async function PortalCalendarPage() {
         <h1 className="text-2xl font-bold text-white tracking-tight">Calendar</h1>
         <p className="text-white/40 text-sm mt-1">Your project timelines and deliverables</p>
       </div>
-      <CompanyCalendar events={events} />
+      <CompanyCalendar events={events} portal />
     </div>
   );
 }
