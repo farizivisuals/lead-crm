@@ -10,11 +10,6 @@ interface Props {
   initialUrl: string | null;
 }
 
-function toEmbedUrl(url: string): string {
-  if (!url.includes("canva.com")) return url;
-  return url.split("?")[0] + "?embed";
-}
-
 export default function MoodboardEditor({ projectId, initialUrl }: Props) {
   const [url, setUrl] = useState(initialUrl ?? "");
   const [editing, setEditing] = useState(false);
@@ -59,15 +54,12 @@ export default function MoodboardEditor({ projectId, initialUrl }: Props) {
       ) : (
         <div className="flex items-center justify-between gap-3">
           {url ? (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Open in Canva
-            </a>
+            <Button asChild size="sm" className="gap-1.5">
+              <a href={url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open in Canva
+              </a>
+            </Button>
           ) : (
             <span className="text-sm text-white/30">No moodboard linked yet</span>
           )}
@@ -83,22 +75,10 @@ export default function MoodboardEditor({ projectId, initialUrl }: Props) {
         </div>
       )}
 
-      {url && !editing && (
-        <div className="relative w-full rounded-xl overflow-hidden border border-white/[0.08]" style={{ paddingBottom: "56.25%" }}>
-          <iframe
-            src={toEmbedUrl(url)}
-            className="absolute inset-0 w-full h-full"
-            allow="fullscreen"
-            allowFullScreen
-            loading="lazy"
-          />
-        </div>
-      )}
-
       {!url && !editing && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/[0.1] bg-white/[0.02] py-10">
           <LayoutTemplate className="h-8 w-8 text-white/20" />
-          <p className="text-sm text-white/30">Paste a Canva link to embed the moodboard</p>
+          <p className="text-sm text-white/30">Paste a Canva link to the moodboard</p>
         </div>
       )}
     </div>
