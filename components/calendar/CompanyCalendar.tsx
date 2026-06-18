@@ -14,8 +14,10 @@ interface Props {
 
 // FullCalendar all-day end dates are exclusive (the day *after* the last visible day).
 // Adding 1 day ensures the event bar spans the full intended range.
+// Inputs may be plain dates ("YYYY-MM-DD") or full ISO timestamps (e.g. deliverable
+// submitted_at), so take only the date portion before parsing to avoid Invalid Date.
 function exclusiveEnd(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
+  const d = new Date(dateStr.slice(0, 10) + "T00:00:00");
   d.setDate(d.getDate() + 1);
   return d.toISOString().split("T")[0]!;
 }
