@@ -207,6 +207,7 @@ export default async function PortalProjectPage({ params }: { params: Promise<{ 
             {deliverables?.map((d) => {
               const revisions = (d.deliverable_revisions as { action: string; note: string | null; created_at: string; profiles: { full_name: string } }[]) ?? [];
               const latest = revisions[0];
+              const revisionsUsed = revisions.filter((r) => r.action === "request_revision").length;
               const canAct = d.status === "client_review";
 
               return (
@@ -250,7 +251,7 @@ export default async function PortalProjectPage({ params }: { params: Promise<{ 
                     )}
 
                     {canAct && (
-                      <ClientRevisionForm deliverableId={d.id} actorProfileId={user.id} />
+                      <ClientRevisionForm deliverableId={d.id} actorProfileId={user.id} revisionsUsed={revisionsUsed} />
                     )}
                   </CardContent>
                 </Card>
