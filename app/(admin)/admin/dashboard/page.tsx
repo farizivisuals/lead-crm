@@ -2,12 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2, FolderOpen, CheckSquare, Clock,
-  ArrowUpRight, Activity, Layers, TrendingUp,
+  ArrowUpRight, Activity, Layers, TrendingUp, ListTodo, FileCheck,
 } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
 import Link from "next/link";
 import DeptFilter from "@/components/filters/DeptFilter";
-import { isExecutive } from "@/lib/rbac";
+import { isExecutive, DELIVERABLE_STATUS_LABELS, PRIORITY_LABELS } from "@/lib/rbac";
 
 interface Props {
   searchParams: Promise<{ dept_id?: string }>;
@@ -25,6 +25,12 @@ export default async function DashboardPage({ searchParams }: Props) {
     .single();
 
   const isExec = isExecutive(employee?.role ?? "employee");
+
+  // Plain employees get a focused view: their tasks + approval status of what they submitted.
+  if (!isExec) {
+    return <EmployeeDashboard userId={user!.id} />;
+  }
+
   const myDeptId = employee?.department_id as string | null;
   const myDeptName = (employee?.departments as unknown as { name: string } | null)?.name;
   const filterDeptId = isExec ? (dept_id ?? null) : myDeptId;
@@ -251,6 +257,138 @@ export default async function DashboardPage({ searchParams }: Props) {
                       <p className="text-[10px] text-white/25 mt-0.5">{formatRelative(log.created_at)}</p>
                     </div>
                   </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const priorityVariants: Record<string, "secondary" | "warning" | "destructive"> = {
+  low: "secondary",
+  medium: "secondary",
+  high: "warning",
+  urgent: "destructive",
+};
+
+const approvalVariants: Record<string, "secondary" | "purple" | "warning" | "success" | "destructive"> = {
+  draft: "secondary",
+  internal_review: "purple",
+  client_review: "warning",
+  approved: "success",
+  revision_requested: "destructive",
+};
+
+async function EmployeeDashboard({ userId }: { userId: string }) {
+  const supabase = await createClient();
+
+  const [{ data: tasks }, { data: deliverables }] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("id, title, priority, due_date, project_id, projects(name), department_stages!current_stage_id(name, is_terminal)")
+      .eq("assigned_to", userId)
+      .order("due_date", { ascending: true, nullsFirst: false }),
+    // Approval status of deliverables this employee submitted.
+    supabase
+      .from("deliverables")
+      .select("id, title, status, updated_at, project_id, projects(name)")
+      .eq("submitted_by", userId)
+      .order("updated_at", { ascending: false })
+      .limit(10),
+  ]);
+
+  const openTasks = (tasks ?? []).filter(
+    (t) => !(t.department_stages as unknown as { is_terminal: boolean } | null)?.is_terminal
+  );
+
+  return (
+    <div className="space-y-8 animate-slide-up">
+      <div>
+        <p className="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em] mb-2">Overview</p>
+        <h1 className="text-2xl font-bold text-white tracking-tight">My Work</h1>
+        <p className="text-white/35 text-sm mt-1">Your assigned tasks and client approval status.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* My Tasks */}
+        <div className="lg:col-span-3 rounded-2xl bg-white/[0.04] border border-white/[0.07] overflow-hidden">
+          <div className="flex items-center gap-2.5 px-5 py-4 border-b border-white/[0.06]">
+            <div className="p-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08]">
+              <ListTodo className="h-3.5 w-3.5 text-zinc-300" />
+            </div>
+            <span className="text-sm font-semibold text-white">My Tasks</span>
+            <Badge variant="secondary" className="ml-auto text-[10px]">{openTasks.length} open</Badge>
+          </div>
+
+          {!openTasks.length ? (
+            <div className="px-5 py-12 text-center">
+              <CheckSquare className="h-8 w-8 text-white/[0.08] mx-auto mb-3" />
+              <p className="text-sm text-white/25">No open tasks assigned to you</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-white/[0.04]">
+              {openTasks.map((task) => (
+                <li key={task.id}>
+                  <Link
+                    href={`/admin/projects/${task.project_id}/tasks`}
+                    className="flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.03] transition-colors group gap-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white/75 group-hover:text-white transition-colors truncate">
+                        {task.title}
+                      </p>
+                      <p className="text-xs text-white/30 mt-0.5 truncate">
+                        {(task.projects as unknown as { name: string })?.name}
+                        {" · "}
+                        {(task.department_stages as unknown as { name: string } | null)?.name}
+                        {task.due_date ? ` · due ${task.due_date}` : ""}
+                      </p>
+                    </div>
+                    <Badge variant={priorityVariants[task.priority] ?? "secondary"} className="flex-shrink-0 text-[10px]">
+                      {PRIORITY_LABELS[task.priority as keyof typeof PRIORITY_LABELS]}
+                    </Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Client Approval Status */}
+        <div className="lg:col-span-2 rounded-2xl bg-white/[0.04] border border-white/[0.07] overflow-hidden">
+          <div className="flex items-center gap-2.5 px-5 py-4 border-b border-white/[0.06]">
+            <div className="p-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08]">
+              <FileCheck className="h-3.5 w-3.5 text-zinc-300" />
+            </div>
+            <span className="text-sm font-semibold text-white">Approval Status</span>
+          </div>
+
+          {!deliverables?.length ? (
+            <div className="px-5 py-12 text-center">
+              <Clock className="h-8 w-8 text-white/[0.08] mx-auto mb-3" />
+              <p className="text-sm text-white/25">Nothing submitted yet</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-white/[0.04]">
+              {deliverables.map((d) => (
+                <li key={d.id}>
+                  <Link
+                    href={`/admin/projects/${d.project_id}/deliverables`}
+                    className="flex items-center justify-between px-5 py-3 hover:bg-white/[0.03] transition-colors group gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white/75 group-hover:text-white transition-colors truncate">
+                        {d.title}
+                      </p>
+                      <p className="text-[10px] text-white/25 mt-0.5">{formatRelative(d.updated_at)}</p>
+                    </div>
+                    <Badge variant={approvalVariants[d.status] ?? "secondary"} className="flex-shrink-0 text-[10px]">
+                      {DELIVERABLE_STATUS_LABELS[d.status as keyof typeof DELIVERABLE_STATUS_LABELS]}
+                    </Badge>
+                  </Link>
                 </li>
               ))}
             </ul>
