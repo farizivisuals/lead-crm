@@ -4,7 +4,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, FolderOpen, Calendar, Settings,
-  Building2, LogOut, Layers, UserCircle, Menu, X,
+  Building2, LogOut, Layers, UserCircle, Menu, X, ListTodo,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Employee, Profile } from "@/lib/types";
@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/clients", label: "Clients", icon: Building2, execOnly: true },
   { href: "/admin/projects", label: "Projects", icon: FolderOpen },
+  { href: "/admin/tasks", label: "Tasks", icon: ListTodo },
   { href: "/admin/calendar", label: "Calendar", icon: Calendar },
 ];
 
