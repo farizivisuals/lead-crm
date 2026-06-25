@@ -3,24 +3,47 @@ import CompanyCalendar from "@/components/calendar/CompanyCalendar";
 import type { CalendarEvent } from "@/lib/types";
 import { Calendar, Clock, ArrowUpRight } from "lucide-react";
 import MineToggle from "@/components/filters/MineToggle";
+import EmployeeFilter from "@/components/filters/EmployeeFilter";
+import { isExecutive } from "@/lib/rbac";
 
 interface Props {
-  searchParams: Promise<{ mine?: string }>;
+  searchParams: Promise<{ mine?: string; emp?: string }>;
 }
 
 export default async function CalendarPage({ searchParams }: Props) {
-  const { mine } = await searchParams;
+  const { mine, emp } = await searchParams;
   const isMine = mine === "1";
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: me } = await supabase
+    .from("employees")
+    .select("role")
+    .eq("profile_id", user?.id ?? "")
+    .single();
+  const isExec = !!me && isExecutive(me.role);
+
+  // Executives can filter by a specific employee; everyone else only mine/all.
+  const employees = isExec
+    ? (await supabase
+        .from("employees")
+        .select("profile_id, profiles(full_name)")
+        .order("role")).data ?? []
+    : [];
+  const empList = employees.map((e) => ({
+    id: e.profile_id,
+    name: (e.profiles as unknown as { full_name: string } | null)?.full_name ?? "Unknown",
+  }));
 
   let tasksQuery = supabase
     .from("tasks")
     .select("id, title, start_date, due_date, department_id, project_id, priority, assigned_to, department_stages!current_stage_id(color), departments(name), projects(clients(company_name))")
     .order("created_at");
 
-  if (isMine && user) {
+  if (isExec && emp) {
+    tasksQuery = tasksQuery.eq("assigned_to", emp);
+  } else if (isMine && user) {
     tasksQuery = tasksQuery.eq("assigned_to", user.id);
   }
 
@@ -91,17 +114,27 @@ export default async function CalendarPage({ searchParams }: Props) {
             <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Schedule</span>
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            {isMine ? "My Calendar" : "Company Calendar"}
+            {emp
+              ? `${empList.find((e) => e.id === emp)?.name ?? "Employee"}'s Calendar`
+              : isMine
+              ? "My Calendar"
+              : "Company Calendar"}
           </h1>
           <p className="text-white/40 text-sm mt-1">
-            {isMine
+            {emp
+              ? "Tasks assigned to this employee, plus all project milestones."
+              : isMine
               ? "Tasks assigned to you, plus all project milestones."
               : "All tasks, projects, and deadlines across every client."}
           </p>
         </div>
 
         <div className="flex-shrink-0 mt-1">
-          <MineToggle isMine={isMine} />
+          {isExec ? (
+            <EmployeeFilter employees={empList} selected={emp ? emp : isMine ? "me" : "all"} />
+          ) : (
+            <MineToggle isMine={isMine} />
+          )}
         </div>
       </div>
 
