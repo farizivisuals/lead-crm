@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/browser";
 import { Eye, EyeOff, Mail, Lock, AlertCircle, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -73,9 +74,14 @@ const AbstractVisual = () => (
       transition={{ duration: 1, delay: 0.5 }}
       className="text-center relative z-10 px-8"
     >
-      <h1 className="text-7xl font-bold mb-4 text-white tracking-tighter">
-        lead.
-      </h1>
+      <Image
+        src="/logo.png"
+        alt="lead."
+        width={252}
+        height={80}
+        className="invert opacity-90 h-16 w-auto mb-4"
+        priority
+      />
       <p className="text-white/40 text-base font-medium tracking-wide uppercase">
         Marketing Agency CRM
       </p>
@@ -156,8 +162,15 @@ export default function LoginPage() {
           >
             {/* Mobile logo */}
             <div className="lg:hidden text-center mb-10">
-              <h1 className="text-5xl font-bold text-white tracking-tighter">lead.</h1>
-              <p className="text-white/40 text-sm mt-1">Marketing Agency CRM</p>
+              <Image
+                src="/logo.png"
+                alt="lead."
+                width={252}
+                height={80}
+                className="invert opacity-90 h-10 w-auto mx-auto"
+                priority
+              />
+              <p className="text-white/40 text-sm mt-2">Marketing Agency CRM</p>
             </div>
 
             <div className="relative backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] rounded-2xl p-8 shadow-2xl">
