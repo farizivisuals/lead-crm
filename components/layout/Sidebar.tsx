@@ -91,7 +91,7 @@ function SidebarContent({
           alt="lead."
           width={226}
           height={80}
-          className="invert opacity-90 h-12 w-auto"
+          className="invert opacity-90 h-16 w-auto"
           priority
         />
       </div>
