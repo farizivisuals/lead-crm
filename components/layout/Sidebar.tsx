@@ -85,13 +85,13 @@ function SidebarContent({
   return (
     <div className="relative flex flex-col h-full">
       {/* Logo */}
-      <div className="px-3 py-3 border-b border-white/[0.06] flex items-center flex-shrink-0">
+      <div className="px-4 py-4 border-b border-white/[0.06] flex items-center flex-shrink-0">
         <Image
           src="/logo.png"
           alt="lead."
           width={226}
           height={80}
-          className="invert opacity-90 h-20 w-auto"
+          className="invert opacity-90 h-24 w-auto"
           priority
         />
       </div>
@@ -163,7 +163,7 @@ export default function Sidebar({ profile, employee }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col z-40 overflow-hidden">
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-80 flex-col z-40 overflow-hidden">
         <div className="absolute inset-0 bg-white/[0.025] backdrop-blur-2xl border-r border-white/[0.06]" />
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
         <div className="relative flex flex-col h-full">
@@ -204,7 +204,7 @@ export default function Sidebar({ profile, employee }: SidebarProps) {
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", stiffness: 320, damping: 32 }}
-            className="lg:hidden fixed inset-y-0 left-0 w-[280px] z-50 flex flex-col overflow-hidden"
+            className="lg:hidden fixed inset-y-0 left-0 w-80 z-50 flex flex-col overflow-hidden"
           >
             <div className="absolute inset-0 bg-[#0a0a0f]/95 backdrop-blur-2xl border-r border-white/[0.08]" />
             <button
