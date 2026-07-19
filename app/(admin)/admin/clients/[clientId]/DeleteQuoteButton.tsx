@@ -9,11 +9,21 @@ export default function DeleteQuoteButton({ quoteId }: { quoteId: string }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleDelete() {
     setLoading(true);
-    await deleteQuote(quoteId);
-    router.refresh();
+    setError(null);
+    try {
+      const result = await deleteQuote(quoteId);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (confirming) {
@@ -27,11 +37,12 @@ export default function DeleteQuoteButton({ quoteId }: { quoteId: string }) {
           {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Delete"}
         </button>
         <button
-          onClick={() => setConfirming(false)}
+          onClick={() => { setConfirming(false); setError(null); }}
           className="h-7 px-2 rounded-lg border bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/70 text-xs font-medium transition-all duration-150"
         >
           Cancel
         </button>
+        {error && <span className="text-xs text-red-400">{error}</span>}
       </div>
     );
   }

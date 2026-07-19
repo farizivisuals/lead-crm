@@ -72,6 +72,12 @@ export default function TasksList({ rows, canFilter }: { rows: TaskRow[]; canFil
         </select>
       )}
 
+      {visible.length === 0 && (
+        <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] py-14 text-center">
+          <p className="text-white/40 text-sm">No tasks match this filter</p>
+        </div>
+      )}
+
       <div className="space-y-2">
         {visible.map((t) => (
           <Link key={t.id} href={`/admin/projects/${t.project_id}/tasks`}>

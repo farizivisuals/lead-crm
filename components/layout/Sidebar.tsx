@@ -35,14 +35,14 @@ const SETTINGS_ITEMS = [
   { href: "/admin/settings/profile", label: "Profile", icon: UserCircle },
 ];
 
-function NavItem({ href, label, icon: Icon, active, onClick }: {
-  href: string; label: string; icon: React.ElementType; active: boolean; onClick?: () => void;
+function NavItem({ href, label, icon: Icon, active, onClick, layoutScope }: {
+  href: string; label: string; icon: React.ElementType; active: boolean; onClick?: () => void; layoutScope: string;
 }) {
   return (
     <Link href={href} onClick={onClick} className="relative block group">
       {active && (
         <motion.div
-          layoutId="sidebar-active"
+          layoutId={`sidebar-active-${layoutScope}`}
           className="absolute inset-0 rounded-xl bg-white/[0.08] border border-white/[0.12]"
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
         />
@@ -69,9 +69,9 @@ function NavItem({ href, label, icon: Icon, active, onClick }: {
 }
 
 function SidebarContent({
-  profile, employee, pathname, onNavClick, onSignOut,
+  profile, employee, pathname, onNavClick, onSignOut, layoutScope,
 }: {
-  profile: Profile; employee: Employee; pathname: string; onNavClick?: () => void; onSignOut: () => void;
+  profile: Profile; employee: Employee; pathname: string; onNavClick?: () => void; onSignOut: () => void; layoutScope: string;
 }) {
   const initials = profile.full_name
     .split(" ")
@@ -99,8 +99,8 @@ function SidebarContent({
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.filter((item) => isExec || !item.execOnly).map(({ href, label, icon }) => {
-          const active = pathname === href || (href !== "/admin/dashboard" && pathname.startsWith(href));
-          return <NavItem key={href} href={href} label={label} icon={icon} active={active} onClick={onNavClick} />;
+          const active = pathname === href || (href !== "/admin/dashboard" && pathname.startsWith(href + "/"));
+          return <NavItem key={href} href={href} label={label} icon={icon} active={active} onClick={onNavClick} layoutScope={layoutScope} />;
         })}
 
         <div className="pt-5 pb-1.5 px-3">
@@ -108,8 +108,8 @@ function SidebarContent({
         </div>
 
         {SETTINGS_ITEMS.filter((item) => isExec || !item.execOnly).map(({ href, label, icon }) => {
-          const active = pathname.startsWith(href);
-          return <NavItem key={href} href={href} label={label} icon={icon} active={active} onClick={onNavClick} />;
+          const active = pathname === href || pathname.startsWith(href + "/");
+          return <NavItem key={href} href={href} label={label} icon={icon} active={active} onClick={onNavClick} layoutScope={layoutScope} />;
         })}
       </nav>
 
@@ -167,7 +167,7 @@ export default function Sidebar({ profile, employee }: SidebarProps) {
         <div className="absolute inset-0 bg-white/[0.025] backdrop-blur-2xl border-r border-white/[0.06]" />
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
         <div className="relative flex flex-col h-full">
-          <SidebarContent {...commonProps} />
+          <SidebarContent {...commonProps} layoutScope="desktop" />
         </div>
       </aside>
 
@@ -215,7 +215,7 @@ export default function Sidebar({ profile, employee }: SidebarProps) {
               <X className="h-4 w-4" />
             </button>
             <div className="relative flex flex-col h-full">
-              <SidebarContent {...commonProps} onNavClick={() => setMobileOpen(false)} />
+              <SidebarContent {...commonProps} onNavClick={() => setMobileOpen(false)} layoutScope="mobile" />
             </div>
           </motion.aside>
         )}

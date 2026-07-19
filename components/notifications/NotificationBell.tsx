@@ -18,7 +18,7 @@ interface NotificationBellProps {
 
 export default function NotificationBell({ userId }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   const fetchNotifications = useCallback(async () => {
     const { data } = await supabase
@@ -40,7 +40,8 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
         table: "notifications",
         filter: `recipient_profile_id=eq.${userId}`,
       }, (payload) => {
-        setNotifications((prev) => [payload.new as Notification, ...prev]);
+        const incoming = payload.new as Notification;
+        setNotifications((prev) => (prev.some((n) => n.id === incoming.id) ? prev : [incoming, ...prev]));
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };

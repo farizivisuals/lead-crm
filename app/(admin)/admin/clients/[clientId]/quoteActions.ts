@@ -1,7 +1,10 @@
 "use server";
 
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+// ponytail: these mutations run as the calling user (not service-role), so the
+// RLS policies in 0013_quotes.sql (owner-or-exec write, employee-only read) are
+// the actual authorization — no app-level role check needed here.
 
 interface LineItemInput {
   description: string;
@@ -23,9 +26,7 @@ export async function createQuote(input: CreateQuoteInput): Promise<{ quoteId?: 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const admin = createAdminClient();
-
-  const { data: quote, error: quoteError } = await admin
+  const { data: quote, error: quoteError } = await supabase
     .from("quotes")
     .insert({
       client_id: input.clientId,
@@ -41,7 +42,7 @@ export async function createQuote(input: CreateQuoteInput): Promise<{ quoteId?: 
   if (quoteError) return { error: quoteError.message };
 
   if (input.line_items.length > 0) {
-    const { error: itemsError } = await admin
+    const { error: itemsError } = await supabase
       .from("quote_line_items")
       .insert(
         input.line_items.map((item) => ({
@@ -64,8 +65,7 @@ export async function deleteQuote(quoteId: string): Promise<{ error?: string }> 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const admin = createAdminClient();
-  const { error } = await admin.from("quotes").delete().eq("id", quoteId);
+  const { error } = await supabase.from("quotes").delete().eq("id", quoteId);
   if (error) return { error: error.message };
   return {};
 }
@@ -83,9 +83,7 @@ export async function updateQuote(input: UpdateQuoteInput): Promise<{ error?: st
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const admin = createAdminClient();
-
-  const { error: quoteError } = await admin
+  const { error: quoteError } = await supabase
     .from("quotes")
     .update({
       title: input.title,
@@ -97,7 +95,7 @@ export async function updateQuote(input: UpdateQuoteInput): Promise<{ error?: st
 
   if (quoteError) return { error: quoteError.message };
 
-  const { error: deleteError } = await admin
+  const { error: deleteError } = await supabase
     .from("quote_line_items")
     .delete()
     .eq("quote_id", input.quoteId);
@@ -105,7 +103,7 @@ export async function updateQuote(input: UpdateQuoteInput): Promise<{ error?: st
   if (deleteError) return { error: deleteError.message };
 
   if (input.line_items.length > 0) {
-    const { error: itemsError } = await admin
+    const { error: itemsError } = await supabase
       .from("quote_line_items")
       .insert(
         input.line_items.map((item) => ({

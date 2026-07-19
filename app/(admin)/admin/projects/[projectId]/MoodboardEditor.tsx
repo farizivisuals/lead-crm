@@ -14,11 +14,14 @@ export default function MoodboardEditor({ projectId, initialUrl }: Props) {
   const [url, setUrl] = useState(initialUrl ?? "");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(initialUrl ?? "");
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleSave() {
+    setError(null);
     startTransition(async () => {
-      await updateMoodboardUrl(projectId, draft.trim() || null);
+      const result = await updateMoodboardUrl(projectId, draft.trim() || null);
+      if (result.error) { setError(result.error); return; }
       setUrl(draft.trim());
       setEditing(false);
     });
@@ -81,6 +84,7 @@ export default function MoodboardEditor({ projectId, initialUrl }: Props) {
           <p className="text-sm text-white/30">Paste a Canva link to the moodboard</p>
         </div>
       )}
+      {error && <p className="text-sm text-red-400">{error}</p>}
     </div>
   );
 }

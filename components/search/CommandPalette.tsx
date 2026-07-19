@@ -38,7 +38,8 @@ export default function CommandPalette({ portalMode = false }: Props) {
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
+  const searchIdRef = useRef(0);
 
   /* ── keyboard shortcut ─── */
   useEffect(() => {
@@ -66,10 +67,12 @@ export default function CommandPalette({ portalMode = false }: Props) {
   /* ── search ─── */
   const runSearch = useCallback(async (q: string) => {
     const trimmed = q.trim();
-    if (trimmed.length < 2) { setResults([]); return; }
+    const requestId = ++searchIdRef.current;
+    if (trimmed.length < 2) { setResults([]); setLoading(false); return; }
     setLoading(true);
 
     const pat = `%${trimmed}%`;
+    let newResults: SearchResult[];
 
     if (portalMode) {
       const [projectsRes, deliverablesRes] = await Promise.all([
@@ -77,7 +80,7 @@ export default function CommandPalette({ portalMode = false }: Props) {
         supabase.from("deliverables").select("id, title, project_id, projects(name)").ilike("title", pat).limit(5),
       ]);
 
-      setResults([
+      newResults = [
         ...(projectsRes.data ?? []).map((p) => ({
           id: p.id,
           title: p.name,
@@ -92,7 +95,7 @@ export default function CommandPalette({ portalMode = false }: Props) {
           type: "deliverable" as const,
           href: `/portal/projects/${d.project_id}`,
         })),
-      ]);
+      ];
     } else {
       const [clientsRes, projectsRes, tasksRes, deliverablesRes] = await Promise.all([
         supabase.from("clients").select("id, company_name").ilike("company_name", pat).limit(4),
@@ -101,7 +104,7 @@ export default function CommandPalette({ portalMode = false }: Props) {
         supabase.from("deliverables").select("id, title, project_id, projects(name)").ilike("title", pat).limit(4),
       ]);
 
-      setResults([
+      newResults = [
         ...(clientsRes.data ?? []).map((c) => ({
           id: c.id,
           title: c.company_name,
@@ -128,9 +131,12 @@ export default function CommandPalette({ portalMode = false }: Props) {
           type: "deliverable" as const,
           href: `/admin/projects/${d.project_id}/deliverables`,
         })),
-      ]);
+      ];
     }
 
+    // Ignore this response if a newer search has started since.
+    if (requestId !== searchIdRef.current) return;
+    setResults(newResults);
     setSelected(0);
     setLoading(false);
   }, [supabase, portalMode]);

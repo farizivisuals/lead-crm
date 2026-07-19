@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,11 @@ export default function EditQuoteDialog({ quote }: { quote: QuoteData }) {
   const [validUntil, setValidUntil] = useState(quote.valid_until ?? "");
   const [notes, setNotes] = useState(quote.notes ?? "");
   const [items, setItems] = useState<LineItem[]>(initItems);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current); };
+  }, []);
 
   function resetAndOpen() {
     setTitle(quote.title);
@@ -73,7 +78,7 @@ export default function EditQuoteDialog({ quote }: { quote: QuoteData }) {
   }
 
   const subtotal = items.reduce((sum, item) => {
-    return sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+    return sum + (parseFloat(item.quantity) || 1) * (parseFloat(item.unit_price) || 0);
   }, 0);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -107,7 +112,7 @@ export default function EditQuoteDialog({ quote }: { quote: QuoteData }) {
 
     setSaved(true);
     router.refresh();
-    setTimeout(() => { setOpen(false); setSaved(false); }, 1200);
+    closeTimeoutRef.current = setTimeout(() => { setOpen(false); setSaved(false); }, 1200);
   }
 
   return (

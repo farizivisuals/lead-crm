@@ -1,7 +1,9 @@
 "use server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generatePassword } from "@/lib/utils";
+import { roleLevel } from "@/lib/rbac";
 import type { EmployeeRole } from "@/lib/types";
 
 const EXECUTIVE_ROLES = ["root", "ceo", "cfo", "manager"];
@@ -9,12 +11,18 @@ const EXECUTIVE_ROLES = ["root", "ceo", "cfo", "manager"];
 async function requireExec() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" as const, user: null, supabase: null };
+  if (!user) return { error: "Not authenticated" as const, user: null, role: null, supabase: null };
   const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
   if (!emp || !EXECUTIVE_ROLES.includes(emp.role)) {
-    return { error: "Only executives can perform this action" as const, user: null, supabase: null };
+    return { error: "Only executives can perform this action" as const, user: null, role: null, supabase: null };
   }
-  return { error: null, user, supabase };
+  return { error: null, user, role: emp.role as EmployeeRole, supabase };
+}
+
+// A caller may only grant a role at or below their own level — otherwise a
+// manager could mint/elevate a peer straight to root.
+function canAssignRole(callerRole: EmployeeRole, targetRole: EmployeeRole) {
+  return roleLevel(callerRole) >= roleLevel(targetRole);
 }
 
 export async function getEmployeeEmail(profileId: string) {
@@ -33,8 +41,11 @@ export async function updateEmployee(profileId: string, input: {
   department_id: string;
   title: string;
 }) {
-  const { error, user } = await requireExec();
-  if (error || !user) return { error: error ?? "Unauthorized" };
+  const { error, user, role } = await requireExec();
+  if (error || !user || !role) return { error: error ?? "Unauthorized" };
+  if (!canAssignRole(role, input.role)) {
+    return { error: "You cannot assign a role higher than your own" };
+  }
   const admin = createAdminClient();
 
   const { error: authError } = await admin.auth.admin.updateUserById(profileId, {
@@ -53,6 +64,7 @@ export async function updateEmployee(profileId: string, input: {
   }).eq("profile_id", profileId);
   if (empError) return { error: empError.message };
 
+  revalidatePath("/admin/team");
   return { success: true };
 }
 
@@ -63,15 +75,13 @@ export async function addEmployee(input: {
   department_id: string;
   title: string;
 }) {
-  const supabase = await createClient();
+  const { error, user, role } = await requireExec();
+  if (error || !user || !role) return { error: error ?? "Unauthorized" };
+  if (!canAssignRole(role, input.role)) {
+    return { error: "You cannot assign a role higher than your own" };
+  }
+
   const admin = createAdminClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
-  if (!emp || !EXECUTIVE_ROLES.includes(emp.role)) return { error: "Only executives can add employees" };
-
   const password = generatePassword();
 
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
@@ -84,11 +94,15 @@ export async function addEmployee(input: {
 
   const newUserId = authData.user.id;
 
-  await admin.from("profiles").upsert({
+  const { error: profileError } = await admin.from("profiles").upsert({
     id: newUserId,
     full_name: input.full_name,
     user_type: "employee",
   });
+  if (profileError) {
+    await admin.auth.admin.deleteUser(newUserId);
+    return { error: profileError.message };
+  }
 
   const { error: empError } = await admin.from("employees").insert({
     profile_id: newUserId,
@@ -96,20 +110,19 @@ export async function addEmployee(input: {
     department_id: input.department_id || null,
     title: input.title || null,
   });
-  if (empError) return { error: empError.message };
+  if (empError) {
+    await admin.auth.admin.deleteUser(newUserId);
+    return { error: empError.message };
+  }
 
+  revalidatePath("/admin/team");
   return { email: input.email, password };
 }
 
 export async function resetEmployeePassword(profileId: string) {
-  const supabase = await createClient();
+  const { error, user } = await requireExec();
+  if (error || !user) return { error: error ?? "Unauthorized" };
   const admin = createAdminClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
-  if (!emp || !EXECUTIVE_ROLES.includes(emp.role)) return { error: "Only executives can reset passwords" };
 
   const { data: authUser, error: userError } = await admin.auth.admin.getUserById(profileId);
   if (userError || !authUser.user.email) return { error: "User not found" };

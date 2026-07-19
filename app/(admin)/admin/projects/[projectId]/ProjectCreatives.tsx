@@ -18,7 +18,7 @@ interface Props {
 
 export default function ProjectCreatives({ projectId, assigned, allCreatives }: Props) {
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [error, setError] = useState<string | null>(null);
 
   const available = allCreatives.filter(

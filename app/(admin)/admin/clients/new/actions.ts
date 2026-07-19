@@ -1,4 +1,5 @@
 "use server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generatePassword } from "@/lib/utils";
@@ -39,11 +40,15 @@ export async function createClientWithPortal(input: CreateClientInput) {
 
   const contactUserId = authData.user.id;
 
-  await admin.from("profiles").upsert({
+  const { error: profileError } = await admin.from("profiles").upsert({
     id: contactUserId,
     full_name: input.contact_name,
     user_type: "client",
   });
+  if (profileError) {
+    await admin.auth.admin.deleteUser(contactUserId);
+    return { error: profileError.message };
+  }
 
   const { data: clientData, error: clientError } = await admin
     .from("clients")
@@ -56,14 +61,23 @@ export async function createClientWithPortal(input: CreateClientInput) {
     })
     .select()
     .single();
-  if (clientError) return { error: clientError.message };
+  if (clientError) {
+    await admin.auth.admin.deleteUser(contactUserId);
+    return { error: clientError.message };
+  }
 
-  await admin.from("client_contacts").insert({
+  const { error: contactError } = await admin.from("client_contacts").insert({
     client_id: clientData.id,
     profile_id: contactUserId,
     role: "owner",
   });
+  if (contactError) {
+    await admin.from("clients").delete().eq("id", clientData.id);
+    await admin.auth.admin.deleteUser(contactUserId);
+    return { error: contactError.message };
+  }
 
+  revalidatePath("/admin/clients");
   return { email: input.contact_email, password };
 }
 
@@ -114,6 +128,8 @@ export async function updateClient(clientId: string, input: {
   }).eq("id", clientId);
   if (clientError) return { error: clientError.message };
 
+  revalidatePath("/admin/clients");
+  revalidatePath(`/admin/clients/${clientId}`);
   return { success: true };
 }
 

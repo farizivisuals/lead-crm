@@ -13,7 +13,9 @@ function CallbackHandler() {
 
   useEffect(() => {
     const supabase = createClient();
-    const next = searchParams.get("next") ?? "/";
+    // Only allow same-origin relative paths — reject "//host" and scheme-prefixed values.
+    const rawNext = searchParams.get("next") ?? "/";
+    const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
     const code = searchParams.get("code");
 
     async function handleCallback() {

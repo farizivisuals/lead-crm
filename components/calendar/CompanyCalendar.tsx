@@ -17,9 +17,10 @@ interface Props {
 // Inputs may be plain dates ("YYYY-MM-DD") or full ISO timestamps (e.g. deliverable
 // submitted_at), so take only the date portion before parsing to avoid Invalid Date.
 function exclusiveEnd(dateStr: string): string {
-  const d = new Date(dateStr.slice(0, 10) + "T00:00:00");
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().split("T")[0]!;
+  // Do the +1 day math in UTC components directly — parsing/re-formatting
+  // through local time rolls the date back a day in positive UTC offsets.
+  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().split("T")[0]!;
 }
 
 export default function CompanyCalendar({ events, portal = false }: Props) {

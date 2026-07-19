@@ -57,7 +57,7 @@ export default function QuoteDialog({ clientId, clientName }: Props) {
   }
 
   const subtotal = items.reduce((sum, item) => {
-    const qty = parseFloat(item.quantity) || 0;
+    const qty = parseFloat(item.quantity) || 1;
     const price = parseFloat(item.unit_price) || 0;
     return sum + qty * price;
   }, 0);
@@ -70,6 +70,10 @@ export default function QuoteDialog({ clientId, clientName }: Props) {
     }
     setLoading(true);
     setError(null);
+
+    // Open the tab synchronously within the click's gesture context so
+    // browsers don't block it once we `await` below.
+    const printTab = window.open("", "_blank");
 
     const result = await createQuote({
       clientId,
@@ -88,12 +92,17 @@ export default function QuoteDialog({ clientId, clientName }: Props) {
 
     if (result.error) {
       setError(result.error);
+      printTab?.close();
       return;
     }
 
     setOpen(false);
     resetForm();
-    window.open(`/print/quotes/${result.quoteId}`, "_blank");
+    if (printTab) {
+      printTab.location.href = `/print/quotes/${result.quoteId}`;
+    } else {
+      window.open(`/print/quotes/${result.quoteId}`, "_blank");
+    }
   }
 
   return (

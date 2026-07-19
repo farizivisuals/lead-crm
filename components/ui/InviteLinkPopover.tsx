@@ -66,9 +66,10 @@ export default function CredentialsPopover({ getCredentials, label = "Reset pass
     const text = field === "both"
       ? `Email: ${creds.email}\nPassword: ${creds.password}`
       : field === "email" ? creds.email : creds.password;
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    }).catch(() => setError("Couldn't copy to clipboard"));
   }
 
   const popover = (

@@ -48,7 +48,7 @@ const PRIORITY_STYLES: Record<string, string> = {
 export default function StageBoard({ stages, tasks, employees, creatives = [], deptName, onTaskMoved }: Props) {
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   // Re-sync when the server sends fresh data (e.g. after router.refresh()),
   // otherwise newly created tasks never show up until a full page reload.
@@ -245,6 +245,7 @@ export default function StageBoard({ stages, tasks, employees, creatives = [], d
 
       {editingTask && (
         <EditTaskDialog
+          key={editingTask.id}
           task={editingTask}
           stages={stages}
           employees={employees}

@@ -63,9 +63,13 @@ export default async function DashboardPage({ searchParams }: Props) {
     filterDeptId
       ? supabase
           .from("tasks")
-          .select("*", { count: "exact", head: true })
+          .select("*, department_stages!current_stage_id!inner(is_terminal)", { count: "exact", head: true })
           .eq("department_id", filterDeptId)
-      : supabase.from("tasks").select("*", { count: "exact", head: true }),
+          .eq("department_stages.is_terminal", false)
+      : supabase
+          .from("tasks")
+          .select("*, department_stages!current_stage_id!inner(is_terminal)", { count: "exact", head: true })
+          .eq("department_stages.is_terminal", false),
 
     supabase
       .from("activity_log")
@@ -117,6 +121,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     on_hold: "warning",
     completed: "success",
     cancelled: "destructive",
+    delivered: "success",
   };
 
   return (

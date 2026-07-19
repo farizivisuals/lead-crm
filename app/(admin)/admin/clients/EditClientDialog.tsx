@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,11 @@ export default function EditClientDialog({ clientId, initialData }: Props) {
     contact_name: initialData.contact_name,
     contact_email: "",
   });
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current); };
+  }, []);
 
   async function handleOpenChange(isOpen: boolean) {
     setOpen(isOpen);
@@ -61,7 +66,7 @@ export default function EditClientDialog({ clientId, initialData }: Props) {
     setSaved(true);
     setLoading(false);
     router.refresh();
-    setTimeout(() => { setOpen(false); setSaved(false); }, 1200);
+    closeTimeoutRef.current = setTimeout(() => { setOpen(false); setSaved(false); }, 1200);
   }
 
   return (

@@ -19,12 +19,17 @@ const statusStyles: Record<ProjectStatus, string> = {
 
 export default function ProjectStatusSelect({ projectId, currentStatus }: { projectId: string; currentStatus: ProjectStatus }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleSelect(status: ProjectStatus) {
     setOpen(false);
     if (status === currentStatus) return;
-    startTransition(() => updateProjectStatus(projectId, status));
+    setError(null);
+    startTransition(async () => {
+      const result = await updateProjectStatus(projectId, status);
+      if (result.error) setError(result.error);
+    });
   }
 
   return (
@@ -61,6 +66,7 @@ export default function ProjectStatusSelect({ projectId, currentStatus }: { proj
           </div>
         </>
       )}
+      {error && <p className="absolute left-0 top-full mt-1 text-xs text-red-400 whitespace-nowrap">{error}</p>}
     </div>
   );
 }

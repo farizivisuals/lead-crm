@@ -22,7 +22,7 @@ export default function EmployeeFilter({ employees, selected }: Props) {
   }
 
   return (
-    <Select value={selected} onValueChange={onChange}>
+    <Select value={selected || "all"} onValueChange={onChange}>
       <SelectTrigger className="h-8 w-44 rounded-xl text-xs bg-white/[0.05] border-white/[0.09]">
         <SelectValue />
       </SelectTrigger>

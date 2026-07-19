@@ -18,7 +18,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ]);
 
   if (!profile || profile.user_type !== "employee") redirect("/portal");
-  if (!employee) redirect("/api/auth/signout");
+  if (!employee) {
+    await supabase.auth.signOut();
+    redirect("/login");
+  }
 
   return (
     <div className="min-h-screen">

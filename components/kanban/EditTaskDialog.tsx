@@ -48,7 +48,7 @@ export default function EditTaskDialog({
   onSaved,
   onDeleted,
 }: Props) {
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,15 +126,24 @@ export default function EditTaskDialog({
 
     if (err) { setLoading(false); setError(err.message); return; }
 
-    // Replace the task's creatives with the current selection
-    let { error: cErr } = await supabase
-      .from("task_creatives")
-      .delete()
-      .eq("task_id", task.id);
-    if (!cErr && selectedCreatives.length > 0) {
+    // Insert additions before removing anything, so a failed insert leaves
+    // the existing assignments intact instead of wiping them out first.
+    const originalCreativeIds = (task.task_creatives ?? []).map((tc) => tc.profile_id);
+    const toAdd = selectedCreatives.filter((id) => !originalCreativeIds.includes(id));
+    const toRemove = originalCreativeIds.filter((id) => !selectedCreatives.includes(id));
+
+    let cErr: { message: string } | null = null;
+    if (toAdd.length > 0) {
       ({ error: cErr } = await supabase.from("task_creatives").insert(
-        selectedCreatives.map((profile_id) => ({ task_id: task.id, profile_id }))
+        toAdd.map((profile_id) => ({ task_id: task.id, profile_id }))
       ));
+    }
+    if (!cErr && toRemove.length > 0) {
+      ({ error: cErr } = await supabase
+        .from("task_creatives")
+        .delete()
+        .eq("task_id", task.id)
+        .in("profile_id", toRemove));
     }
 
     setLoading(false);

@@ -2,7 +2,7 @@
 
 # Lead CRM – Marketing Agency Platform
 
-Next.js 15 (App Router) + Supabase. TypeScript throughout.
+Next.js 16 (App Router) + Supabase. TypeScript throughout.
 
 ## Dev commands
 
@@ -28,7 +28,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ## Supabase setup
 
 1. Create a project at supabase.com
-2. Run all migrations in order via the SQL editor: `supabase/migrations/0001_*.sql` through `0010_*.sql`
+2. Run all migrations in order via the SQL editor: `supabase/migrations/0001_*.sql` through `0017_*.sql`
 3. Enable Realtime for the `notifications` table (Database → Replication → supabase_realtime)
 
 ## Bootstrap root user
@@ -46,7 +46,7 @@ INSERT INTO employees (profile_id, role) VALUES ('<your-auth-uid>', 'root');
 - `(admin)` route group — employees only; dark sidebar + notification bell
 - `(portal)` route group — clients only; minimal top nav
 
-`middleware.ts` enforces cross-area redirects. All security lives in Postgres RLS, not frontend.
+`proxy.ts` (Next.js 16 renamed `middleware.ts`) enforces cross-area redirects. All security lives in Postgres RLS, not frontend.
 
 ## Key patterns
 
