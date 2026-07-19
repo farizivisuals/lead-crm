@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import AutoPrint from "./AutoPrint";
 
 export default async function QuotePrintPage({
@@ -62,8 +61,10 @@ export default async function QuotePrintPage({
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "48px" }}>
           <div>
-            <Image src="/logo.png" alt="lead." width={226} height={80} style={{ height: "100px", width: "auto" }} priority />
-            <div style={{ fontSize: "13px", color: "#666", marginTop: "8px" }}>info@leadsolution.co</div>
+            <div style={{ fontSize: "22px", fontWeight: 700, color: "#111", letterSpacing: "-0.5px" }}>
+              LEAD
+            </div>
+            <div style={{ fontSize: "13px", color: "#666", marginTop: "4px" }}>info@leadsolution.co</div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: "28px", fontWeight: 800, color: "#111", letterSpacing: "-1px" }}>QUOTE</div>
