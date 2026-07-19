@@ -31,7 +31,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   const [
     { data: departments },
-    { count: clientCount },
+    clientCountRes,
     { count: projectCount },
     { count: taskCount },
     { data: recentActivity },
@@ -41,7 +41,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     filterDeptId && isExec
       ? supabase
           .from("project_departments")
-          .select("projects!inner(client_id)", { count: "exact", head: true })
+          .select("projects!inner(client_id)")
           .eq("department_id", filterDeptId)
       : supabase.from("clients").select("*", { count: "exact", head: true }),
 
@@ -83,6 +83,15 @@ export default async function DashboardPage({ searchParams }: Props) {
           .limit(5),
   ]);
 
+  // Dept-filtered: distinct clients across the dept's projects (a head-count of
+  // project_departments rows would just re-count projects).
+  const clientCount = filterDeptId && isExec
+    ? new Set(
+        ((clientCountRes.data ?? []) as unknown as { projects: { client_id: string } }[])
+          .map((r) => r.projects.client_id)
+      ).size
+    : clientCountRes.count;
+
   const stats = [
     {
       label: isExec && filterDeptId ? "Dept Clients" : "Total Clients",
@@ -113,7 +122,6 @@ export default async function DashboardPage({ searchParams }: Props) {
     on_hold: "warning",
     completed: "success",
     cancelled: "destructive",
-    delivered: "success",
   };
 
   return (

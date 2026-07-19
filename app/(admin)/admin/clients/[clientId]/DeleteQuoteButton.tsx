@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Trash2, Loader2 } from "lucide-react";
 import { deleteQuote } from "./quoteActions";
 
 export default function DeleteQuoteButton({ quoteId }: { quoteId: string }) {
-  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -15,12 +13,9 @@ export default function DeleteQuoteButton({ quoteId }: { quoteId: string }) {
     setLoading(true);
     setError(null);
     try {
+      // deleteQuote revalidates the client page, so no router.refresh needed.
       const result = await deleteQuote(quoteId);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      router.refresh();
+      if (result.error) setError(result.error);
     } finally {
       setLoading(false);
     }

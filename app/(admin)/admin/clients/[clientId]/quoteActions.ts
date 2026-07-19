@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 // ponytail: these mutations run as the calling user (not service-role), so the
@@ -57,6 +58,7 @@ export async function createQuote(input: CreateQuoteInput): Promise<{ quoteId?: 
     if (itemsError) return { error: itemsError.message };
   }
 
+  revalidatePath(`/admin/clients/${input.clientId}`);
   return { quoteId: quote.id };
 }
 
@@ -67,6 +69,7 @@ export async function deleteQuote(quoteId: string): Promise<{ error?: string }> 
 
   const { error } = await supabase.from("quotes").delete().eq("id", quoteId);
   if (error) return { error: error.message };
+  revalidatePath("/admin/clients/[clientId]", "page");
   return {};
 }
 
@@ -118,5 +121,6 @@ export async function updateQuote(input: UpdateQuoteInput): Promise<{ error?: st
     if (itemsError) return { error: itemsError.message };
   }
 
+  revalidatePath("/admin/clients/[clientId]", "page");
   return {};
 }

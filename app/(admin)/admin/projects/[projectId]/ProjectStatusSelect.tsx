@@ -6,14 +6,13 @@ import type { ProjectStatus } from "@/lib/types";
 import { PROJECT_STATUS_LABELS } from "@/lib/rbac";
 import { ChevronDown, Loader2 } from "lucide-react";
 
-const ALL_STATUSES: ProjectStatus[] = ["planning", "active", "on_hold", "completed", "delivered", "cancelled"];
+const ALL_STATUSES: ProjectStatus[] = ["planning", "active", "on_hold", "completed", "cancelled"];
 
 const statusStyles: Record<ProjectStatus, string> = {
   planning: "text-blue-400 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20",
   active: "text-white/80 border-white/20 bg-white/[0.06] hover:bg-white/[0.1]",
   on_hold: "text-amber-400 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20",
   completed: "text-green-400 border-green-500/30 bg-green-500/10 hover:bg-green-500/20",
-  delivered: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20",
   cancelled: "text-red-400 border-red-500/30 bg-red-500/10 hover:bg-red-500/20",
 };
 

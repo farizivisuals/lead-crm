@@ -39,6 +39,9 @@ export default function ClientRevisionForm({ deliverableId, actorProfileId, revi
     });
     if (rErr) { setError(rErr.message); setLoading(false); return; }
     router.refresh();
+    setLoading(false);
+    setAction(null);
+    setNote("");
   }
 
   if (action) {

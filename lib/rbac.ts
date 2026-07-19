@@ -23,10 +23,6 @@ export function canManageClients(role: EmployeeRole): boolean {
   return hasMinRole(role, "manager");
 }
 
-export function canManageTeam(role: EmployeeRole): boolean {
-  return role === "root";
-}
-
 export const ROLE_LABELS: Record<EmployeeRole, string> = {
   root: "Root Admin",
   ceo: "CEO",
@@ -55,7 +51,6 @@ export const PROJECT_STATUS_LABELS = {
   on_hold: "On Hold",
   completed: "Completed",
   cancelled: "Cancelled",
-  delivered: "Delivered",
 } as const;
 
 export const PRIORITY_LABELS = {

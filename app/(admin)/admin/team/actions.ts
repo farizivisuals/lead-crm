@@ -25,9 +25,27 @@ function canAssignRole(callerRole: EmployeeRole, targetRole: EmployeeRole) {
   return roleLevel(callerRole) >= roleLevel(targetRole);
 }
 
+// A caller may only act on themselves or an employee they outrank (root can
+// act on anyone) — otherwise a manager could reset the root password or
+// change a superior's email and take over the account. Self-edits are safe:
+// role changes are still capped by canAssignRole.
+async function requireOutranks(callerId: string, callerRole: EmployeeRole, targetProfileId: string) {
+  if (callerId === targetProfileId) return { error: null };
+  const admin = createAdminClient();
+  const { data: target } = await admin
+    .from("employees").select("role").eq("profile_id", targetProfileId).single();
+  if (!target) return { error: "Employee not found" as const };
+  if (callerRole !== "root" && roleLevel(callerRole) <= roleLevel(target.role as EmployeeRole)) {
+    return { error: "You cannot manage an employee at or above your own rank" as const };
+  }
+  return { error: null };
+}
+
 export async function getEmployeeEmail(profileId: string) {
-  const { error, user } = await requireExec();
-  if (error || !user) return { error: error ?? "Unauthorized" };
+  const { error, user, role } = await requireExec();
+  if (error || !user || !role) return { error: error ?? "Unauthorized" };
+  const rankError = await requireOutranks(user.id, role, profileId);
+  if (rankError.error) return { error: rankError.error };
   const admin = createAdminClient();
   const { data: authUser, error: authError } = await admin.auth.admin.getUserById(profileId);
   if (authError) return { error: authError.message };
@@ -46,6 +64,8 @@ export async function updateEmployee(profileId: string, input: {
   if (!canAssignRole(role, input.role)) {
     return { error: "You cannot assign a role higher than your own" };
   }
+  const rankError = await requireOutranks(user.id, role, profileId);
+  if (rankError.error) return { error: rankError.error };
   const admin = createAdminClient();
 
   const { error: authError } = await admin.auth.admin.updateUserById(profileId, {
@@ -120,8 +140,10 @@ export async function addEmployee(input: {
 }
 
 export async function resetEmployeePassword(profileId: string) {
-  const { error, user } = await requireExec();
-  if (error || !user) return { error: error ?? "Unauthorized" };
+  const { error, user, role } = await requireExec();
+  if (error || !user || !role) return { error: error ?? "Unauthorized" };
+  const rankError = await requireOutranks(user.id, role, profileId);
+  if (rankError.error) return { error: rankError.error };
   const admin = createAdminClient();
 
   const { data: authUser, error: userError } = await admin.auth.admin.getUserById(profileId);

@@ -18,6 +18,7 @@ export default function StagesEditor({ departmentId, initialStages }: Props) {
   const [stages, setStages] = useState(initialStages);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Re-sync after router.refresh() so saved stages pick up their real DB ids —
   // keeping the temporary "new-*" ids would insert duplicates on the next save.
@@ -52,7 +53,12 @@ export default function StagesEditor({ departmentId, initialStages }: Props) {
   }
 
   async function saveStages() {
+    if (stages.some((s) => !s.name.trim())) {
+      setError("Every stage needs a name");
+      return;
+    }
     setSaving(true);
+    setError(null);
     const supabase = createClient();
 
     // Delete removed stages (only existing ones, not new-*)
@@ -60,7 +66,8 @@ export default function StagesEditor({ departmentId, initialStages }: Props) {
     const currentIds = stages.map((s) => s.id).filter((id) => !id.startsWith("new-"));
     const toDelete = existingIds.filter((id) => !currentIds.includes(id));
     if (toDelete.length > 0) {
-      await supabase.from("department_stages").delete().in("id", toDelete);
+      const { error: deleteErr } = await supabase.from("department_stages").delete().in("id", toDelete);
+      if (deleteErr) { setError(deleteErr.message); setSaving(false); return; }
     }
 
     // Upsert all current stages
@@ -73,7 +80,8 @@ export default function StagesEditor({ departmentId, initialStages }: Props) {
       color: s.color ?? null,
     }));
 
-    await supabase.from("department_stages").upsert(upsertData, { onConflict: "id" });
+    const { error: upsertErr } = await supabase.from("department_stages").upsert(upsertData, { onConflict: "id" });
+    if (upsertErr) { setError(upsertErr.message); setSaving(false); return; }
 
     router.refresh();
     setSaving(false);
@@ -118,6 +126,8 @@ export default function StagesEditor({ departmentId, initialStages }: Props) {
           </button>
         </div>
       ))}
+
+      {error && <p className="text-sm text-red-500">{error}</p>}
 
       <div className="flex items-center gap-2 pt-1">
         <Button type="button" variant="outline" size="sm" onClick={addStage}>

@@ -50,13 +50,15 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   async function markRead(id: string) {
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    if (error) return;
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
   }
 
   async function markAllRead() {
-    await supabase.from("notifications").update({ is_read: true })
+    const { error } = await supabase.from("notifications").update({ is_read: true })
       .eq("recipient_profile_id", userId).eq("is_read", false);
+    if (error) return;
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
   }
 

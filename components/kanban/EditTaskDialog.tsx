@@ -159,7 +159,18 @@ export default function EditTaskDialog({
         },
       },
     }));
-    onSaved({ ...patch, task_creatives });
+    // Synthesize the assignee join too — StageBoard renders the name from
+    // task.employees, which the raw patch wouldn't update.
+    const assignee = patch.assigned_to
+      ? employees.find((e) => e.profile_id === patch.assigned_to)
+      : null;
+    onSaved({
+      ...patch,
+      task_creatives,
+      employees: (assignee
+        ? { profiles: { full_name: assignee.profiles?.full_name ?? "?" } }
+        : undefined) as Task["employees"],
+    });
     onClose();
   }
 

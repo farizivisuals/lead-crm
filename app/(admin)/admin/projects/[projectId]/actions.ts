@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { ProjectStatus } from "@/lib/types";
 
-const VALID_STATUSES: ProjectStatus[] = ["planning", "active", "on_hold", "completed", "delivered", "cancelled"];
+const VALID_STATUSES: ProjectStatus[] = ["planning", "active", "on_hold", "completed", "cancelled"];
 
 export async function updateProjectStatus(projectId: string, status: ProjectStatus): Promise<{ error?: string }> {
   if (!VALID_STATUSES.includes(status)) return { error: "Invalid status" };

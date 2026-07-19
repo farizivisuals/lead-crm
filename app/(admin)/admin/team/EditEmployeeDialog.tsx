@@ -107,7 +107,7 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
               <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v as EmployeeRole }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(ROLE_LABELS) as EmployeeRole[]).map((r) => (
+                  {(Object.keys(ROLE_LABELS) as EmployeeRole[]).filter((r) => r !== "root").map((r) => (
                     <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
                   ))}
                 </SelectContent>

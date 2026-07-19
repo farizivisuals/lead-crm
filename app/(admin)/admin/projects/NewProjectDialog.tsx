@@ -54,6 +54,7 @@ export default function NewProjectDialog({ clients, departments, creatives }: Pr
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setError("Not authenticated"); setLoading(false); return; }
 
     const { data: project, error: pErr } = await supabase
       .from("projects")
@@ -61,29 +62,42 @@ export default function NewProjectDialog({ clients, departments, creatives }: Pr
         ...form,
         start_date: form.start_date || null,
         target_end_date: form.target_end_date || null,
-        owner_profile_id: user?.id,
-        created_by: user?.id,
+        owner_profile_id: user.id,
+        created_by: user.id,
       })
       .select()
       .single();
 
     if (pErr) { setError(pErr.message); setLoading(false); return; }
 
-    await supabase.from("project_departments").insert(
+    const { error: deptErr } = await supabase.from("project_departments").insert(
       selectedDepts.map((dept_id, i) => ({
         project_id: project.id,
         department_id: dept_id,
         is_primary: i === 0,
       }))
     );
+    if (deptErr) {
+      // Don't leave a half-formed project behind.
+      await supabase.from("projects").delete().eq("id", project.id);
+      setError(deptErr.message);
+      setLoading(false);
+      return;
+    }
 
     if (selectedCreatives.length > 0) {
-      await supabase.from("project_creatives").insert(
+      const { error: creativeErr } = await supabase.from("project_creatives").insert(
         selectedCreatives.map((profile_id) => ({
           project_id: project.id,
           profile_id,
         }))
       );
+      if (creativeErr) {
+        await supabase.from("projects").delete().eq("id", project.id);
+        setError(creativeErr.message);
+        setLoading(false);
+        return;
+      }
     }
 
     setOpen(false);

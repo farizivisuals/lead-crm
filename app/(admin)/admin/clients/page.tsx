@@ -1,12 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Building2, Phone, ArrowUpRight, Users, Layers } from "lucide-react";
+import { Plus, Building2, Phone, ArrowUpRight, Users } from "lucide-react";
 import DeptFilter from "@/components/filters/DeptFilter";
 import CredentialsPopover from "@/components/ui/InviteLinkPopover";
 import { resetClientPassword } from "./new/actions";
 import EditClientDialog from "./EditClientDialog";
-import { isExecutive } from "@/lib/rbac";
 import { requireEmployee } from "@/lib/auth/guards";
 
 interface Props {
@@ -17,20 +16,18 @@ export default async function ClientsPage({ searchParams }: Props) {
   const { dept_id } = await searchParams;
   const [{ employee }, supabase] = await Promise.all([requireEmployee(), createClient()]);
 
-  const isExec = isExecutive(employee?.role ?? "employee");
+  // The clients layout already gates this whole subtree behind
+  // requireExecutive(), so every viewer here is an executive.
   const isRoot = employee?.role === "root";
-  const myDeptName = employee?.departments?.name;
 
-  const departmentsQuery = isExec
-    ? supabase.from("departments").select("id, name").order("name")
-    : Promise.resolve({ data: null });
+  const departmentsQuery = supabase.from("departments").select("id, name").order("name");
 
   let clientsQuery = supabase
     .from("clients")
     .select("*, profiles:primary_contact_profile_id(full_name)")
     .order("created_at", { ascending: false });
 
-  if (isExec && dept_id) {
+  if (dept_id) {
     const { data: projectDepts } = await supabase
       .from("project_departments")
       .select("project_id")
@@ -65,7 +62,7 @@ export default async function ClientsPage({ searchParams }: Props) {
         <div>
           <p className="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em] mb-2">Clients</p>
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            {isExec && dept_id
+            {dept_id
               ? `${(departments ?? []).find((d) => d.id === dept_id)?.name ?? "Dept"} Clients`
               : "Your Clients"}
           </h1>
@@ -75,15 +72,7 @@ export default async function ClientsPage({ searchParams }: Props) {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0 mt-1">
-          {!isExec && myDeptName && (
-            <div className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-white/[0.06] border border-white/[0.1]">
-              <Layers className="h-3.5 w-3.5 text-white/40" />
-              <span className="text-xs font-medium text-white/60">{myDeptName}</span>
-            </div>
-          )}
-          {isExec && (
-            <DeptFilter departments={departments ?? []} currentDeptId={dept_id} />
-          )}
+          <DeptFilter departments={departments ?? []} currentDeptId={dept_id} />
           <Link href="/admin/clients/new">
             <Button size="sm">
               <Plus className="h-4 w-4" />
@@ -101,9 +90,9 @@ export default async function ClientsPage({ searchParams }: Props) {
           </div>
           <p className="text-white/50 font-medium text-sm">No clients yet</p>
           <p className="text-xs text-white/25 mt-1 mb-6">
-            {isExec && dept_id ? "No clients linked to this department." : "Add your first client to get started."}
+            {dept_id ? "No clients linked to this department." : "Add your first client to get started."}
           </p>
-          {(!isExec || !dept_id) && (
+          {!dept_id && (
             <Link href="/admin/clients/new">
               <Button size="sm">
                 <Plus className="h-4 w-4" />

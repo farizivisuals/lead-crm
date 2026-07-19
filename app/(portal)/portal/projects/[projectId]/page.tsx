@@ -63,7 +63,6 @@ export default async function PortalProjectPage({ params }: { params: Promise<{ 
     on_hold: "warning",
     completed: "success",
     cancelled: "destructive",
-    delivered: "success",
   };
 
   return (

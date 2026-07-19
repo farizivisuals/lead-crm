@@ -42,7 +42,6 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
     on_hold: "warning",
     completed: "success",
     cancelled: "destructive",
-    delivered: "success",
   };
 
   const primaryContact = client.profiles as { full_name: string } | null;
