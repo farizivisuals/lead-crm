@@ -28,7 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <Sidebar profile={profile} employee={employee} />
 
       {/* Content area — full width on mobile, offset by sidebar on lg+ */}
-      <div className="lg:pl-80">
+      <div className="lg:pl-64">
         {/* Top bar */}
         <header className="h-14 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 border-b border-white/[0.05] bg-[#06060a]/80 backdrop-blur-xl gap-3">
           {/* Left: spacer on mobile (hamburger sits here), search on larger screens */}

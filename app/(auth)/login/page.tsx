@@ -79,7 +79,7 @@ const AbstractVisual = () => (
         alt="lead."
         width={226}
         height={80}
-        className="invert opacity-90 h-24 w-auto mb-4"
+        className="invert opacity-90 h-20 w-auto mb-4"
         priority
       />
       <p className="text-white/40 text-base font-medium tracking-wide uppercase">
@@ -167,7 +167,7 @@ export default function LoginPage() {
                 alt="lead."
                 width={226}
                 height={80}
-                className="invert opacity-90 h-16 w-auto mx-auto"
+                className="invert opacity-90 h-12 w-auto mx-auto"
                 priority
               />
               <p className="text-white/40 text-sm mt-2">Marketing Agency CRM</p>
