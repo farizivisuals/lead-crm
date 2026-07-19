@@ -77,9 +77,9 @@ const AbstractVisual = () => (
       <Image
         src="/logo.png"
         alt="lead."
-        width={252}
+        width={226}
         height={80}
-        className="invert opacity-90 h-20 w-auto mb-4"
+        className="invert opacity-90 h-[100px] w-auto mb-1"
         priority
       />
       <p className="text-white/40 text-base font-medium tracking-wide uppercase">
@@ -161,16 +161,16 @@ export default function LoginPage() {
             className="w-full max-w-sm"
           >
             {/* Mobile logo */}
-            <div className="lg:hidden text-center mb-10">
+            <div className="lg:hidden text-center mb-3">
               <Image
                 src="/logo.png"
                 alt="lead."
-                width={252}
+                width={226}
                 height={80}
-                className="invert opacity-90 h-14 w-auto mx-auto"
+                className="invert opacity-90 h-[100px] w-auto mx-auto"
                 priority
               />
-              <p className="text-white/40 text-sm mt-2">Marketing Agency CRM</p>
+              <p className="text-white/40 text-sm mt-1">Marketing Agency CRM</p>
             </div>
 
             <div className="relative backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] rounded-2xl p-8 shadow-2xl">

@@ -25,14 +25,14 @@ export default async function PortalLayout({ children }: { children: React.React
     <div className="min-h-screen pb-16 sm:pb-0">
       {/* Top nav — desktop */}
       <header className="sticky top-0 z-30 border-b border-white/[0.07] bg-white/[0.03] backdrop-blur-2xl">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-[116px] flex items-center justify-between gap-3">
           {/* Brand */}
           <Image
             src="/logo.png"
             alt="lead."
-            width={252}
+            width={226}
             height={80}
-            className="invert opacity-90 h-8 w-auto flex-shrink-0"
+            className="invert opacity-90 h-[100px] w-auto flex-shrink-0"
             priority
           />
 
