@@ -85,13 +85,13 @@ function SidebarContent({
   return (
     <div className="relative flex flex-col h-full">
       {/* Logo */}
-      <div className="px-4 py-4 border-b border-white/[0.06] flex items-center flex-shrink-0">
+      <div className="px-3 py-3 border-b border-white/[0.06] flex items-center flex-shrink-0">
         <Image
           src="/logo.png"
           alt="lead."
           width={226}
           height={80}
-          className="invert opacity-90 h-16 w-auto"
+          className="invert opacity-90 h-20 w-auto"
           priority
         />
       </div>
