@@ -32,7 +32,7 @@ export default async function PortalLayout({ children }: { children: React.React
             alt="lead."
             width={252}
             height={80}
-            className="invert opacity-90 h-6 w-auto flex-shrink-0"
+            className="invert opacity-90 h-8 w-auto flex-shrink-0"
             priority
           />
 

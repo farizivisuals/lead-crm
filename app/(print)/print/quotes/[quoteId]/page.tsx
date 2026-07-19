@@ -62,7 +62,7 @@ export default async function QuotePrintPage({
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "48px" }}>
           <div>
-            <Image src="/logo.png" alt="lead." width={252} height={80} style={{ height: "24px", width: "auto" }} priority />
+            <Image src="/logo.png" alt="lead." width={252} height={80} style={{ height: "34px", width: "auto" }} priority />
             <div style={{ fontSize: "13px", color: "#666", marginTop: "8px" }}>info@leadsolution.co</div>
           </div>
           <div style={{ textAlign: "right" }}>
