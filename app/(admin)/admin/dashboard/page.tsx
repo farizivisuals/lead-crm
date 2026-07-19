@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { requireEmployee } from "@/lib/auth/guards";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2, FolderOpen, CheckSquare, Clock,
@@ -15,37 +16,28 @@ interface Props {
 
 export default async function DashboardPage({ searchParams }: Props) {
   const { dept_id } = await searchParams;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: employee } = await supabase
-    .from("employees")
-    .select("role, department_id, departments(name)")
-    .eq("profile_id", user!.id)
-    .single();
+  const [{ user, employee }, supabase] = await Promise.all([requireEmployee(), createClient()]);
 
   const isExec = isExecutive(employee?.role ?? "employee");
 
   // Plain employees get a focused view: their tasks + approval status of what they submitted.
   if (!isExec) {
-    return <EmployeeDashboard userId={user!.id} />;
+    return <EmployeeDashboard userId={user.id} />;
   }
 
-  const myDeptId = employee?.department_id as string | null;
-  const myDeptName = (employee?.departments as unknown as { name: string } | null)?.name;
+  const myDeptId = (employee?.department_id ?? null) as string | null;
+  const myDeptName = employee?.departments?.name;
   const filterDeptId = isExec ? (dept_id ?? null) : myDeptId;
 
-  const { data: departments } = isExec
-    ? await supabase.from("departments").select("id, name").order("name")
-    : { data: null };
-
   const [
+    { data: departments },
     { count: clientCount },
     { count: projectCount },
     { count: taskCount },
     { data: recentActivity },
     { data: recentProjects },
   ] = await Promise.all([
+    supabase.from("departments").select("id, name").order("name"),
     filterDeptId && isExec
       ? supabase
           .from("project_departments")

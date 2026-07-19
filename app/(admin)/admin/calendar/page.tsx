@@ -5,6 +5,7 @@ import { Calendar, Clock, ArrowUpRight } from "lucide-react";
 import MineToggle from "@/components/filters/MineToggle";
 import EmployeeFilter from "@/components/filters/EmployeeFilter";
 import { isExecutive } from "@/lib/rbac";
+import { requireEmployee } from "@/lib/auth/guards";
 
 interface Props {
   searchParams: Promise<{ mine?: string; emp?: string }>;
@@ -14,27 +15,8 @@ export default async function CalendarPage({ searchParams }: Props) {
   const { mine, emp } = await searchParams;
   const isMine = mine === "1";
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const { data: me } = await supabase
-    .from("employees")
-    .select("role")
-    .eq("profile_id", user?.id ?? "")
-    .single();
-  const isExec = !!me && isExecutive(me.role);
-
-  // Executives can filter by a specific employee; everyone else only mine/all.
-  const employees = isExec
-    ? (await supabase
-        .from("employees")
-        .select("profile_id, profiles(full_name)")
-        .order("role")).data ?? []
-    : [];
-  const empList = employees.map((e) => ({
-    id: e.profile_id,
-    name: (e.profiles as unknown as { full_name: string } | null)?.full_name ?? "Unknown",
-  }));
+  const [{ user, employee }, supabase] = await Promise.all([requireEmployee(), createClient()]);
+  const isExec = isExecutive(employee?.role ?? "employee");
 
   let tasksQuery = supabase
     .from("tasks")
@@ -47,13 +29,22 @@ export default async function CalendarPage({ searchParams }: Props) {
     tasksQuery = tasksQuery.eq("assigned_to", user.id);
   }
 
-  const [{ data: tasks }, { data: projects }] = await Promise.all([
+  const [{ data: tasks }, { data: projects }, { data: employees }] = await Promise.all([
     tasksQuery,
     supabase
       .from("projects")
       .select("id, name, start_date, target_end_date, client_id")
       .or("start_date.not.is.null,target_end_date.not.is.null"),
+    // Executives can filter by a specific employee; everyone else only mine/all.
+    isExec
+      ? supabase.from("employees").select("profile_id, profiles(full_name)").order("role")
+      : Promise.resolve({ data: [] as { profile_id: string; profiles: unknown }[] }),
   ]);
+
+  const empList = (employees ?? []).map((e) => ({
+    id: e.profile_id,
+    name: (e.profiles as unknown as { full_name: string } | null)?.full_name ?? "Unknown",
+  }));
 
   const datedEvents: CalendarEvent[] = (tasks ?? [])
     .filter((t) => t.start_date || t.due_date)

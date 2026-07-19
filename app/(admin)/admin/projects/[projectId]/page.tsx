@@ -14,29 +14,20 @@ import { isExecutive, PROJECT_STATUS_LABELS } from "@/lib/rbac";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const { user, employee } = await requireEmployee();
+  const { employee } = await requireEmployee();
   const canManage = isExecutive(employee?.role ?? "employee");
   const supabase = await createClient();
 
-  const { data: myEmp } = await supabase
-    .from("employees")
-    .select("role, departments(slug)")
-    .eq("profile_id", user.id)
-    .single();
   const isCreative =
-    myEmp?.role === "employee" &&
-    (myEmp.departments as unknown as { slug: string } | null)?.slug === "creatives";
+    employee?.role === "employee" && employee?.departments?.slug === "creatives";
   const canEditMoodboard = canManage || isCreative;
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("*, clients(company_name), project_departments(*, departments(name, slug))")
-    .eq("id", projectId)
-    .single();
-
-  if (!project) notFound();
-
-  const [{ data: taskRows }, { count: deliverableCount }, { data: creativeRows }, { data: allCreativeRows }] = await Promise.all([
+  const [{ data: project }, { data: taskRows }, { count: deliverableCount }, { data: creativeRows }, { data: allCreativeRows }] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("*, clients(company_name), project_departments(*, departments(name, slug))")
+      .eq("id", projectId)
+      .single(),
     supabase
       .from("tasks")
       .select("department_stages(is_terminal)")
@@ -51,6 +42,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .select("profile_id, profiles(full_name), departments!inner(slug)")
       .eq("departments.slug", "creatives"),
   ]);
+
+  if (!project) notFound();
 
   const toName = (row: { profile_id: string; profiles?: unknown; employees?: unknown }) => {
     const profiles = (row.employees as { profiles?: { full_name: string } } | null)?.profiles

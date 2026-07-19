@@ -7,6 +7,7 @@ import CredentialsPopover from "@/components/ui/InviteLinkPopover";
 import { resetClientPassword } from "./new/actions";
 import EditClientDialog from "./EditClientDialog";
 import { isExecutive } from "@/lib/rbac";
+import { requireEmployee } from "@/lib/auth/guards";
 
 interface Props {
   searchParams: Promise<{ dept_id?: string }>;
@@ -14,22 +15,15 @@ interface Props {
 
 export default async function ClientsPage({ searchParams }: Props) {
   const { dept_id } = await searchParams;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: employee } = await supabase
-    .from("employees")
-    .select("role, department_id, departments(name)")
-    .eq("profile_id", user!.id)
-    .single();
+  const [{ employee }, supabase] = await Promise.all([requireEmployee(), createClient()]);
 
   const isExec = isExecutive(employee?.role ?? "employee");
   const isRoot = employee?.role === "root";
-  const myDeptName = (employee?.departments as unknown as { name: string } | null)?.name;
+  const myDeptName = employee?.departments?.name;
 
-  const { data: departments } = isExec
-    ? await supabase.from("departments").select("id, name").order("name")
-    : { data: null };
+  const departmentsQuery = isExec
+    ? supabase.from("departments").select("id, name").order("name")
+    : Promise.resolve({ data: null });
 
   let clientsQuery = supabase
     .from("clients")
@@ -62,7 +56,7 @@ export default async function ClientsPage({ searchParams }: Props) {
     }
   }
 
-  const { data: clients } = await clientsQuery;
+  const [{ data: departments }, { data: clients }] = await Promise.all([departmentsQuery, clientsQuery]);
 
   return (
     <div className="space-y-8 animate-slide-up">

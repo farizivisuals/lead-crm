@@ -14,11 +14,22 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
   const canManage = isExecutive(employee?.role ?? "employee");
   const supabase = await createClient();
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("name, project_departments(department_id, is_primary, departments(id, name, slug))")
-    .eq("id", projectId)
-    .single();
+  const [{ data: project }, { data: tasks }, { data: creativeRows }] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("name, project_departments(department_id, is_primary, departments(id, name, slug))")
+      .eq("id", projectId)
+      .single(),
+    supabase
+      .from("tasks")
+      .select("*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name)))")
+      .eq("project_id", projectId)
+      .order("created_at"),
+    supabase
+      .from("project_creatives")
+      .select("profile_id, employees(profiles(full_name))")
+      .eq("project_id", projectId),
+  ]);
 
   if (!project) notFound();
 
@@ -30,25 +41,16 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
 
   const deptIds = depts.map((d) => d.department_id);
 
-  const [{ data: stages }, { data: tasks }, { data: employees }, { data: creativeRows }] = await Promise.all([
+  const [{ data: stages }, { data: employees }] = await Promise.all([
     supabase
       .from("department_stages")
       .select("*")
       .in("department_id", deptIds)
       .order("position"),
     supabase
-      .from("tasks")
-      .select("*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name)))")
-      .eq("project_id", projectId)
-      .order("created_at"),
-    supabase
       .from("employees")
       .select("profile_id, profiles(full_name), department_id")
       .in("department_id", deptIds),
-    supabase
-      .from("project_creatives")
-      .select("profile_id, employees(profiles(full_name))")
-      .eq("project_id", projectId),
   ]);
 
   const projectCreatives = (creativeRows ?? []).map((c) => ({

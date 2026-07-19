@@ -12,7 +12,7 @@ export default async function ProjectsPage() {
   const canManage = isExecutive(employee?.role ?? "employee");
   const supabase = await createClient();
 
-  const [{ data: projects }, { data: clients }, { data: departments }, { data: creativeRows }] = await Promise.all([
+  const [{ data: projects }, { data: clients }, { data: departments }, { data: creativeRows }, { data: taskRows }] = await Promise.all([
     supabase
       .from("projects")
       .select("*, clients(company_name), project_departments(*, departments(name, slug))")
@@ -23,21 +23,15 @@ export default async function ProjectsPage() {
       .from("employees")
       .select("profile_id, profiles(full_name), departments!inner(slug)")
       .eq("departments.slug", "creatives"),
+    // Task progress for all visible projects — RLS already scopes tasks to the
+    // same projects the list above returns, so no .in() filter needed.
+    supabase.from("tasks").select("project_id, department_stages(is_terminal)"),
   ]);
 
   const creatives = (creativeRows ?? []).map((c) => ({
     profile_id: c.profile_id as string,
     full_name: (c.profiles as unknown as { full_name: string } | null)?.full_name ?? "Unknown",
   }));
-
-  // Fetch task progress for all projects in one query
-  const projectIds = (projects ?? []).map((p) => p.id);
-  const { data: taskRows } = projectIds.length
-    ? await supabase
-        .from("tasks")
-        .select("project_id, department_stages(is_terminal)")
-        .in("project_id", projectIds)
-    : { data: [] };
 
   type Progress = { total: number; done: number };
   const progressByProject = (taskRows ?? []).reduce<Record<string, Progress>>((acc, t) => {

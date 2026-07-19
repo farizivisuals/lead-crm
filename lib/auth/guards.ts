@@ -1,23 +1,39 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { EmployeeRole } from "@/lib/types";
+import type { Employee, EmployeeRole } from "@/lib/types";
+
+// Reads the user from the JWT (verified locally — no network round trip, unlike
+// auth.getUser()). The proxy refreshes the session on every request, and real
+// authorization lives in Postgres RLS. cache() dedupes across layout + page.
+export const getAuthUser = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims) return null;
+  return { id: claims.sub as string, email: claims.email as string | undefined };
+});
 
 export async function requireAuth() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
   return user;
 }
 
-export async function requireEmployee(minRole?: EmployeeRole) {
-  const user = await requireAuth();
+// One profile+employee fetch per request, shared by every guard/layout/page.
+const getEmployeeProfile = cache(async (userId: string) => {
   const supabase = await createClient();
-
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*, employees(*)")
-    .eq("id", user.id)
+    .select("*, employees(*, departments(name, slug))")
+    .eq("id", userId)
     .single();
+  return profile;
+});
+
+export async function requireEmployee(minRole?: EmployeeRole) {
+  const user = await requireAuth();
+  const profile = await getEmployeeProfile(user.id);
 
   if (!profile || profile.user_type !== "employee") redirect("/portal");
 
@@ -25,7 +41,9 @@ export async function requireEmployee(minRole?: EmployeeRole) {
   // single object (one-to-one), not an array. Normalize for either shape.
   const employee = (Array.isArray(profile.employees)
     ? profile.employees[0]
-    : profile.employees) as { role?: EmployeeRole } | undefined;
+    : profile.employees) as
+    | (Employee & { departments?: { name: string; slug: string } | null })
+    | undefined;
 
   if (minRole) {
     const hierarchy: EmployeeRole[] = ["employee", "manager", "cfo", "ceo", "root"];
@@ -42,31 +60,21 @@ export async function requireExecutive() {
   return requireEmployee("manager");
 }
 
-export async function requireClient() {
-  const user = await requireAuth();
+const getClientProfile = cache(async (userId: string) => {
   const supabase = await createClient();
-
   const { data: profile } = await supabase
     .from("profiles")
     .select("*, client_contacts(*, clients(*))")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
+  return profile;
+});
+
+export async function requireClient() {
+  const user = await requireAuth();
+  const profile = await getClientProfile(user.id);
 
   if (!profile || profile.user_type !== "client") redirect("/admin/dashboard");
 
   return { user, profile };
-}
-
-export async function getSessionProfile() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*, employees(*)")
-    .eq("id", user.id)
-    .single();
-
-  return profile;
 }

@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireClient } from "@/lib/auth/guards";
 import Link from "next/link";
 import Image from "next/image";
 import { FolderOpen, Calendar, LogOut } from "lucide-react";
@@ -7,17 +6,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import CommandPalette from "@/components/search/CommandPalette";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*, client_contacts(client_id, clients(company_name))")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || profile.user_type !== "client") redirect("/admin/dashboard");
+  const { user, profile } = await requireClient();
 
   const clientName = (profile.client_contacts as { clients?: { company_name: string } }[])?.[0]?.clients?.company_name;
 

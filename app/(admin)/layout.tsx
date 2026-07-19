@@ -1,24 +1,15 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireEmployee } from "@/lib/auth/guards";
 import Sidebar from "@/components/layout/Sidebar";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import CommandPalette from "@/components/search/CommandPalette";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { user, profile, employee } = await requireEmployee();
 
-  const [
-    { data: profile },
-    { data: employee },
-  ] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).single(),
-    supabase.from("employees").select("*").eq("profile_id", user.id).single(),
-  ]);
-
-  if (!profile || profile.user_type !== "employee") redirect("/portal");
   if (!employee) {
+    const supabase = await createClient();
     await supabase.auth.signOut();
     redirect("/login");
   }

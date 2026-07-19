@@ -21,38 +21,29 @@ const statusVariants: Record<string, "default" | "secondary" | "success" | "warn
 
 export default async function DeliverablesPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const { user, employee } = await requireEmployee();
+  const { employee } = await requireEmployee();
   const supabase = await createClient();
 
   // Only executives and assigned creatives may review (edit / approve for client).
-  const { data: myEmp } = await supabase
-    .from("employees")
-    .select("departments(slug)")
-    .eq("profile_id", user.id)
-    .single();
   const isCreative =
-    employee?.role === "employee" &&
-    (myEmp?.departments as unknown as { slug: string } | null)?.slug === "creatives";
+    employee?.role === "employee" && employee?.departments?.slug === "creatives";
   const canReview = isExecutive(employee?.role ?? "employee") || isCreative;
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("name, project_departments(department_id, departments(name))")
-    .eq("id", projectId)
-    .single();
+  const [{ data: project }, { data: deliverables }, { data: tasks }] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("name, project_departments(department_id, departments(name))")
+      .eq("id", projectId)
+      .single(),
+    supabase
+      .from("deliverables")
+      .select("*, profiles:submitted_by(full_name), deliverable_revisions(action, note, created_at, profiles:actor_profile_id(full_name))")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false }),
+    supabase.from("tasks").select("id, title").eq("project_id", projectId),
+  ]);
 
   if (!project) notFound();
-
-  const { data: deliverables } = await supabase
-    .from("deliverables")
-    .select("*, profiles:submitted_by(full_name), deliverable_revisions(action, note, created_at, profiles:actor_profile_id(full_name))")
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
-
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("id, title")
-    .eq("project_id", projectId);
 
   return (
     <div className="space-y-6 animate-slide-up max-w-4xl">

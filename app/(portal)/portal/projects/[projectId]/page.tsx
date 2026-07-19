@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { requireClient } from "@/lib/auth/guards";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -19,47 +20,41 @@ const statusVariants: Record<string, "default" | "secondary" | "success" | "warn
 
 export default async function PortalProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const { user, profile } = await requireClient();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
   // Verify access
-  const { data: contact } = await supabase
-    .from("client_contacts")
-    .select("client_id")
-    .eq("profile_id", user.id)
-    .single();
+  const contact = (profile.client_contacts as { client_id: string }[])?.[0];
   if (!contact) redirect("/portal");
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("*, project_departments(departments(name))")
-    .eq("id", projectId)
-    .eq("client_id", contact.client_id)
-    .single();
+  const [{ data: project }, { data: tasks }, { data: deliverables }, { data: comments }] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("*, project_departments(departments(name))")
+      .eq("id", projectId)
+      .eq("client_id", contact.client_id)
+      .single(),
+    supabase
+      .from("tasks")
+      .select("id, title, priority, due_date, department_stages(name, color, is_terminal), departments(name)")
+      .eq("project_id", projectId)
+      .order("due_date", { ascending: true }),
+    supabase
+      .from("deliverables")
+      .select("*, deliverable_revisions(action, note, created_at, profiles:actor_profile_id(full_name))")
+      .eq("project_id", projectId)
+      .in("status", ["client_review", "approved", "revision_requested"])
+      .order("submitted_at", { ascending: false }),
+    supabase
+      .from("comments")
+      .select("*, profiles:author_profile_id(full_name)")
+      .eq("entity_type", "project")
+      .eq("entity_id", projectId)
+      .eq("is_client_visible", true)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (!project) notFound();
-
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("id, title, priority, due_date, department_stages(name, color, is_terminal), departments(name)")
-    .eq("project_id", projectId)
-    .order("due_date", { ascending: true });
-
-  const { data: deliverables } = await supabase
-    .from("deliverables")
-    .select("*, deliverable_revisions(action, note, created_at, profiles:actor_profile_id(full_name))")
-    .eq("project_id", projectId)
-    .in("status", ["client_review", "approved", "revision_requested"])
-    .order("submitted_at", { ascending: false });
-
-  const { data: comments } = await supabase
-    .from("comments")
-    .select("*, profiles:author_profile_id(full_name)")
-    .eq("entity_type", "project")
-    .eq("entity_id", projectId)
-    .eq("is_client_visible", true)
-    .order("created_at", { ascending: false });
 
   const depts = (project.project_departments as { departments?: { name: string } }[]) ?? [];
   const statusColors: Record<string, "default" | "secondary" | "success" | "warning" | "destructive"> = {

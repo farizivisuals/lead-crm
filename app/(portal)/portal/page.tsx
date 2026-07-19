@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { requireClient } from "@/lib/auth/guards";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -15,29 +16,24 @@ const statusColors: Record<string, "default" | "secondary" | "success" | "warnin
 };
 
 export default async function PortalHomePage() {
+  const { profile } = await requireClient();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
-  const { data: contact } = await supabase
-    .from("client_contacts")
-    .select("client_id, clients(company_name)")
-    .eq("profile_id", user.id)
-    .single();
-
+  const contact = (profile.client_contacts as { client_id: string; clients?: { company_name: string } }[])?.[0];
   if (!contact) redirect("/login");
 
-  const { data: projects } = await supabase
-    .from("projects")
-    .select("*, project_departments(*, departments(name, slug))")
-    .eq("client_id", contact.client_id)
-    .order("updated_at", { ascending: false });
-
-  const { data: quotes } = await supabase
-    .from("quotes")
-    .select("*, quote_line_items(quantity, unit_price)")
-    .eq("client_id", contact.client_id)
-    .order("created_at", { ascending: false });
+  const [{ data: projects }, { data: quotes }] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("*, project_departments(*, departments(name, slug))")
+      .eq("client_id", contact.client_id)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("quotes")
+      .select("*, quote_line_items(quantity, unit_price)")
+      .eq("client_id", contact.client_id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   return (
     <div className="space-y-8 animate-slide-up">

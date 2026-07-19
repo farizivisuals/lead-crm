@@ -1,18 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
+import { requireClient } from "@/lib/auth/guards";
 import { redirect } from "next/navigation";
 import CompanyCalendar from "@/components/calendar/CompanyCalendar";
 import type { CalendarEvent } from "@/lib/types";
 
 export default async function PortalCalendarPage() {
+  const { profile } = await requireClient();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
-  const { data: contact } = await supabase
-    .from("client_contacts")
-    .select("client_id")
-    .eq("profile_id", user.id)
-    .single();
+  const contact = (profile.client_contacts as { client_id: string }[])?.[0];
   if (!contact) redirect("/portal");
 
   // Get project IDs for this client
