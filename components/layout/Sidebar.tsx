@@ -89,9 +89,9 @@ function SidebarContent({
         <Image
           src="/logo.png"
           alt="lead."
-          width={252}
+          width={226}
           height={80}
-          className="invert opacity-90 h-7 w-auto"
+          className="invert opacity-90 h-12 w-auto"
           priority
         />
       </div>
