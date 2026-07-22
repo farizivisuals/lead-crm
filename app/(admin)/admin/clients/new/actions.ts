@@ -1,4 +1,5 @@
 "use server";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -128,9 +129,14 @@ export async function getClientLoginLink(clientId: string) {
   // is a plain GET against Supabase's verify endpoint, so chat/email link
   // previews would consume the one-time token before the client clicks it.
   // Our callback page only verifies via JS, which preview bots don't run.
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  // Use the request origin so the link works on any host/port (dev servers
+  // run on random ports); fall back to the configured site URL.
+  const origin =
+    (await headers()).get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  // Land on the set-password screen first — it sends clients to /portal once
+  // they've chosen a password, which they use for all future logins.
   return {
-    link: `${siteUrl}/auth/callback?token_hash=${encodeURIComponent(data.properties.hashed_token)}&next=/portal`,
+    link: `${origin}/auth/callback?token_hash=${encodeURIComponent(data.properties.hashed_token)}&next=/update-password`,
   };
 }
 
