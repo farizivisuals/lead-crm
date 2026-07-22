@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Loader2 } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import { Plus, Loader2, ChevronDown, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import type { Department } from "@/lib/types";
 
@@ -24,6 +25,9 @@ export default function NewProjectDialog({ clients, departments, creatives }: Pr
   const [error, setError] = useState<string | null>(null);
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
+  const [clientOpen, setClientOpen] = useState(false);
+  const [clientQuery, setClientQuery] = useState("");
+  const clientSearchRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     client_id: "",
@@ -120,14 +124,74 @@ export default function NewProjectDialog({ clients, departments, creatives }: Pr
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Client *</Label>
-            <Select value={form.client_id} onValueChange={(v) => setForm((f) => ({ ...f, client_id: v }))}>
-              <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
-              <SelectContent>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.company_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover.Root open={clientOpen} onOpenChange={(o) => { setClientOpen(o); if (o) setClientQuery(""); }}>
+              <Popover.Trigger asChild>
+                <button
+                  type="button"
+                  className="flex h-10 w-full items-center justify-between rounded-xl border border-white/[0.1] bg-white/[0.06] px-3 py-2 text-sm text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30"
+                >
+                  <span className={form.client_id ? "" : "text-white/30"}>
+                    {clients.find((c) => c.id === form.client_id)?.company_name ?? "Select client"}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-white/40" />
+                </button>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content
+                  align="start"
+                  sideOffset={4}
+                  className="z-50 w-[var(--radix-popover-trigger-width)] rounded-xl border border-white/[0.1] bg-[#0f0f15]/95 backdrop-blur-xl shadow-2xl shadow-black/50 p-1"
+                  onOpenAutoFocus={(e) => {
+                    // Focus the search input instead of the first list item
+                    e.preventDefault();
+                    clientSearchRef.current?.focus();
+                  }}
+                >
+                  <Input
+                    ref={clientSearchRef}
+                    value={clientQuery}
+                    onChange={(e) => setClientQuery(e.target.value)}
+                    placeholder="Type to search…"
+                    className="h-8 mb-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const first = clients.find((c) =>
+                          c.company_name.toLowerCase().includes(clientQuery.toLowerCase())
+                        );
+                        if (first) {
+                          setForm((f) => ({ ...f, client_id: first.id }));
+                          setClientOpen(false);
+                        }
+                      }
+                    }}
+                  />
+                  <div className="max-h-48 overflow-y-auto">
+                    {clients
+                      .filter((c) => c.company_name.toLowerCase().includes(clientQuery.toLowerCase()))
+                      .map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setForm((f) => ({ ...f, client_id: c.id }));
+                            setClientOpen(false);
+                          }}
+                          className="relative flex w-full items-center rounded-lg py-2 pl-8 pr-3 text-sm text-white/80 text-left hover:bg-white/[0.08] hover:text-white"
+                        >
+                          {form.client_id === c.id && (
+                            <Check className="absolute left-2 h-3.5 w-3.5 text-zinc-300" />
+                          )}
+                          {c.company_name}
+                        </button>
+                      ))}
+                    {clients.filter((c) => c.company_name.toLowerCase().includes(clientQuery.toLowerCase())).length === 0 && (
+                      <p className="py-2 px-3 text-sm text-white/30">No clients found</p>
+                    )}
+                  </div>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
           </div>
 
           <div className="space-y-2">
