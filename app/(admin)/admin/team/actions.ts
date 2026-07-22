@@ -1,4 +1,5 @@
 "use server";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -137,6 +138,41 @@ export async function addEmployee(input: {
 
   revalidatePath("/admin/team");
   return { email: input.email, password };
+}
+
+export async function getEmployeeLoginLink(profileId: string) {
+  const { error, user, role } = await requireExec();
+  if (error || !user || !role) return { error: error ?? "Unauthorized" };
+  const rankError = await requireOutranks(user.id, role, profileId);
+  if (rankError.error) return { error: rankError.error };
+  const admin = createAdminClient();
+
+  const { data: authUser, error: userError } = await admin.auth.admin.getUserById(profileId);
+  if (userError || !authUser.user.email) return { error: "User not found" };
+
+  const { data, error: linkError } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email: authUser.user.email,
+  });
+  if (linkError) return { error: linkError.message };
+
+  // Built from hashed_token (not action_link) so link-preview bots can't
+  // consume the one-time token; verified client-side on /auth/callback.
+  // Lands on /update-password, which routes employees to /admin/dashboard.
+  const origin =
+    (await headers()).get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const setupLink = `${origin}/auth/callback?token_hash=${encodeURIComponent(data.properties.hashed_token)}&next=/update-password`;
+
+  return {
+    message: [
+      "Welcome to the lead. dashboard!",
+      "",
+      "1. Click this one-time link to create your password:",
+      setupLink,
+      "",
+      `2. After that, log in anytime at ${origin}/login using your email (${authUser.user.email}) and your new password.`,
+    ].join("\n"),
+  };
 }
 
 export async function resetEmployeePassword(profileId: string) {

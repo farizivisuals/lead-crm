@@ -5,8 +5,9 @@ import { ROLE_LABELS } from "@/lib/rbac";
 import type { EmployeeRole } from "@/lib/types";
 import AddEmployeeDialog from "./AddEmployeeDialog";
 import EditEmployeeDialog from "./EditEmployeeDialog";
-import { resetEmployeePassword } from "./actions";
+import { resetEmployeePassword, getEmployeeLoginLink } from "./actions";
 import CredentialsPopover from "@/components/ui/InviteLinkPopover";
+import LoginLinkButton from "@/components/ui/LoginLinkButton";
 import { Users } from "lucide-react";
 import { requireExecutive } from "@/lib/auth/guards";
 
@@ -65,6 +66,7 @@ export default async function TeamPage() {
             }}
             departments={departments ?? []}
           />
+          <LoginLinkButton getLink={getEmployeeLoginLink.bind(null, e.profile_id)} />
           <CredentialsPopover getCredentials={resetEmployeePassword.bind(null, e.profile_id)} />
           <Badge variant={roleVariants[e.role as string] ?? "secondary"} className="text-xs">
             {ROLE_LABELS[e.role as keyof typeof ROLE_LABELS]}
