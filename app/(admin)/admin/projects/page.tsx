@@ -99,7 +99,7 @@ export default async function ProjectsPage() {
                         <p className="font-semibold text-white/90 group-hover:text-white transition-colors leading-tight">
                           {project.name}
                         </p>
-                        <p className="text-sm text-white/35 mt-0.5">
+                        <p className="text-sm text-zinc-200 font-medium mt-0.5">
                           {(project.clients as { company_name: string })?.company_name}
                         </p>
                         {project.description && (
