@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Plus, Building2, Phone, ArrowUpRight, Users } from "lucide-react";
 import DeptFilter from "@/components/filters/DeptFilter";
 import CredentialsPopover from "@/components/ui/InviteLinkPopover";
-import { resetClientPassword } from "./new/actions";
+import LoginLinkButton from "@/components/ui/LoginLinkButton";
+import { resetClientPassword, getClientLoginLink } from "./new/actions";
 import EditClientDialog from "./EditClientDialog";
 import { requireEmployee } from "@/lib/auth/guards";
 
@@ -148,6 +149,7 @@ export default async function ClientsPage({ searchParams }: Props) {
                     }}
                   />
                 )}
+                <LoginLinkButton getLink={getClientLoginLink.bind(null, client.id)} />
                 <CredentialsPopover
                   getCredentials={resetClientPassword.bind(null, client.id)}
                   label="Reset password"

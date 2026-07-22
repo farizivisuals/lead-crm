@@ -30,8 +30,10 @@ export async function proxy(request: NextRequest) {
   const isAuthed = !!data?.claims;
   const pathname = request.nextUrl.pathname;
 
-  // Public / auth-utility routes — always pass through
-  if (pathname.startsWith("/api/auth/signout")) {
+  // Public / auth-utility routes — always pass through.
+  // /auth/callback must be reachable while logged out — magic-link tokens
+  // are verified client-side on that page.
+  if (pathname.startsWith("/api/auth/signout") || pathname.startsWith("/auth/callback")) {
     return supabaseResponse;
   }
 

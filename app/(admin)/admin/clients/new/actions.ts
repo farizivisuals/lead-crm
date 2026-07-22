@@ -95,6 +95,45 @@ export async function getClientContactEmail(clientId: string) {
   return { email: authUser.user.email ?? "" };
 }
 
+export async function getClientLoginLink(clientId: string) {
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
+  const allowed = ["root", "ceo", "cfo", "manager"];
+  if (!emp || !allowed.includes(emp.role)) return { error: "Insufficient permissions" };
+
+  const { data: client } = await supabase
+    .from("clients")
+    .select("primary_contact_profile_id")
+    .eq("id", clientId)
+    .single();
+  if (!client) return { error: "Client not found" };
+
+  const { data: authUser, error: userError } = await admin.auth.admin.getUserById(
+    client.primary_contact_profile_id
+  );
+  if (userError || !authUser.user.email) return { error: "Contact user not found" };
+
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email: authUser.user.email,
+  });
+  if (error) return { error: error.message };
+
+  // Build the link from hashed_token instead of using action_link: action_link
+  // is a plain GET against Supabase's verify endpoint, so chat/email link
+  // previews would consume the one-time token before the client clicks it.
+  // Our callback page only verifies via JS, which preview bots don't run.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  return {
+    link: `${siteUrl}/auth/callback?token_hash=${encodeURIComponent(data.properties.hashed_token)}&next=/portal`,
+  };
+}
+
 export async function updateClient(clientId: string, input: {
   company_name: string;
   phone: string;

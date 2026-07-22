@@ -17,8 +17,17 @@ function CallbackHandler() {
     const rawNext = searchParams.get("next") ?? "/";
     const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
     const code = searchParams.get("code");
+    const tokenHash = searchParams.get("token_hash");
 
     async function handleCallback() {
+      // Magic-link flow — one-time token hash in query string
+      if (tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
+        if (error) { setError("This link has expired or is invalid."); return; }
+        router.replace(next);
+        return;
+      }
+
       // PKCE flow — code in query string
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
