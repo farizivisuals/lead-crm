@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link2, Check, Loader2, AlertCircle } from "lucide-react";
 
 interface Props {
-  getLink: () => Promise<{ link?: string; error?: string }>;
+  getLink: () => Promise<{ message?: string; error?: string }>;
   label?: string;
 }
 
@@ -14,11 +14,11 @@ export default function LoginLinkButton({ getLink, label = "Login link" }: Props
     if (state === "loading") return;
     setState("loading");
     const result = await getLink();
-    if (result.error || !result.link) {
+    if (result.error || !result.message) {
       setState("error");
     } else {
       try {
-        await navigator.clipboard.writeText(result.link);
+        await navigator.clipboard.writeText(result.message);
         setState("copied");
       } catch {
         setState("error");
@@ -41,7 +41,7 @@ export default function LoginLinkButton({ getLink, label = "Login link" }: Props
   return (
     <button
       onClick={handleClick}
-      title="Copy a one-time login link for the client portal"
+      title="Copy a welcome message with a one-time password-setup link"
       className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg border text-xs font-medium transition-all duration-150 bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/70 hover:bg-white/[0.08] hover:border-white/[0.14]"
     >
       {icon}

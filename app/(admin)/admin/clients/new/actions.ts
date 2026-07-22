@@ -135,8 +135,18 @@ export async function getClientLoginLink(clientId: string) {
     (await headers()).get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   // Land on the set-password screen first — it sends clients to /portal once
   // they've chosen a password, which they use for all future logins.
+  const setupLink = `${origin}/auth/callback?token_hash=${encodeURIComponent(data.properties.hashed_token)}&next=/update-password`;
+
+  // Ready-to-send message: one-time setup link + permanent login URL.
   return {
-    link: `${origin}/auth/callback?token_hash=${encodeURIComponent(data.properties.hashed_token)}&next=/update-password`,
+    message: [
+      "Welcome to your lead. client portal!",
+      "",
+      "1. Click this one-time link to create your password:",
+      setupLink,
+      "",
+      `2. After that, log in anytime at ${origin}/login using your email (${authUser.user.email}) and your new password.`,
+    ].join("\n"),
   };
 }
 
