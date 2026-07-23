@@ -89,6 +89,24 @@ export async function updateEmployee(profileId: string, input: {
   return { success: true };
 }
 
+export async function deleteEmployee(profileId: string) {
+  const { error, user, role } = await requireExec();
+  if (error || !user || !role) return { error: error ?? "Unauthorized" };
+  if (user.id === profileId) return { error: "You cannot delete your own account" };
+  const rankError = await requireOutranks(user.id, role, profileId);
+  if (rankError.error) return { error: rankError.error };
+  const admin = createAdminClient();
+
+  // Cascades auth.users → profiles → employees. Fails (FK restrict) if they
+  // still own projects/tasks/etc — surfaced to the caller rather than
+  // silently orphaning records.
+  const { error: delError } = await admin.auth.admin.deleteUser(profileId);
+  if (delError) return { error: delError.message };
+
+  revalidatePath("/admin/team");
+  return { success: true };
+}
+
 export async function addEmployee(input: {
   full_name: string;
   email: string;

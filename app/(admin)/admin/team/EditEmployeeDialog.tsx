@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Pencil, Loader2, Check } from "lucide-react";
+import { Pencil, Loader2, Check, Trash2 } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/rbac";
 import type { Department, EmployeeRole } from "@/lib/types";
-import { getEmployeeEmail, updateEmployee } from "./actions";
+import { getEmployeeEmail, updateEmployee, deleteEmployee } from "./actions";
 
 interface Props {
   profileId: string;
@@ -29,6 +29,7 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
   const [fetchingEmail, setFetchingEmail] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     full_name: initialData.full_name,
     email: "",
@@ -61,6 +62,17 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
     setLoading(false);
     router.refresh();
     setTimeout(() => { setOpen(false); setSaved(false); }, 1200);
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Delete ${form.full_name}? This permanently removes their account and access.`)) return;
+    setDeleting(true);
+    setError(null);
+    const result = await deleteEmployee(profileId);
+    if (result.error) { setError(result.error); setDeleting(false); return; }
+    setDeleting(false);
+    setOpen(false);
+    router.refresh();
   }
 
   const needsDept = ["manager", "employee"].includes(form.role);
@@ -126,10 +138,14 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
           {needsDept && (
             <div className="space-y-2">
               <Label>Department</Label>
-              <Select value={form.department_id} onValueChange={(v) => setForm((f) => ({ ...f, department_id: v }))}>
+              {/* Radix Select throws on empty-string item values, so "none" is a sentinel */}
+              <Select
+                value={form.department_id || "none"}
+                onValueChange={(v) => setForm((f) => ({ ...f, department_id: v === "none" ? "" : v }))}
+              >
                 <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {departments.map((d) => (
                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                   ))}
@@ -153,6 +169,16 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
               {saved ? "Saved!" : "Save changes"}
             </Button>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDelete}
+              disabled={deleting || loading}
+              title="Delete employee"
+              className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </Button>
           </div>
         </form>
       </DialogContent>
