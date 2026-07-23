@@ -10,6 +10,7 @@ import { Plus, Loader2, Copy, Check, UserPlus } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/rbac";
 import type { Department, EmployeeRole } from "@/lib/types";
 import { addEmployee } from "./actions";
+import DepartmentChecklist from "./DepartmentChecklist";
 
 interface Credentials { email: string; password: string; }
 
@@ -25,7 +26,7 @@ export default function AddEmployeeDialog({ departments }: { departments: Depart
     full_name: "",
     email: "",
     role: "employee" as EmployeeRole,
-    department_id: "",
+    department_ids: [] as string[],
     title: "",
   });
 
@@ -55,7 +56,7 @@ export default function AddEmployeeDialog({ departments }: { departments: Depart
   function reset() {
     setCreds(null);
     setCopiedField(null);
-    setForm({ full_name: "", email: "", role: "employee", department_id: "", title: "" });
+    setForm({ full_name: "", email: "", role: "employee", department_ids: [], title: "" });
   }
 
   return (
@@ -147,13 +148,12 @@ export default function AddEmployeeDialog({ departments }: { departments: Depart
               </div>
               {needsDept && (
                 <div className="space-y-2">
-                  <Label>Department *</Label>
-                  <Select value={form.department_id} onValueChange={(v) => setForm((f) => ({ ...f, department_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
-                    <SelectContent>
-                      {departments.map((d) => (<SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Departments *</Label>
+                  <DepartmentChecklist
+                    departments={departments}
+                    selected={form.department_ids}
+                    onChange={(ids) => setForm((f) => ({ ...f, department_ids: ids }))}
+                  />
                 </div>
               )}
               {error && (

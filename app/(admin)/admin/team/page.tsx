@@ -16,7 +16,7 @@ export default async function TeamPage() {
   const supabase = await createClient();
 
   const [{ data: employees }, { data: departments }] = await Promise.all([
-    supabase.from("employees").select("*, profiles(*), departments(name)").order("role"),
+    supabase.from("employees").select("*, profiles(*), employee_departments(department_id)").order("role"),
     supabase.from("departments").select("*").order("name"),
   ]);
 
@@ -24,13 +24,14 @@ export default async function TeamPage() {
   const byDept: Record<string, EmpArr> = {};
   const noDept: EmpArr = [];
 
+  // An employee appears in every department they belong to
   (employees ?? []).forEach((e) => {
-    if (e.department_id) {
-      byDept[e.department_id] = byDept[e.department_id] ?? [];
-      byDept[e.department_id]!.push(e);
-    } else {
-      noDept.push(e);
-    }
+    const deptIds = (e.employee_departments as { department_id: string }[]).map((d) => d.department_id);
+    if (!deptIds.length) noDept.push(e);
+    deptIds.forEach((id) => {
+      byDept[id] = byDept[id] ?? [];
+      byDept[id]!.push(e);
+    });
   });
 
   const roleVariants: Record<string, "default" | "secondary" | "warning" | "success"> = {
@@ -61,7 +62,7 @@ export default async function TeamPage() {
             initialData={{
               full_name: name,
               role: e.role as EmployeeRole,
-              department_id: e.department_id,
+              department_ids: (e.employee_departments as { department_id: string }[]).map((d) => d.department_id),
               title: e.title,
             }}
             departments={departments ?? []}

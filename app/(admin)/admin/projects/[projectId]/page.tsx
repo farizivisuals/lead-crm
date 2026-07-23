@@ -8,7 +8,7 @@ import ProjectStatusSelect from "./ProjectStatusSelect";
 import ProjectCreatives from "./ProjectCreatives";
 import MoodboardEditor from "./MoodboardEditor";
 import type { ProjectStatus } from "@/lib/types";
-import { requireEmployee } from "@/lib/auth/guards";
+import { requireEmployee, isCreativeEmployee } from "@/lib/auth/guards";
 import { isExecutive, PROJECT_STATUS_LABELS } from "@/lib/rbac";
 
 
@@ -18,9 +18,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const canManage = isExecutive(employee?.role ?? "employee");
   const supabase = await createClient();
 
-  const isCreative =
-    employee?.role === "employee" && employee?.departments?.slug === "creatives";
-  const canEditMoodboard = canManage || isCreative;
+  const canEditMoodboard = canManage || isCreativeEmployee(employee);
 
   const [{ data: project }, { data: taskRows }, { count: deliverableCount }, { data: creativeRows }, { data: allCreativeRows }] = await Promise.all([
     supabase
@@ -39,8 +37,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .eq("project_id", projectId),
     supabase
       .from("employees")
-      .select("profile_id, profiles(full_name), departments!inner(slug)")
-      .eq("departments.slug", "creatives"),
+      .select("profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))")
+      .eq("employee_departments.departments.slug", "creatives"),
   ]);
 
   if (!project) notFound();

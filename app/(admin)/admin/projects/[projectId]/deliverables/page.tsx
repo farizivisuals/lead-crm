@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/utils";
 import { DELIVERABLE_STATUS_LABELS, DELIVERABLE_TYPE_LABELS } from "@/lib/rbac";
 import NewDeliverableDialog from "./NewDeliverableDialog";
 import EditDeliverableDialog from "./EditDeliverableDialog";
-import { requireEmployee } from "@/lib/auth/guards";
+import { requireEmployee, isCreativeEmployee } from "@/lib/auth/guards";
 import { isExecutive } from "@/lib/rbac";
 
 const statusVariants: Record<string, "default" | "secondary" | "success" | "warning" | "destructive" | "purple"> = {
@@ -25,9 +25,7 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
   const supabase = await createClient();
 
   // Only executives and assigned creatives may review (edit / approve for client).
-  const isCreative =
-    employee?.role === "employee" && employee?.departments?.slug === "creatives";
-  const canReview = isExecutive(employee?.role ?? "employee") || isCreative;
+  const canReview = isExecutive(employee?.role ?? "employee") || isCreativeEmployee(employee);
 
   const [{ data: project }, { data: deliverables }, { data: tasks }] = await Promise.all([
     supabase

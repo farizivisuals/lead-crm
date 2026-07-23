@@ -21,8 +21,8 @@ export default async function ProjectsPage() {
     supabase.from("departments").select("*").order("name"),
     supabase
       .from("employees")
-      .select("profile_id, profiles(full_name), departments!inner(slug)")
-      .eq("departments.slug", "creatives"),
+      .select("profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))")
+      .eq("employee_departments.departments.slug", "creatives"),
     // Task progress for all visible projects — RLS already scopes tasks to the
     // same projects the list above returns, so no .in() filter needed.
     supabase.from("tasks").select("project_id, department_stages(is_terminal)"),

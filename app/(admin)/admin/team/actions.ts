@@ -57,7 +57,7 @@ export async function updateEmployee(profileId: string, input: {
   full_name: string;
   email: string;
   role: EmployeeRole;
-  department_id: string;
+  department_ids: string[];
   title: string;
 }) {
   const { error, user, role } = await requireExec();
@@ -80,13 +80,29 @@ export async function updateEmployee(profileId: string, input: {
 
   const { error: empError } = await admin.from("employees").update({
     role: input.role,
-    department_id: input.department_id || null,
     title: input.title || null,
   }).eq("profile_id", profileId);
   if (empError) return { error: empError.message };
 
+  const deptError = await syncDepartments(profileId, input.department_ids);
+  if (deptError) return { error: deptError };
+
   revalidatePath("/admin/team");
   return { success: true };
+}
+
+// ponytail: delete-then-insert sync; diffing is overkill for a handful of rows
+async function syncDepartments(profileId: string, departmentIds: string[]) {
+  const admin = createAdminClient();
+  const { error: delError } = await admin.from("employee_departments").delete().eq("profile_id", profileId);
+  if (delError) return delError.message;
+  if (departmentIds.length) {
+    const { error: insError } = await admin.from("employee_departments").insert(
+      departmentIds.map((department_id) => ({ profile_id: profileId, department_id }))
+    );
+    if (insError) return insError.message;
+  }
+  return null;
 }
 
 export async function deleteEmployee(profileId: string) {
@@ -111,7 +127,7 @@ export async function addEmployee(input: {
   full_name: string;
   email: string;
   role: EmployeeRole;
-  department_id: string;
+  department_ids: string[];
   title: string;
 }) {
   const { error, user, role } = await requireExec();
@@ -146,12 +162,17 @@ export async function addEmployee(input: {
   const { error: empError } = await admin.from("employees").insert({
     profile_id: newUserId,
     role: input.role,
-    department_id: input.department_id || null,
     title: input.title || null,
   });
   if (empError) {
     await admin.auth.admin.deleteUser(newUserId);
     return { error: empError.message };
+  }
+
+  const deptError = await syncDepartments(newUserId, input.department_ids);
+  if (deptError) {
+    await admin.auth.admin.deleteUser(newUserId);
+    return { error: deptError };
   }
 
   revalidatePath("/admin/team");

@@ -25,7 +25,6 @@ function isTaskOverdue(task: Task, stages: DepartmentStage[]): boolean {
 interface Employee {
   profile_id: string;
   profiles?: { full_name: string } | null;
-  department_id: string | null;
 }
 
 interface Props {

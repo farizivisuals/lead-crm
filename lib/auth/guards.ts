@@ -25,7 +25,7 @@ const getEmployeeProfile = cache(async (userId: string) => {
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*, employees(*, departments(name, slug))")
+    .select("*, employees(*, employee_departments(department_id, departments(slug)))")
     .eq("id", userId)
     .single();
   return profile;
@@ -41,9 +41,7 @@ export async function requireEmployee(minRole?: EmployeeRole) {
   // single object (one-to-one), not an array. Normalize for either shape.
   const employee = (Array.isArray(profile.employees)
     ? profile.employees[0]
-    : profile.employees) as
-    | (Employee & { departments?: { name: string; slug: string } | null })
-    | undefined;
+    : profile.employees) as Employee | undefined;
 
   if (minRole) {
     const hierarchy: EmployeeRole[] = ["employee", "manager", "cfo", "ceo", "root"];
@@ -58,6 +56,15 @@ export async function requireEmployee(minRole?: EmployeeRole) {
 // Executive tier (root/ceo/cfo/manager) — full admin access.
 export async function requireExecutive() {
   return requireEmployee("manager");
+}
+
+// Creative = role 'employee' with membership in the creatives department.
+// Mirrors is_creative() in Postgres (migration 0019).
+export function isCreativeEmployee(employee: Employee | undefined) {
+  return (
+    employee?.role === "employee" &&
+    (employee.employee_departments ?? []).some((d) => d.departments?.slug === "creatives")
+  );
 }
 
 const getClientProfile = cache(async (userId: string) => {

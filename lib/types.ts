@@ -41,10 +41,9 @@ export interface DepartmentStage {
 export interface Employee {
   profile_id: string;
   role: EmployeeRole;
-  department_id: string | null;
   title: string | null;
   profiles?: Profile;
-  departments?: Department;
+  employee_departments?: { department_id: string; departments?: { slug: string } | null }[];
 }
 
 export interface Client {

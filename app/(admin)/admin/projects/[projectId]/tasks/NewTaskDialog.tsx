@@ -15,7 +15,7 @@ interface Props {
   projectId: string;
   departments: { id: string; name: string; slug: string }[];
   stages: DepartmentStage[];
-  employees: { profile_id: string; profiles?: { full_name: string } | null; department_id: string | null }[];
+  employees: { profile_id: string; profiles?: { full_name: string } | null; department_ids: string[] }[];
   creatives: { profile_id: string; full_name: string }[];
 }
 
@@ -43,7 +43,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
   const isShootStage = firstStage?.name.toLowerCase() === "shoot";
 
   const deptEmployees = employees.filter(
-    (e) => !selectedDeptId || e.department_id === selectedDeptId
+    (e) => !selectedDeptId || e.department_ids.includes(selectedDeptId)
   );
 
   // Real-time availability check

@@ -28,7 +28,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ## Supabase setup
 
 1. Create a project at supabase.com
-2. Run all migrations in order via the SQL editor: `supabase/migrations/0001_*.sql` through `0017_*.sql`
+2. Run all migrations in order via the SQL editor: `supabase/migrations/0001_*.sql` through `0019_*.sql`
 3. Enable Realtime for the `notifications` table (Database → Replication → supabase_realtime)
 
 ## Bootstrap root user

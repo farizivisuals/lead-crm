@@ -10,13 +10,14 @@ import { Pencil, Loader2, Check, Trash2 } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/rbac";
 import type { Department, EmployeeRole } from "@/lib/types";
 import { getEmployeeEmail, updateEmployee, deleteEmployee } from "./actions";
+import DepartmentChecklist from "./DepartmentChecklist";
 
 interface Props {
   profileId: string;
   initialData: {
     full_name: string;
     role: EmployeeRole;
-    department_id: string | null;
+    department_ids: string[];
     title: string | null;
   };
   departments: Department[];
@@ -34,7 +35,7 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
     full_name: initialData.full_name,
     email: "",
     role: initialData.role,
-    department_id: initialData.department_id ?? "",
+    department_ids: initialData.department_ids,
     title: initialData.title ?? "",
   });
 
@@ -137,20 +138,12 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
 
           {needsDept && (
             <div className="space-y-2">
-              <Label>Department</Label>
-              {/* Radix Select throws on empty-string item values, so "none" is a sentinel */}
-              <Select
-                value={form.department_id || "none"}
-                onValueChange={(v) => setForm((f) => ({ ...f, department_id: v === "none" ? "" : v }))}
-              >
-                <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {departments.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Departments</Label>
+              <DepartmentChecklist
+                departments={departments}
+                selected={form.department_ids}
+                onChange={(ids) => setForm((f) => ({ ...f, department_ids: ids }))}
+              />
             </div>
           )}
 

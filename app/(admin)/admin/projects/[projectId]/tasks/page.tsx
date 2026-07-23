@@ -49,9 +49,15 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
       .order("position"),
     supabase
       .from("employees")
-      .select("profile_id, profiles(full_name), department_id")
-      .in("department_id", deptIds),
+      .select("profile_id, profiles(full_name), employee_departments!inner(department_id)")
+      .in("employee_departments.department_id", deptIds),
   ]);
+
+  const deptEmployees = (employees ?? []).map((e) => ({
+    profile_id: e.profile_id as string,
+    profiles: e.profiles as unknown as { full_name: string } | null,
+    department_ids: (e.employee_departments as unknown as { department_id: string }[]).map((d) => d.department_id),
+  }));
 
   const projectCreatives = (creativeRows ?? []).map((c) => ({
     profile_id: c.profile_id as string,
@@ -87,7 +93,7 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
             projectId={projectId}
             departments={depts.map((d) => d.departments)}
             stages={stages ?? []}
-            employees={(employees ?? []) as unknown as { profile_id: string; profiles?: { full_name: string } | null; department_id: string | null }[]}
+            employees={deptEmployees}
             creatives={projectCreatives}
           />
         )}
@@ -102,9 +108,7 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
               <StageBoard
                 stages={deptStages ?? []}
                 tasks={deptTasks}
-                employees={(employees ?? []).filter(
-                  (e) => (e as unknown as { department_id: string | null }).department_id === dept.id
-                ) as unknown as { profile_id: string; profiles?: { full_name: string } | null; department_id: string | null }[]}
+                employees={deptEmployees.filter((e) => e.department_ids.includes(dept.id))}
                 creatives={projectCreatives}
                 deptName={dept.name}
                 deptSlug={dept.slug}

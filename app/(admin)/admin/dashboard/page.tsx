@@ -25,9 +25,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     return <EmployeeDashboard userId={user.id} />;
   }
 
-  const myDeptId = (employee?.department_id ?? null) as string | null;
-  const myDeptName = employee?.departments?.name;
-  const filterDeptId = isExec ? (dept_id ?? null) : myDeptId;
+  const filterDeptId = dept_id ?? null;
 
   const [
     { data: departments },
@@ -137,12 +135,6 @@ export default async function DashboardPage({ searchParams }: Props) {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0 mt-1">
-          {!isExec && myDeptName && (
-            <div className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-white/[0.06] border border-white/[0.1]">
-              <Layers className="h-3.5 w-3.5 text-white/40" />
-              <span className="text-xs font-medium text-white/60">{myDeptName}</span>
-            </div>
-          )}
           {isExec && (
             <DeptFilter departments={departments ?? []} currentDeptId={dept_id} />
           )}
