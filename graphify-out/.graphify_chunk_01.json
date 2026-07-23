@@ -1,0 +1,507 @@
+{
+  "nodes": [
+    {
+      "id": "readme_lead_crm",
+      "label": "Lead CRM Platform",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_admin_area",
+      "label": "Admin Area (employees: projects, kanban, quotes, calendar)",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_client_portal",
+      "label": "Client Portal (deliverable review, revisions)",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_setup_steps",
+      "label": "Project Setup Steps",
+      "file_type": "document",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "agents_nextjs16_breaking_changes",
+      "label": "Next.js 16 Breaking Changes Warning",
+      "file_type": "rationale",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/AGENTS.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_lead_crm_platform",
+      "label": "Lead CRM – Marketing Agency Platform (Next.js 16 + Supabase)",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_dev_commands",
+      "label": "Dev Commands (direct node paths, Node 26 breaks .bin shims)",
+      "file_type": "document",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_environment_variables",
+      "label": "Environment Variables (.env.local)",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_supabase_migrations",
+      "label": "Supabase Migrations (0001–0019)",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_notifications_realtime",
+      "label": "Notifications Table with Supabase Realtime",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_root_user_bootstrap",
+      "label": "Root User Bootstrap (profiles + employees SQL)",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_auth_route_group",
+      "label": "(auth) Route Group (login, reset-password)",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_admin_route_group",
+      "label": "(admin) Route Group (employees; dark sidebar + notification bell)",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_portal_route_group",
+      "label": "(portal) Route Group (clients; minimal top nav)",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_proxy_middleware",
+      "label": "proxy.ts Cross-Area Redirects (Next.js 16 rename of middleware.ts)",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_postgres_rls_security",
+      "label": "Postgres RLS as Sole Security Layer",
+      "file_type": "rationale",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_server_actions_service_role",
+      "label": "Server Actions for Service-Role Mutations (provisioning)",
+      "file_type": "rationale",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_supabase_admin_client",
+      "label": "lib/supabase/admin.ts Server-Only Admin Client",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_configurable_stages",
+      "label": "Configurable Stages (/admin/settings/departments)",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_postgres_trigger_notifications",
+      "label": "Postgres Trigger-Fired Notifications (no app-level fanout)",
+      "file_type": "rationale",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "readme_lead_crm",
+      "target": "readme_admin_area",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_lead_crm",
+      "target": "readme_client_portal",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_lead_crm",
+      "target": "claude_lead_crm_platform",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_setup_steps",
+      "target": "claude_root_user_bootstrap",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_setup_steps",
+      "target": "claude_supabase_migrations",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_setup_steps",
+      "target": "claude_notifications_realtime",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_setup_steps",
+      "target": "claude_environment_variables",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_lead_crm_platform",
+      "target": "agents_nextjs16_breaking_changes",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "agents_nextjs16_breaking_changes",
+      "target": "claude_proxy_middleware",
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/AGENTS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "agents_nextjs16_breaking_changes",
+      "target": "claude_dev_commands",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/AGENTS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_lead_crm_platform",
+      "target": "claude_auth_route_group",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_lead_crm_platform",
+      "target": "claude_admin_route_group",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_lead_crm_platform",
+      "target": "claude_portal_route_group",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_proxy_middleware",
+      "target": "claude_admin_route_group",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_proxy_middleware",
+      "target": "claude_portal_route_group",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_postgres_rls_security",
+      "target": "claude_proxy_middleware",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_server_actions_service_role",
+      "target": "claude_supabase_admin_client",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_environment_variables",
+      "target": "claude_supabase_admin_client",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_postgres_trigger_notifications",
+      "target": "claude_notifications_realtime",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_notifications_realtime",
+      "target": "claude_admin_route_group",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_root_user_bootstrap",
+      "target": "claude_supabase_migrations",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_configurable_stages",
+      "target": "claude_admin_route_group",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_admin_area",
+      "target": "claude_admin_route_group",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_client_portal",
+      "target": "claude_portal_route_group",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_setup_steps",
+      "target": "readme_lead_crm",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/README.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "route_group_architecture",
+      "label": "Route Group Architecture with proxy.ts Enforcement",
+      "nodes": ["claude_auth_route_group", "claude_admin_route_group", "claude_portal_route_group", "claude_proxy_middleware"],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md"
+    },
+    {
+      "id": "notification_pipeline",
+      "label": "Notification Pipeline (Postgres triggers → notifications table → Realtime → admin bell)",
+      "nodes": ["claude_postgres_trigger_notifications", "claude_notifications_realtime", "claude_admin_route_group"],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md"
+    },
+    {
+      "id": "supabase_provisioning_flow",
+      "label": "Supabase Setup and Provisioning Flow",
+      "nodes": ["claude_environment_variables", "claude_supabase_migrations", "claude_root_user_bootstrap", "claude_supabase_admin_client"],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/CLAUDE.md"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}
