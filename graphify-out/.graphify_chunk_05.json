@@ -1,0 +1,93 @@
+{
+  "nodes": [
+    {
+      "id": "public_logo_brand_mark",
+      "label": "Lead CRM Logo (\"lead.\" Wordmark)",
+      "file_type": "image",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/public/logo.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_logo_wordmark_style",
+      "label": "Bold Lowercase Sans-Serif Wordmark Style",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/public/logo.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_logo_square_period_motif",
+      "label": "Square Period Motif",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/public/logo.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_logo_lead_crm_brand",
+      "label": "Lead CRM Brand Identity",
+      "file_type": "concept",
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/public/logo.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "public_logo_brand_mark",
+      "target": "public_logo_wordmark_style",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/public/logo.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_logo_brand_mark",
+      "target": "public_logo_square_period_motif",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/public/logo.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_logo_brand_mark",
+      "target": "public_logo_lead_crm_brand",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/public/logo.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_logo_square_period_motif",
+      "target": "public_logo_lead_crm_brand",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "/Users/farizi/Desktop/💻 Code Projects/Lead CRM/public/logo.png",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "input_tokens": 0,
+  "output_tokens": 0
+}
