@@ -48,7 +48,8 @@
       "Bash(find app *)",
       "Bash(grep -rn \"\\\\.channel\\(\\\\|supabase_realtime\\\\|\\\\.subscribe\\(\\\\|removeChannel\\\\|postgres_changes\" app components lib)",
       "Bash(grep -rn \"signInWith\\\\|signUp\\\\|resetPasswordForEmail\\\\|magiclink\\\\|magicLink\\\\|exchangeCodeForSession\\\\|signInWithOtp\\\\|signInWithOAuth\" app components lib)",
-      "Bash(perl -pi -e 's/import \\\\{ requireEmployee \\\\} from \"\\\\@\\\\/lib\\\\/auth\\\\/guards\";/import { requireEmployee, isCreativeEmployee } from \"\\\\@\\\\/lib\\\\/auth\\\\/guards\";/' \"app/\\(admin\\)/admin/projects/[projectId]/deliverables/page.tsx\" \"app/\\(admin\\)/admin/projects/[projectId]/page.tsx\")"
+      "Bash(perl -pi -e 's/import \\\\{ requireEmployee \\\\} from \"\\\\@\\\\/lib\\\\/auth\\\\/guards\";/import { requireEmployee, isCreativeEmployee } from \"\\\\@\\\\/lib\\\\/auth\\\\/guards\";/' \"app/\\(admin\\)/admin/projects/[projectId]/deliverables/page.tsx\" \"app/\\(admin\\)/admin/projects/[projectId]/page.tsx\")",
+      "Bash(graphify export *)"
     ]
   },
   "enableAllProjectMcpServers": true,
