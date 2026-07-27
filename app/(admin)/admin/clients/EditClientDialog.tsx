@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Pencil, Loader2, Check } from "lucide-react";
-import { getClientContactEmail, updateClient } from "./new/actions";
+import { Pencil, Loader2, Check, Trash2 } from "lucide-react";
+import { getClientContactEmail, updateClient, deleteClient } from "./new/actions";
 
 interface Props {
   clientId: string;
@@ -26,6 +26,7 @@ export default function EditClientDialog({ clientId, initialData }: Props) {
   const [fetchingEmail, setFetchingEmail] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [emailFetched, setEmailFetched] = useState(false);
   const [form, setForm] = useState({
     company_name: initialData.company_name,
@@ -67,6 +68,17 @@ export default function EditClientDialog({ clientId, initialData }: Props) {
     setLoading(false);
     router.refresh();
     closeTimeoutRef.current = setTimeout(() => { setOpen(false); setSaved(false); }, 1200);
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Delete ${form.company_name}? This permanently removes the client, their projects, quotes and portal access.`)) return;
+    setDeleting(true);
+    setError(null);
+    const result = await deleteClient(clientId);
+    if (result.error) { setError(result.error); setDeleting(false); return; }
+    setDeleting(false);
+    setOpen(false);
+    router.refresh();
   }
 
   return (
@@ -145,7 +157,7 @@ export default function EditClientDialog({ clientId, initialData }: Props) {
           <div className="flex gap-2">
             <Button
               type="submit"
-              disabled={loading || fetchingEmail || !form.company_name || !form.contact_name || !form.contact_email}
+              disabled={loading || deleting || fetchingEmail || !form.company_name || !form.contact_name || !form.contact_email}
               className="flex-1"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -153,6 +165,16 @@ export default function EditClientDialog({ clientId, initialData }: Props) {
               {saved ? "Saved!" : "Save changes"}
             </Button>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDelete}
+              disabled={deleting || loading}
+              title="Delete client"
+              className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </Button>
           </div>
         </form>
       </DialogContent>

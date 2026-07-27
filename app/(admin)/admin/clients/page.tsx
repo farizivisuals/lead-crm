@@ -7,7 +7,6 @@ import CredentialsPopover from "@/components/ui/InviteLinkPopover";
 import LoginLinkButton from "@/components/ui/LoginLinkButton";
 import { resetClientPassword, getClientLoginLink } from "./new/actions";
 import EditClientDialog from "./EditClientDialog";
-import { requireEmployee } from "@/lib/auth/guards";
 
 interface Props {
   searchParams: Promise<{ dept_id?: string }>;
@@ -15,11 +14,9 @@ interface Props {
 
 export default async function ClientsPage({ searchParams }: Props) {
   const { dept_id } = await searchParams;
-  const [{ employee }, supabase] = await Promise.all([requireEmployee(), createClient()]);
-
   // The clients layout already gates this whole subtree behind
   // requireExecutive(), so every viewer here is an executive.
-  const isRoot = employee?.role === "root";
+  const supabase = await createClient();
 
   const departmentsQuery = supabase.from("departments").select("id, name").order("name");
 
@@ -138,17 +135,15 @@ export default async function ClientsPage({ searchParams }: Props) {
 
               {/* Footer actions */}
               <div className="px-5 pb-4 flex items-center justify-end gap-2 pt-1 border-t border-white/[0.05]">
-                {isRoot && (
-                  <EditClientDialog
-                    clientId={client.id}
-                    initialData={{
-                      company_name: client.company_name,
-                      phone: client.phone,
-                      notes: client.notes,
-                      contact_name: (client.profiles as { full_name: string })?.full_name ?? "",
-                    }}
-                  />
-                )}
+                <EditClientDialog
+                  clientId={client.id}
+                  initialData={{
+                    company_name: client.company_name,
+                    phone: client.phone,
+                    notes: client.notes,
+                    contact_name: (client.profiles as { full_name: string })?.full_name ?? "",
+                  }}
+                />
                 <LoginLinkButton getLink={getClientLoginLink.bind(null, client.id)} />
                 <CredentialsPopover
                   getCredentials={resetClientPassword.bind(null, client.id)}

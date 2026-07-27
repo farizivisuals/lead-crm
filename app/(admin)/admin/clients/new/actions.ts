@@ -5,6 +5,20 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generatePassword } from "@/lib/utils";
 
+const EXECUTIVE_ROLES = ["root", "ceo", "cfo", "manager"];
+
+// Client management is executive-tier — same gate as the /admin/clients layout.
+async function requireExec() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" as const, user: null };
+  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
+  if (!emp || !EXECUTIVE_ROLES.includes(emp.role)) {
+    return { error: "Insufficient permissions" as const, user: null };
+  }
+  return { error: null, user };
+}
+
 interface CreateClientInput {
   company_name: string;
   contact_name: string;
@@ -14,20 +28,10 @@ interface CreateClientInput {
 }
 
 export async function createClientWithPortal(input: CreateClientInput) {
-  const supabase = await createClient();
   const admin = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const { data: emp } = await supabase
-    .from("employees")
-    .select("role")
-    .eq("profile_id", user.id)
-    .single();
-
-  const allowed = ["root", "ceo", "cfo", "manager"];
-  if (!emp || !allowed.includes(emp.role)) return { error: "Insufficient permissions" };
+  const { error: authGuardError, user } = await requireExec();
+  if (authGuardError || !user) return { error: authGuardError ?? "Unauthorized" };
 
   const password = generatePassword();
 
@@ -85,10 +89,8 @@ export async function createClientWithPortal(input: CreateClientInput) {
 export async function getClientContactEmail(clientId: string) {
   const supabase = await createClient();
   const admin = createAdminClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
-  if (emp?.role !== "root") return { error: "Only root can view contact details" };
+  const { error: guardError } = await requireExec();
+  if (guardError) return { error: guardError };
   const { data: client } = await supabase.from("clients").select("primary_contact_profile_id").eq("id", clientId).single();
   if (!client) return { error: "Client not found" };
   const { data: authUser, error: authError } = await admin.auth.admin.getUserById(client.primary_contact_profile_id);
@@ -100,12 +102,8 @@ export async function getClientLoginLink(clientId: string) {
   const supabase = await createClient();
   const admin = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
-  const allowed = ["root", "ceo", "cfo", "manager"];
-  if (!emp || !allowed.includes(emp.role)) return { error: "Insufficient permissions" };
+  const { error: guardError } = await requireExec();
+  if (guardError) return { error: guardError };
 
   const { data: client } = await supabase
     .from("clients")
@@ -159,10 +157,8 @@ export async function updateClient(clientId: string, input: {
 }) {
   const supabase = await createClient();
   const admin = createAdminClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
-  if (emp?.role !== "root") return { error: "Only root can edit clients" };
+  const { error: guardError } = await requireExec();
+  if (guardError) return { error: guardError };
 
   const { data: client } = await supabase.from("clients").select("primary_contact_profile_id").eq("id", clientId).single();
   if (!client) return { error: "Client not found" };
@@ -188,16 +184,49 @@ export async function updateClient(clientId: string, input: {
   return { success: true };
 }
 
+export async function deleteClient(clientId: string) {
+  const supabase = await createClient();
+  const admin = createAdminClient();
+  const { error: guardError } = await requireExec();
+  if (guardError) return { error: guardError };
+
+  const { data: client } = await supabase
+    .from("clients")
+    .select("primary_contact_profile_id")
+    .eq("id", clientId)
+    .single();
+  if (!client) return { error: "Client not found" };
+
+  const { data: contacts } = await admin
+    .from("client_contacts")
+    .select("profile_id")
+    .eq("client_id", clientId);
+
+  // Client row first: it cascades projects/quotes/contacts (and everything
+  // hanging off them). The portal users have to go after — clients and
+  // revisions reference profiles without ON DELETE, so removing the auth
+  // users first would be blocked by those FKs.
+  const { error: delError } = await admin.from("clients").delete().eq("id", clientId);
+  if (delError) return { error: delError.message };
+
+  const profileIds = new Set([
+    client.primary_contact_profile_id as string,
+    ...(contacts ?? []).map((c) => c.profile_id as string),
+  ]);
+  for (const profileId of profileIds) {
+    await admin.auth.admin.deleteUser(profileId);
+  }
+
+  revalidatePath("/admin/clients");
+  return { success: true };
+}
+
 export async function resetClientPassword(clientId: string) {
   const supabase = await createClient();
   const admin = createAdminClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const { data: emp } = await supabase.from("employees").select("role").eq("profile_id", user.id).single();
-  const allowed = ["root", "ceo", "cfo", "manager"];
-  if (!emp || !allowed.includes(emp.role)) return { error: "Insufficient permissions" };
+  const { error: guardError } = await requireExec();
+  if (guardError) return { error: guardError };
 
   const { data: client } = await supabase
     .from("clients")
