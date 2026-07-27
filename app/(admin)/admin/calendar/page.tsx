@@ -29,12 +29,8 @@ export default async function CalendarPage({ searchParams }: Props) {
     tasksQuery = tasksQuery.eq("assigned_to", user.id);
   }
 
-  const [{ data: tasks }, { data: projects }, { data: employees }] = await Promise.all([
+  const [{ data: tasks }, { data: employees }] = await Promise.all([
     tasksQuery,
-    supabase
-      .from("projects")
-      .select("id, name, start_date, target_end_date, client_id")
-      .or("start_date.not.is.null,target_end_date.not.is.null"),
     // Executives can filter by a specific employee; everyone else only mine/all.
     isExec
       ? supabase.from("employees").select("profile_id, profiles(full_name)").order("role")
@@ -66,21 +62,6 @@ export default async function CalendarPage({ searchParams }: Props) {
 
   const undatedTasks = (tasks ?? []).filter((t) => !t.start_date && !t.due_date);
 
-  const projectEvents: CalendarEvent[] = (projects ?? [])
-    .map((p) => ({
-      id: p.id,
-      entity_id: p.id,
-      entity_type: "project" as const,
-      title: `${p.name}`,
-      start: p.start_date ?? p.target_end_date ?? "",
-      end: p.target_end_date ?? null,
-      color: "#10b981",
-      department_id: null,
-      client_id: p.client_id,
-      project_id: p.id,
-    }))
-    .filter((e) => e.start);
-
   const PRIORITY_COLOR: Record<string, string> = {
     low: "bg-white/20",
     medium: "bg-blue-400",
@@ -92,7 +73,6 @@ export default async function CalendarPage({ searchParams }: Props) {
     { color: "#71717a", label: "Video tasks" },
     { color: "#ec4899", label: "Photo tasks" },
     { color: "#f59e0b", label: "PR tasks" },
-    { color: "#10b981", label: "Projects" },
   ];
 
   return (
@@ -113,10 +93,10 @@ export default async function CalendarPage({ searchParams }: Props) {
           </h1>
           <p className="text-white/40 text-sm mt-1">
             {emp
-              ? "Tasks assigned to this employee, plus all project milestones."
+              ? "Tasks assigned to this employee."
               : isMine
-              ? "Tasks assigned to you, plus all project milestones."
-              : "All tasks, projects, and deadlines across every client."}
+              ? "Tasks assigned to you."
+              : "All tasks and deadlines across every client."}
           </p>
         </div>
 
@@ -143,7 +123,7 @@ export default async function CalendarPage({ searchParams }: Props) {
       </div>
 
       {/* Calendar */}
-      <CompanyCalendar events={[...datedEvents, ...projectEvents]} />
+      <CompanyCalendar events={datedEvents} />
 
       {/* Unscheduled tasks */}
       {undatedTasks.length > 0 && (
