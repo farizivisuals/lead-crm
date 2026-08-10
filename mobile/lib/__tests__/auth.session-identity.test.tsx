@@ -14,7 +14,7 @@ import { AuthProvider, useAuth } from '../auth';
 type AuthChangeCb = (event: string, session: any) => void;
 let authChangeCb: AuthChangeCb = () => {};
 
-const singleMock = jest.fn(() =>
+const mockSingle = jest.fn(() =>
   Promise.resolve({
     data: { id: 'user-1', full_name: 'User 1', user_type: 'employee', employees: { role: 'root' } },
   })
@@ -32,7 +32,7 @@ jest.mock('../supabase', () => ({
     },
     from: jest.fn(() => ({
       select: jest.fn(() => ({
-        eq: jest.fn(() => ({ single: singleMock })),
+        eq: jest.fn(() => ({ single: mockSingle })),
       })),
     })),
   },
@@ -74,7 +74,7 @@ test('TOKEN_REFRESHED with the same user does not re-run the profile load', asyn
   });
   await flush();
 
-  const callsAfterSignIn = singleMock.mock.calls.length;
+  const callsAfterSignIn = mockSingle.mock.calls.length;
   const loadingTrueCountAfterSignIn = loadingLog.filter(Boolean).length;
 
   for (let i = 0; i < 3; i++) {
@@ -84,6 +84,6 @@ test('TOKEN_REFRESHED with the same user does not re-run the profile load', asyn
     await flush();
   }
 
-  expect(singleMock.mock.calls.length).toBe(callsAfterSignIn); // no extra profile fetch
+  expect(mockSingle.mock.calls.length).toBe(callsAfterSignIn); // no extra profile fetch
   expect(loadingLog.filter(Boolean).length).toBe(loadingTrueCountAfterSignIn); // no extra loading flip
 });
