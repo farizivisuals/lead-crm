@@ -26,7 +26,11 @@ function SessionGate() {
     });
 
     const group = segments[0];
-    const inAuth = group === '(auth)' || group === undefined;
+    // An unmatched route (segments === [], group undefined) is NOT the auth group — do
+    // not fold it in here. Once (client)/index.tsx exists (Task 7) it resolves bare `/`,
+    // so treating "no match" as "already safe" would paint a frame of the wrong user
+    // type's shell (or a screen that assumes a client-shaped profile) before redirecting.
+    const inAuth = group === '(auth)';
 
     if (target === '/login') {
       if (!inAuth) {

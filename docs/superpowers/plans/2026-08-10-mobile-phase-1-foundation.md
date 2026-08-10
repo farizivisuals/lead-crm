@@ -650,7 +650,13 @@ function SessionGate() {
     });
 
     const group = segments[0];
-    const inAuth = group === '(auth)' || group === undefined;
+    // Do NOT fold `group === undefined` in here. An unmatched route is not the
+    // same as "already in the auth group": on cold boot to a bare `/`, segments
+    // is empty, and treating that as in-auth suppresses the redirect — the user
+    // gets a 404 today, and once (client)/index.tsx resolves `/`, a logged-out
+    // user or an employee renders a frame of the CLIENT portal before being
+    // bounced. Leaking another user type's shell is worse than either.
+    const inAuth = group === '(auth)';
 
     if (target === '/login') {
       if (!inAuth) router.replace('/login');
