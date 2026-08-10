@@ -1103,6 +1103,19 @@ git commit -m "feat(mobile): add password reset and update screens"
 
 ---
 
+> **Design amendment (added during execution).** Task 7 must also convert
+> `SessionGate` from the imperative `router.replace()`-in-`useEffect` redirect
+> shown in Task 4 to Expo Router's declarative `Stack.Protected` guards.
+> Reason: `(client)/index.tsx` maps to `/`, so on cold boot a logged-out user
+> or an employee resolves to it, mounts it, and paints a frame of the CLIENT
+> portal before the effect redirects them — one user type seeing another's
+> shell, and a crash risk if that screen assumes a client-shaped profile.
+> `useEffect` runs after commit, so no logic inside it can prevent the paint.
+> `Stack.Protected` excludes guarded screens during state resolution, so the
+> wrong screen never mounts. This also retires both remaining
+> `@ts-expect-error` directives in `mobile/app/_layout.tsx`.
+> `app/+not-found.tsx` stays — it still catches genuinely bogus deep links.
+
 ### Task 7: Employee and client tab shells
 
 Placeholder screens only — each tab renders its title. Real screens land in Phases 2–4. This task's deliverable is that both shells mount and gate correctly by role.
