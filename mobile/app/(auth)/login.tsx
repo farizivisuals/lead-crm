@@ -74,7 +74,6 @@ export default function LoginScreen() {
 
               <Button title="Sign in" onPress={handleLogin} loading={loading} />
 
-              {/* @ts-expect-error — route literal not in the generated Href union until Task 6 adds (auth)/forgot-password */}
               <Link href="/forgot-password" asChild>
                 <Pressable style={styles.forgot}>
                   <Text style={styles.forgotText}>Forgot your password?</Text>
