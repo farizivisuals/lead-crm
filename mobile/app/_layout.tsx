@@ -30,13 +30,13 @@ function SessionGate() {
 
     if (target === '/login') {
       if (!inAuth) {
-        // @ts-expect-error — route literal not in the generated Href union until Task 5 adds (auth)/login
         router.replace('/login');
       }
       return;
     }
     // Only redirect on a group mismatch, so in-group navigation isn't stomped.
     const wantedGroup = target === '/(client)' ? '(client)' : '(employee)';
+    // @ts-expect-error — (employee)/(client) aren't valid segments in the generated union until Task 7 adds those routes
     if (group !== wantedGroup) {
       // @ts-expect-error — route literal not in the generated Href union until Task 7 adds (employee)/dashboard and (client)
       router.replace(target);
