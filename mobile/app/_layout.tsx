@@ -1,6 +1,5 @@
-import { useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -14,39 +13,9 @@ const queryClient = new QueryClient({
 
 function SessionGate() {
   const { session, profile, loading } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
 
-  useEffect(() => {
-    if (loading) return;
-
-    const target = resolveRoute({
-      hasSession: !!session,
-      userType: profile?.user_type ?? null,
-    });
-
-    const group = segments[0];
-    // An unmatched route (segments === [], group undefined) is NOT the auth group — do
-    // not fold it in here. Once (client)/index.tsx exists (Task 7) it resolves bare `/`,
-    // so treating "no match" as "already safe" would paint a frame of the wrong user
-    // type's shell (or a screen that assumes a client-shaped profile) before redirecting.
-    const inAuth = group === '(auth)';
-
-    if (target === '/login') {
-      if (!inAuth) {
-        router.replace('/login');
-      }
-      return;
-    }
-    // Only redirect on a group mismatch, so in-group navigation isn't stomped.
-    const wantedGroup = target === '/(client)' ? '(client)' : '(employee)';
-    // @ts-expect-error — (employee)/(client) aren't valid segments in the generated union until Task 7 adds those routes
-    if (group !== wantedGroup) {
-      // @ts-expect-error — route literal not in the generated Href union until Task 7 adds (employee)/dashboard and (client)
-      router.replace(target);
-    }
-  }, [loading, session, profile, segments, router]);
-
+  // `target` can't be computed until useAuth() resolves — keep the loading
+  // early-return so we never render Stack.Protected guards with a stale target.
   if (loading) {
     return (
       <View style={styles.loading}>
@@ -55,11 +24,26 @@ function SessionGate() {
     );
   }
 
+  const target = resolveRoute({
+    hasSession: !!session,
+    userType: profile?.user_type ?? null,
+  });
+
+  // Declarative guards: the screen for a false guard is excluded during state
+  // resolution, so the wrong shell never mounts, not even for one frame. This
+  // replaces the old useEffect + router.replace redirect, which ran after
+  // commit and could paint a frame of the wrong user type's shell first.
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.background } }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(employee)" />
-      <Stack.Screen name="(client)" />
+      <Stack.Protected guard={target === '/login'}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+      <Stack.Protected guard={target === '/(employee)/dashboard'}>
+        <Stack.Screen name="(employee)" />
+      </Stack.Protected>
+      <Stack.Protected guard={target === '/(client)'}>
+        <Stack.Screen name="(client)" />
+      </Stack.Protected>
     </Stack>
   );
 }
