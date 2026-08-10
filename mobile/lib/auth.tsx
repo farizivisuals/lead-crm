@@ -32,9 +32,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    // Key this effect off the user id, not the whole `session` object. Supabase fires
+    // `TOKEN_REFRESHED` with a NEW session object for the same user roughly hourly and
+    // on app-foreground; re-running the profile fetch on every refresh would flip
+    // `loading` and tear down the root navigator (SessionGate unmounts <Stack> while
+    // loading). Only an actual identity change should trigger a reload.
+    const userId = session?.user?.id;
 
     async function load() {
-      if (!session?.user) {
+      if (!userId) {
         setProfile(null);
         setEmployee(null);
         setLoading(false);
@@ -43,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data } = await supabase
         .from('profiles')
         .select('id, full_name, user_type, employees(role)')
-        .eq('id', session.user.id)
+        .eq('id', userId)
         .single();
 
       if (cancelled) return;
@@ -66,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [session?.user?.id]);
 
   async function signOut() {
     await supabase.auth.signOut();

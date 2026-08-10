@@ -29,15 +29,18 @@ function SessionGate() {
     const inAuth = group === '(auth)' || group === undefined;
 
     if (target === '/login') {
-      // Cast: typed routes only knows about files that exist. (auth)/login lands in
-      // Task 5, so the literal isn't in the generated Href union until then.
-      if (!inAuth) router.replace('/login' as any);
+      if (!inAuth) {
+        // @ts-expect-error — route literal not in the generated Href union until Task 5 adds (auth)/login
+        router.replace('/login');
+      }
       return;
     }
     // Only redirect on a group mismatch, so in-group navigation isn't stomped.
     const wantedGroup = target === '/(client)' ? '(client)' : '(employee)';
-    // Cast: same reason — (employee)/dashboard and (client) land in Task 7.
-    if (group !== wantedGroup) router.replace(target as any);
+    if (group !== wantedGroup) {
+      // @ts-expect-error — route literal not in the generated Href union until Task 7 adds (employee)/dashboard and (client)
+      router.replace(target);
+    }
   }, [loading, session, profile, segments, router]);
 
   if (loading) {
