@@ -584,7 +584,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+    // Keyed on the user id, NOT the whole session object. Supabase fires
+    // TOKEN_REFRESHED with a fresh session object roughly hourly and on
+    // app-foreground for the same user; keying on `session` would re-run this
+    // effect, flip `loading`, and remount the root navigator in SessionGate —
+    // wiping the user's tab, pushed screens and form input mid-session.
+  }, [session?.user?.id]);
 
   async function signOut() {
     await supabase.auth.signOut();
