@@ -20,7 +20,10 @@ export default async function ActivityPage({ params }: { params: Promise<{ proje
 
   const { data: history } = await supabase
     .from("task_stage_history")
-    .select("*, tasks(title), from_stage:from_stage_id(name), to_stage:to_stage_id(name), profiles:moved_by(full_name)")
+    // `tasks!inner` is load-bearing: without it the .eq below does not restrict
+    // the parent rows, it only nulls the embed, so this page listed every
+    // project's stage changes and foreign rows rendered as "moved undefined".
+    .select("*, tasks!inner(title), from_stage:from_stage_id(name), to_stage:to_stage_id(name), profiles:moved_by(full_name)")
     .eq("tasks.project_id", projectId)
     .order("moved_at", { ascending: false })
     .limit(50);

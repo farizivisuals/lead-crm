@@ -61,10 +61,13 @@ export default async function DashboardPage({ searchParams }: Props) {
           .select("*, department_stages!current_stage_id!inner(is_terminal)", { count: "exact", head: true })
           .eq("department_stages.is_terminal", false),
 
+    // activity_log has no writer anywhere in the schema, so this panel was
+    // always empty. task_stage_history is written by log_task_stage_change()
+    // on every real stage change, and RLS scopes it to visible projects.
     supabase
-      .from("activity_log")
-      .select("*, profiles(full_name)")
-      .order("created_at", { ascending: false })
+      .from("task_stage_history")
+      .select("*, tasks!inner(title), from_stage:from_stage_id(name), to_stage:to_stage_id(name), profiles:moved_by(full_name)")
+      .order("moved_at", { ascending: false })
       .limit(8),
 
     filterDeptId && isExec
@@ -249,9 +252,17 @@ export default async function DashboardPage({ searchParams }: Props) {
                         <span className="font-semibold text-white/80">
                           {(log.profiles as { full_name: string })?.full_name}
                         </span>{" "}
-                        {log.action}
+                        moved{" "}
+                        <span className="font-semibold text-white/80">
+                          {(log.tasks as { title: string })?.title}
+                        </span>
+                        {log.from_stage && (
+                          <> from {(log.from_stage as { name: string })?.name}</>
+                        )}
+                        {" → "}
+                        {(log.to_stage as { name: string })?.name}
                       </p>
-                      <p className="text-[10px] text-white/25 mt-0.5">{formatRelative(log.created_at)}</p>
+                      <p className="text-[10px] text-white/25 mt-0.5">{formatRelative(log.moved_at)}</p>
                     </div>
                   </div>
                 </li>

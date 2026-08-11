@@ -584,7 +584,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+    // Keyed on the user id, NOT the whole session object. Supabase fires
+    // TOKEN_REFRESHED with a fresh session object roughly hourly and on
+    // app-foreground for the same user; keying on `session` would re-run this
+    // effect, flip `loading`, and remount the root navigator in SessionGate —
+    // wiping the user's tab, pushed screens and form input mid-session.
+  }, [session?.user?.id]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -645,7 +650,13 @@ function SessionGate() {
     });
 
     const group = segments[0];
-    const inAuth = group === '(auth)' || group === undefined;
+    // Do NOT fold `group === undefined` in here. An unmatched route is not the
+    // same as "already in the auth group": on cold boot to a bare `/`, segments
+    // is empty, and treating that as in-auth suppresses the redirect — the user
+    // gets a 404 today, and once (client)/index.tsx resolves `/`, a logged-out
+    // user or an employee renders a frame of the CLIENT portal before being
+    // bounced. Leaking another user type's shell is worse than either.
+    const inAuth = group === '(auth)';
 
     if (target === '/login') {
       if (!inAuth) router.replace('/login');
@@ -1091,6 +1102,19 @@ git commit -m "feat(mobile): add password reset and update screens"
 ```
 
 ---
+
+> **Design amendment (added during execution).** Task 7 must also convert
+> `SessionGate` from the imperative `router.replace()`-in-`useEffect` redirect
+> shown in Task 4 to Expo Router's declarative `Stack.Protected` guards.
+> Reason: `(client)/index.tsx` maps to `/`, so on cold boot a logged-out user
+> or an employee resolves to it, mounts it, and paints a frame of the CLIENT
+> portal before the effect redirects them — one user type seeing another's
+> shell, and a crash risk if that screen assumes a client-shaped profile.
+> `useEffect` runs after commit, so no logic inside it can prevent the paint.
+> `Stack.Protected` excludes guarded screens during state resolution, so the
+> wrong screen never mounts. This also retires both remaining
+> `@ts-expect-error` directives in `mobile/app/_layout.tsx`.
+> `app/+not-found.tsx` stays — it still catches genuinely bogus deep links.
 
 ### Task 7: Employee and client tab shells
 
