@@ -130,6 +130,14 @@ export default function ProjectDetailScreen() {
     router.push({ pathname: '/projects/[projectId]/tasks', params: { projectId } });
   }
 
+  function openDeliverables() {
+    router.push({ pathname: '/projects/[projectId]/deliverables', params: { projectId } });
+  }
+
+  function openActivity() {
+    router.push({ pathname: '/projects/[projectId]/activity', params: { projectId } });
+  }
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -253,14 +261,18 @@ export default function ProjectDetailScreen() {
           </GlassCard>
         </Pressable>
 
-        <GlassCard>
-          <Text style={styles.tileTitleSoon}>Deliverables · Soon</Text>
-          <Text style={styles.muted}>{deliverableCount} total</Text>
-        </GlassCard>
+        <Pressable onPress={openDeliverables}>
+          <GlassCard>
+            <Text style={styles.tileTitle}>Deliverables</Text>
+            <Text style={styles.muted}>{deliverableCount} total</Text>
+          </GlassCard>
+        </Pressable>
 
-        <GlassCard>
-          <Text style={styles.tileTitleSoon}>Activity · Soon</Text>
-        </GlassCard>
+        <Pressable onPress={openActivity}>
+          <GlassCard>
+            <Text style={styles.tileTitle}>Activity</Text>
+          </GlassCard>
+        </Pressable>
       </ScrollView>
 
       <PickerSheet
@@ -326,12 +338,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tileTitle: { color: '#fff', fontSize: 16, fontWeight: '600', marginBottom: 4 },
-  tileTitleSoon: {
-    color: theme.colors.mutedForeground,
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
   muted: { color: theme.text.dim, fontSize: 13 },
   error: { color: '#f87171', fontSize: 13, textAlign: 'center' },
 });
