@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Screen } from '../../components/ui/Screen';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
@@ -7,6 +8,7 @@ import { isExecutive, ROLE_LABELS } from '@shared/rbac';
 import { theme } from '../../lib/theme';
 
 export default function More() {
+  const router = useRouter();
   const { profile, employee, signOut } = useAuth();
   const role = employee?.role ?? 'employee';
   const exec = isExecutive(role);
@@ -22,7 +24,11 @@ export default function More() {
         </GlassCard>
 
         <GlassCard>
-          {exec && <Text style={styles.row}>Clients · Soon</Text>}
+          {exec && (
+            <Pressable onPress={() => router.push('/clients')}>
+              <Text style={styles.rowLive}>Clients</Text>
+            </Pressable>
+          )}
           {exec && <Text style={styles.row}>Team · Soon</Text>}
           {exec && <Text style={styles.row}>Stages · Soon</Text>}
           <Text style={styles.row}>Profile · Soon</Text>
@@ -41,4 +47,5 @@ const styles = StyleSheet.create({
   name: { color: '#fff', fontSize: 16, fontWeight: '600' },
   role: { color: theme.text.dim, fontSize: 13, marginTop: 2 },
   row: { color: theme.colors.mutedForeground, fontSize: 15, paddingVertical: 10 },
+  rowLive: { color: '#fff', fontSize: 15, paddingVertical: 10 },
 });

@@ -44,4 +44,9 @@ export const qk = {
   ) => ['task-conflicts', assignedTo, startDate, dueDate, excludeTaskId] as const,
 
   allTasks: () => ['tasks'] as const,
+
+  clients: () => ['clients'] as const,
+  // Quotes live under the client that owns them, so a quote mutation
+  // invalidating client(id) refreshes the detail screen's quote list for free.
+  client: (clientId: string) => ['client', clientId] as const,
 };
