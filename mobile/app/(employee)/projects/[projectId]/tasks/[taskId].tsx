@@ -94,6 +94,9 @@ export default function TaskDetailScreen() {
       queryClient.invalidateQueries({ queryKey: qk.task(taskId) });
       queryClient.invalidateQueries({ queryKey: qk.projectTasks(projectId) });
       queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
+      // All Tasks selects department_stages(name, is_terminal) and strikes
+      // through terminal tasks — a stage move changes exactly that.
+      queryClient.invalidateQueries({ queryKey: qk.allTasks() });
     },
     onError: (e: Error) => {
       // Targeted rollback of just this field — the row snaps back to the
@@ -146,6 +149,12 @@ export default function TaskDetailScreen() {
   }
 
   function chooseStage(nextStageId: string) {
+    // The row's `disabled={moveMutation.isPending}` stops the sheet from being
+    // reopened, but the Modal's slide-out dismiss animation keeps its rows
+    // mounted and tappable for a moment after `visible` flips to false — a tap
+    // during that window would still reach this closure. Bail before doing
+    // anything else so it can't dispatch a second write.
+    if (moveMutation.isPending) return;
     setPicker(null);
     // Compare against the EFFECTIVE stage (pendingStageId ?? persisted), the
     // same value the row renders as `stageId` — while a move is in flight the
@@ -168,7 +177,13 @@ export default function TaskDetailScreen() {
     title.trim().length > 0 &&
     startDate.length > 0 &&
     (shoot || dueDate.length > 0) &&
-    conflicting.length === 0;
+    conflicting.length === 0 &&
+    // `conflicting` is `[]` while the query is still fetching (every
+    // assignee/date edit changes its key) and on error — neither means "no
+    // conflicts". The brief calls this a hard block; failing open on a
+    // pending or errored check would silently bypass it.
+    !conflicts.isFetching &&
+    !conflicts.error;
 
   function submit() {
     saveMutation.mutate({
