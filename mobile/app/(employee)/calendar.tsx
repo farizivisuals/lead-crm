@@ -3,10 +3,14 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '../../components/ui/Screen';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
+import { isExecutive } from '@shared/rbac';
+import { PickerSheet } from '../../components/ui/PickerSheet';
 import {
   useCalendarTasks,
   filterByAssignee,
+  calendarAssignees,
   type CalendarTask,
+  type CalendarScope,
 } from '../../lib/queries/calendar';
 import {
   monthGrid,
@@ -24,7 +28,7 @@ const MONTHS = [
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const FALLBACK_COLOR = '#71717a';
-const SCOPES = [
+const FIXED_SCOPES = [
   { value: 'all' as const, label: 'All tasks' },
   { value: 'mine' as const, label: 'My tasks' },
 ];
@@ -38,20 +42,30 @@ export default function CalendarScreen() {
   const router = useRouter();
   const todayKey = utcToDay(Date.now());
 
-  const { session } = useAuth();
+  const { session, employee } = useAuth();
   const userId = session?.user.id;
+  // Viewing someone else's workload is an executive affordance. UI gating is
+  // cosmetic — RLS decides which tasks come back for any role.
+  const canViewOthers = isExecutive(employee?.role ?? 'employee');
 
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [month, setMonth] = useState(() => new Date().getMonth());
   const [selected, setSelected] = useState(todayKey);
-  const [scope, setScope] = useState<'all' | 'mine'>('all');
+  const [scope, setScope] = useState<CalendarScope>('all');
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const { data, isLoading, error } = useCalendarTasks();
-  // One fetch covers every month; paging and the All/Mine switch are in-memory.
+  const allTasks = useMemo(() => data ?? [], [data]);
+  // One fetch covers every month; paging and every filter switch are in-memory.
   const events = useMemo(
-    () => filterByAssignee(data ?? [], scope, userId),
-    [data, scope, userId]
+    () => filterByAssignee(allTasks, scope, userId),
+    [allTasks, scope, userId]
   );
+
+  // Derived from every task, not the filtered set, or picking one person would
+  // collapse the picker to just them.
+  const assignees = useMemo(() => calendarAssignees(allTasks), [allTasks]);
+  const viewing = assignees.find((a) => a.id === scope) ?? null;
 
   const weeks = useMemo(() => monthGrid(year, month), [year, month]);
   const layouts = useMemo(
@@ -105,7 +119,7 @@ export default function CalendarScreen() {
         </View>
 
         <View style={styles.scopeRow}>
-          {SCOPES.map((s) => {
+          {FIXED_SCOPES.map((s) => {
             const active = scope === s.value;
             return (
               <Pressable
@@ -119,6 +133,16 @@ export default function CalendarScreen() {
               </Pressable>
             );
           })}
+          {canViewOthers && assignees.length > 0 && (
+            <Pressable
+              onPress={() => setPickerOpen(true)}
+              style={[styles.scopeChip, !!viewing && styles.scopeChipActive]}
+            >
+              <Text style={[styles.scopeText, !!viewing && styles.scopeTextActive]}>
+                {viewing ? viewing.name : 'Someone else'} ▾
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         <View style={styles.weekdayRow}>
@@ -222,7 +246,11 @@ export default function CalendarScreen() {
               <Text style={styles.muted}>Loading…</Text>
             ) : selectedEvents.length === 0 ? (
               <Text style={styles.muted}>
-                {scope === 'mine' ? 'Nothing assigned to you on this day' : 'No tasks on this day'}
+                {scope === 'mine'
+                  ? 'Nothing assigned to you on this day'
+                  : viewing
+                    ? `Nothing assigned to ${viewing.name} on this day`
+                    : 'No tasks on this day'}
               </Text>
             ) : (
               selectedEvents.map((task) => (
@@ -245,6 +273,19 @@ export default function CalendarScreen() {
           </ScrollView>
         </View>
       </View>
+
+      <PickerSheet
+        visible={pickerOpen}
+        title="View someone's tasks"
+        selected={viewing ? viewing.id : null}
+        searchable={assignees.length > 8}
+        options={assignees.map((a) => ({ value: a.id, label: a.name }))}
+        onSelect={(v) => {
+          setScope(v);
+          setPickerOpen(false);
+        }}
+        onClose={() => setPickerOpen(false)}
+      />
     </Screen>
   );
 }

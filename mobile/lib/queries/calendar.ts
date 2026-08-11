@@ -19,6 +19,8 @@ import type { LaidOutEvent } from '../calendar-layout';
  * are pure client-side work with no refetch.
  */
 
+type ProfileName = { profiles: { full_name: string } | { full_name: string }[] | null };
+
 export type CalendarTaskRow = {
   id: string;
   title: string;
@@ -27,10 +29,12 @@ export type CalendarTaskRow = {
   assigned_to: string | null;
   project_id: string;
   department_stages: { color: string | null } | { color: string | null }[] | null;
+  employees: ProfileName | ProfileName[] | null;
 };
 
 export type CalendarTask = LaidOutEvent & {
   assignedTo: string | null;
+  assigneeName: string | null;
   projectId: string;
 };
 
@@ -55,6 +59,7 @@ export function toCalendarTask(row: CalendarTaskRow): CalendarTask | null {
     endDay: endDay < day ? day : endDay,
     color: one(row.department_stages)?.color ?? DEFAULT_TASK_COLOR,
     assignedTo: row.assigned_to,
+    assigneeName: one(one(row.employees)?.profiles ?? null)?.full_name ?? null,
     projectId: row.project_id,
   };
 }
@@ -68,7 +73,7 @@ export function useCalendarTasks() {
       const { data, error } = await supabase
         .from('tasks')
         .select(
-          'id, title, start_date, due_date, assigned_to, project_id, department_stages!current_stage_id(color)'
+          'id, title, start_date, due_date, assigned_to, project_id, department_stages!current_stage_id(color), employees!assigned_to(profiles(full_name))'
         )
         .or('start_date.not.is.null,due_date.not.is.null');
       if (error) throw error;
@@ -79,13 +84,38 @@ export function useCalendarTasks() {
   });
 }
 
-/** `mine` keeps only what is assigned to this user; `all` keeps everything. */
+/**
+ * `all` keeps everything, `mine` resolves to the signed-in user, and any other
+ * value is treated as the profile id of the person being viewed.
+ */
+export type CalendarScope = 'all' | 'mine' | (string & {});
+
 export function filterByAssignee(
   tasks: CalendarTask[],
-  scope: 'all' | 'mine',
+  scope: CalendarScope,
   userId: string | undefined
 ): CalendarTask[] {
   if (scope === 'all') return tasks;
-  if (!userId) return [];
-  return tasks.filter((t) => t.assignedTo === userId);
+  const target = scope === 'mine' ? userId : scope;
+  // Fail closed. Showing everything when the target cannot be resolved would
+  // put the whole agency's work under a filter naming one person.
+  if (!target) return [];
+  return tasks.filter((t) => t.assignedTo === target);
+}
+
+/**
+ * People who actually hold a dated task, for the executive's person picker.
+ * Derived from the rows already fetched rather than a second employees query —
+ * and it means the picker never offers someone with an empty calendar.
+ */
+export function calendarAssignees(tasks: CalendarTask[]): { id: string; name: string }[] {
+  const byId = new Map<string, string>();
+  for (const t of tasks) {
+    if (t.assignedTo && !byId.has(t.assignedTo)) {
+      byId.set(t.assignedTo, t.assigneeName ?? 'Unknown');
+    }
+  }
+  return [...byId.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }

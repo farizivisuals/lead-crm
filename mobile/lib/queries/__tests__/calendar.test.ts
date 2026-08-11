@@ -3,6 +3,7 @@ jest.mock('../../supabase', () => ({ supabase: {} }));
 import {
   toCalendarTask,
   filterByAssignee,
+  calendarAssignees,
   type CalendarTaskRow,
   type CalendarTask,
 } from '../calendar';
@@ -15,6 +16,7 @@ const row = (over: Partial<CalendarTaskRow>): CalendarTaskRow => ({
   assigned_to: 'user-1',
   project_id: 'p1',
   department_stages: { color: '#a78bfa' },
+  employees: { profiles: { full_name: 'Quintin' } },
   ...over,
 });
 
@@ -80,5 +82,38 @@ describe('filterByAssignee', () => {
     // Failing open here would quietly show the whole agency's tasks under a
     // filter labelled "My tasks".
     expect(filterByAssignee(tasks, 'mine', undefined)).toHaveLength(0);
+  });
+
+  it('treats any other scope as the profile id being viewed', () => {
+    const theirs = filterByAssignee(tasks, 'someone-else', 'me');
+    expect(theirs).toHaveLength(1);
+    expect(theirs[0].assignedTo).toBe('someone-else');
+  });
+
+  it('never leaks unassigned work into a named person’s view', () => {
+    expect(filterByAssignee(tasks, 'someone-else', 'me').some((t) => !t.assignedTo)).toBe(false);
+  });
+});
+
+describe('calendarAssignees', () => {
+  const tasks = [
+    { assignedTo: 'b', assigneeName: 'Quintin' },
+    { assignedTo: 'a', assigneeName: 'Anwar' },
+    { assignedTo: 'b', assigneeName: 'Quintin' },
+    { assignedTo: null, assigneeName: null },
+  ] as CalendarTask[];
+
+  it('lists each person once, name-sorted, skipping unassigned', () => {
+    expect(calendarAssignees(tasks)).toEqual([
+      { id: 'a', name: 'Anwar' },
+      { id: 'b', name: 'Quintin' },
+    ]);
+  });
+
+  it('falls back to a placeholder rather than dropping a nameless assignee', () => {
+    // A task assigned to someone whose profile embed failed must still be
+    // reachable in the picker, or their workload silently vanishes.
+    const orphan = [{ assignedTo: 'x', assigneeName: null }] as CalendarTask[];
+    expect(calendarAssignees(orphan)).toEqual([{ id: 'x', name: 'Unknown' }]);
   });
 });
