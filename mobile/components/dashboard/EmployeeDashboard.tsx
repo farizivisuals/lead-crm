@@ -67,7 +67,9 @@ export function EmployeeDashboard({ userId }: { userId: string }) {
         )}
 
         <Text style={styles.sectionTitleSoon}>Approval Status · Soon</Text>
-        {(data?.deliverables.length ?? 0) === 0 ? (
+        {isLoading ? (
+          <Text style={styles.muted}>Loading…</Text>
+        ) : error ? null : (data?.deliverables.length ?? 0) === 0 ? (
           <GlassCard>
             <Text style={styles.muted}>Nothing submitted yet</Text>
           </GlassCard>

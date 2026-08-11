@@ -53,7 +53,9 @@ export function ExecutiveDashboard() {
         </View>
 
         <Text style={styles.sectionTitle}>Recent Projects</Text>
-        {(data?.recentProjects.length ?? 0) === 0 ? (
+        {isLoading ? (
+          <Text style={styles.muted}>Loading…</Text>
+        ) : error ? null : (data?.recentProjects.length ?? 0) === 0 ? (
           <GlassCard>
             <Text style={styles.muted}>No projects yet</Text>
           </GlassCard>
@@ -79,7 +81,9 @@ export function ExecutiveDashboard() {
         )}
 
         <Text style={styles.sectionTitle}>Activity</Text>
-        {(data?.activity.length ?? 0) === 0 ? (
+        {isLoading ? (
+          <Text style={styles.muted}>Loading…</Text>
+        ) : error ? null : (data?.activity.length ?? 0) === 0 ? (
           <GlassCard>
             <Text style={styles.muted}>No activity yet</Text>
           </GlassCard>
