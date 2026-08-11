@@ -56,6 +56,29 @@ export function groupByDay(events: CalendarEvent[]): DayGroup[] {
     }));
 }
 
+/**
+ * The RPC includes anything OVERLAPPING the range — its filter is
+ * `"end" >= p_start OR start >= p_start` — so browsing August also returns a
+ * project that started in July and runs into it. Those are real August work
+ * and must not be dropped, but filing them under a July date header while the
+ * screen says "August" reads as a bug. They get their own leading group.
+ */
+export function splitCarriedOver(
+  events: CalendarEvent[],
+  monthStart: string
+): { carriedOver: CalendarEvent[]; days: DayGroup[] } {
+  const carriedOver: CalendarEvent[] = [];
+  const withinMonth: CalendarEvent[] = [];
+  for (const event of events) {
+    if (dayKey(event.start) < monthStart) carriedOver.push(event);
+    else withinMonth.push(event);
+  }
+  return {
+    carriedOver: [...carriedOver].sort((a, b) => a.title.localeCompare(b.title)),
+    days: groupByDay(withinMonth),
+  };
+}
+
 export function useCalendar(year: number, month: number) {
   const { start, end } = monthRange(year, month);
   return useQuery({

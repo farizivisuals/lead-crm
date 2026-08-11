@@ -1,6 +1,12 @@
 jest.mock('../../supabase', () => ({ supabase: {} }));
 
-import { dayKey, monthRange, groupByDay, type CalendarEvent } from '../calendar';
+import {
+  dayKey,
+  monthRange,
+  groupByDay,
+  splitCarriedOver,
+  type CalendarEvent,
+} from '../calendar';
 
 const event = (over: Partial<CalendarEvent>): CalendarEvent => ({
   entity_id: 'e1',
@@ -62,5 +68,31 @@ describe('groupByDay', () => {
     ]);
     expect(groups).toHaveLength(1);
     expect(groups[0].events.map((e) => e.title)).toEqual(['Deliverable', 'Task']);
+  });
+});
+
+describe('splitCarriedOver', () => {
+  it('separates events that started before the month being viewed', () => {
+    // The RPC includes anything OVERLAPPING the range, so browsing August also
+    // returns a project that started in July. It is real August work, but
+    // filing it under a July header while the screen says August reads as a bug.
+    const { carriedOver, days } = splitCarriedOver(
+      [
+        event({ entity_id: 'spans', start: '2026-07-15', title: 'Started in July' }),
+        event({ entity_id: 'inside', start: '2026-08-02', title: 'Starts in August' }),
+      ],
+      '2026-08-01'
+    );
+    expect(carriedOver.map((e) => e.title)).toEqual(['Started in July']);
+    expect(days.map((d) => d.day)).toEqual(['2026-08-02']);
+  });
+
+  it('treats an event starting exactly on the first of the month as within it', () => {
+    const { carriedOver, days } = splitCarriedOver(
+      [event({ start: '2026-08-01' })],
+      '2026-08-01'
+    );
+    expect(carriedOver).toHaveLength(0);
+    expect(days).toHaveLength(1);
   });
 });

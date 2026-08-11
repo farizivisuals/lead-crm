@@ -6,7 +6,8 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import {
   useCalendar,
-  groupByDay,
+  splitCarriedOver,
+  monthRange,
   type CalendarEvent,
 } from '../../lib/queries/calendar';
 import { theme } from '../../lib/theme';
@@ -31,7 +32,8 @@ export default function CalendarScreen() {
   const [month, setMonth] = useState(today.getMonth());
 
   const { data, isLoading, error } = useCalendar(year, month);
-  const groups = groupByDay(data ?? []);
+  const { carriedOver, days } = splitCarriedOver(data ?? [], monthRange(year, month).start);
+  const isEmpty = carriedOver.length === 0 && days.length === 0;
 
   function shift(by: number) {
     const next = month + by;
@@ -75,34 +77,48 @@ export default function CalendarScreen() {
 
         {isLoading ? (
           <Text style={styles.muted}>Loading…</Text>
-        ) : error ? null : groups.length === 0 ? (
+        ) : error ? null : isEmpty ? (
           <GlassCard>
             <Text style={styles.muted}>Nothing scheduled this month</Text>
           </GlassCard>
         ) : (
-          groups.map((group) => (
-            <View key={group.day} style={styles.dayBlock}>
-              <Text style={styles.dayLabel}>{formatDay(group.day)}</Text>
-              {group.events.map((event) => (
-                <Pressable key={`${event.entity_type}-${event.entity_id}`} onPress={() => open(event)}>
-                  <GlassCard>
-                    <View style={styles.eventRow}>
-                      <View
-                        style={[styles.dot, { backgroundColor: event.color ?? FALLBACK_COLOR }]}
-                      />
-                      <Text style={styles.title} numberOfLines={2}>
-                        {event.title}
-                      </Text>
-                    </View>
-                    <Text style={styles.type}>{TYPE_LABELS[event.entity_type]}</Text>
-                  </GlassCard>
-                </Pressable>
-              ))}
-            </View>
-          ))
+          <>
+            {carriedOver.length > 0 && (
+              <View style={styles.dayBlock}>
+                <Text style={styles.dayLabel}>Started earlier, still running</Text>
+                {carriedOver.map((event) => (
+                  <EventCard key={`${event.entity_type}-${event.entity_id}`} event={event} onPress={() => open(event)} />
+                ))}
+              </View>
+            )}
+            {days.map((group) => (
+              <View key={group.day} style={styles.dayBlock}>
+                <Text style={styles.dayLabel}>{formatDay(group.day)}</Text>
+                {group.events.map((event) => (
+                  <EventCard key={`${event.entity_type}-${event.entity_id}`} event={event} onPress={() => open(event)} />
+                ))}
+              </View>
+            ))}
+          </>
         )}
       </ScrollView>
     </Screen>
+  );
+}
+
+function EventCard({ event, onPress }: { event: CalendarEvent; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress}>
+      <GlassCard>
+        <View style={styles.eventRow}>
+          <View style={[styles.dot, { backgroundColor: event.color ?? FALLBACK_COLOR }]} />
+          <Text style={styles.title} numberOfLines={2}>
+            {event.title}
+          </Text>
+        </View>
+        <Text style={styles.type}>{TYPE_LABELS[event.entity_type]}</Text>
+      </GlassCard>
+    </Pressable>
   );
 }
 
