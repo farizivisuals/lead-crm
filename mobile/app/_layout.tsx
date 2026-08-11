@@ -12,11 +12,15 @@ const queryClient = new QueryClient({
 });
 
 function SessionGate() {
-  const { session, profile, loading, recovering } = useAuth();
+  const { session, profile, loading, recoveryChecked, recovering } = useAuth();
 
   // `target` can't be computed until useAuth() resolves — keep the loading
   // early-return so we never render Stack.Protected guards with a stale target.
-  if (loading) {
+  // `recoveryChecked` must hold this gate too: getSession() + the profile
+  // fetch can resolve before the initial deep-link check does, and without
+  // this an already-signed-in user tapping a recovery link would flash their
+  // real dashboard for a frame before `recovering` catches up.
+  if (loading || !recoveryChecked) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color="#fff" />
