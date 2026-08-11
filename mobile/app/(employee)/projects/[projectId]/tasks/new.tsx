@@ -85,6 +85,7 @@ export default function NewTaskScreen() {
   });
 
   const canSubmit =
+    !mutation.isPending &&
     !!deptId &&
     !!firstStage &&
     !!session?.user.id &&
@@ -129,6 +130,17 @@ export default function NewTaskScreen() {
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <ScreenHeader title="New task" onBack={() => router.back()} />
+
+          {board.error && (
+            <GlassCard>
+              <Text style={styles.error}>{board.error.message}</Text>
+            </GlassCard>
+          )}
+          {pickers.error && (
+            <GlassCard>
+              <Text style={styles.error}>{pickers.error.message}</Text>
+            </GlassCard>
+          )}
 
           <GlassCard>
             <View style={styles.form}>

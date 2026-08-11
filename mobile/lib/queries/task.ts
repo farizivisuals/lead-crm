@@ -228,7 +228,9 @@ export type CreateTaskInput = {
 /**
  * No rollback here, matching the web: a failed `task_creatives` insert leaves
  * the task in place. That differs from `createProject`, which does roll
- * back — the difference is in the source, so this stays as-is.
+ * back — the difference is in the source, so this stays as-is. The web also
+ * never checks that insert's error at all (NewTaskDialog just awaits it), so
+ * a creatives failure here is deliberately swallowed too, for parity.
  */
 export async function createTask(input: CreateTaskInput): Promise<string> {
   const { data, error } = await supabase
@@ -252,10 +254,9 @@ export async function createTask(input: CreateTaskInput): Promise<string> {
 
   const taskId = data.id as string;
   if (input.creativeProfileIds.length > 0) {
-    const { error: creativesError } = await supabase
+    await supabase
       .from('task_creatives')
       .insert(input.creativeProfileIds.map((profile_id) => ({ task_id: taskId, profile_id })));
-    if (creativesError) throw creativesError;
   }
   return taskId;
 }
