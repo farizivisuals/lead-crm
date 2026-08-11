@@ -22,11 +22,11 @@ export default function More() {
         </GlassCard>
 
         <GlassCard>
-          {exec && <Text style={styles.row}>Clients</Text>}
-          {exec && <Text style={styles.row}>Team</Text>}
-          {exec && <Text style={styles.row}>Stages</Text>}
-          <Text style={styles.row}>Profile</Text>
-          <Text style={styles.row}>Notifications</Text>
+          {exec && <Text style={styles.row}>Clients · Soon</Text>}
+          {exec && <Text style={styles.row}>Team · Soon</Text>}
+          {exec && <Text style={styles.row}>Stages · Soon</Text>}
+          <Text style={styles.row}>Profile · Soon</Text>
+          <Text style={styles.row}>Notifications · Soon</Text>
         </GlassCard>
 
         <Button title="Sign out" variant="ghost" onPress={signOut} />
@@ -40,5 +40,5 @@ const styles = StyleSheet.create({
   heading: { color: '#fff', fontSize: 26, fontWeight: '700', letterSpacing: -0.5 },
   name: { color: '#fff', fontSize: 16, fontWeight: '600' },
   role: { color: theme.text.dim, fontSize: 13, marginTop: 2 },
-  row: { color: theme.colors.foreground, fontSize: 15, paddingVertical: 10 },
+  row: { color: theme.colors.mutedForeground, fontSize: 15, paddingVertical: 10 },
 });
