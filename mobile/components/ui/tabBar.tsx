@@ -20,8 +20,8 @@ export function usePillTabOptions(): TabsScreenOptions {
     tabBarInactiveTintColor: theme.text.dim,
     tabBarStyle: {
       position: 'absolute',
-      marginHorizontal: 16,
-      marginBottom: Math.max(insets.bottom, 16),
+      marginHorizontal: 20,
+      marginBottom: Math.max(insets.bottom, 16) + 10,
       height: 64,
       borderRadius: 32,
       overflow: 'hidden',
