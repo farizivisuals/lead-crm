@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { UserType } from './routing';
+import { parseRecoveryLink } from './recovery-link';
 
 type EmployeeRole = 'root' | 'ceo' | 'cfo' | 'manager' | 'employee';
 
@@ -13,6 +15,14 @@ type AuthValue = {
   profile: Profile | null;
   employee: EmployeeRow | null;
   loading: boolean;
+  // A password-recovery deep link is being (or has been) consumed — see
+  // routing.ts's `recovering` guard for why this has to outlive the session
+  // getting established.
+  recovering: boolean;
+  recoveryError: string | null;
+  // Called once the new password is saved, or from a "back to sign in" escape
+  // hatch on a failed link — routes the user onward normally again.
+  clearRecovery: () => void;
   signOut: () => Promise<void>;
 };
 
@@ -23,11 +33,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [employee, setEmployee] = useState<EmployeeRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recovering, setRecovering] = useState(false);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+
+  function clearRecovery() {
+    setRecovering(false);
+    setRecoveryError(null);
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    // `detectSessionInUrl` is off (lib/supabase.ts), so the recovery email's
+    // access/refresh tokens — carried in the URL *fragment*, which
+    // Linking.parse() doesn't read — are consumed here instead. Two entry
+    // paths: cold start (app not yet running) and warm (already running).
+    async function consume(url: string | null) {
+      if (!url) return;
+      const result = parseRecoveryLink(url);
+      if (result.kind === 'none') return;
+
+      // Flip on before setSession() resolves so SessionGate keeps the (auth)
+      // group mounted for the async gap too, not just after success.
+      setRecovering(true);
+      setRecoveryError(null);
+
+      if (result.kind === 'recovery-error') {
+        setRecoveryError(result.message);
+        return;
+      }
+
+      const { error } = await supabase.auth.setSession({
+        access_token: result.accessToken,
+        refresh_token: result.refreshToken,
+      });
+      // Never surface `error.message` verbatim if it could echo the tokens —
+      // Supabase's setSession errors are validation/HTTP errors about the
+      // session, not the raw token strings, so this is safe to show as-is.
+      if (error) setRecoveryError(error.message);
+    }
+
+    Linking.getInitialURL().then(consume);
+    const sub = Linking.addEventListener('url', (event) => {
+      consume(event.url);
+    });
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {
@@ -76,10 +130,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut();
+    clearRecovery();
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, employee, loading, signOut }}>
+    <AuthContext.Provider
+      value={{ session, profile, employee, loading, recovering, recoveryError, clearRecovery, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

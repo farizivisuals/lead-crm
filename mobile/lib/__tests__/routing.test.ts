@@ -22,4 +22,25 @@ describe('resolveRoute', () => {
   it('ignores a stale userType when the session is gone', () => {
     expect(resolveRoute({ hasSession: false, userType: 'employee' })).toBe('/login');
   });
+
+  it('keeps a recovering user with no session yet on the auth group', () => {
+    // Deep link detected recovery intent but setSession() hasn't resolved yet
+    // (or failed) — must not fall through to a dashboard target.
+    expect(resolveRoute({ hasSession: false, userType: null, recovering: true })).toBe('/login');
+  });
+
+  it('keeps a recovering user with an established session on the auth group', () => {
+    // setSession() succeeded and the profile resolved to a real employee — without
+    // the recovering override this would route to the employee dashboard and yank
+    // the user off /update-password before they can set a new password.
+    expect(resolveRoute({ hasSession: true, userType: 'employee', recovering: true })).toBe(
+      '/login'
+    );
+  });
+
+  it('routes normally once recovery is cleared after a successful password update', () => {
+    expect(resolveRoute({ hasSession: true, userType: 'employee', recovering: false })).toBe(
+      '/(employee)/dashboard'
+    );
+  });
 });

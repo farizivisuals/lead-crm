@@ -12,7 +12,7 @@ const queryClient = new QueryClient({
 });
 
 function SessionGate() {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, loading, recovering } = useAuth();
 
   // `target` can't be computed until useAuth() resolves — keep the loading
   // early-return so we never render Stack.Protected guards with a stale target.
@@ -27,6 +27,7 @@ function SessionGate() {
   const target = resolveRoute({
     hasSession: !!session,
     userType: profile?.user_type ?? null,
+    recovering,
   });
 
   // Declarative guards: the screen for a false guard is excluded during state
