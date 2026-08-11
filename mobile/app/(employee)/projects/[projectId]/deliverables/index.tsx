@@ -25,15 +25,10 @@ export default function DeliverablesScreen() {
   const { data, isLoading, error } = useDeliverables(projectId);
 
   function newDeliverable() {
-    // @ts-expect-error — the /projects/[projectId]/deliverables/new route does
-    // not exist until Task 3 creates it. Delete this directive (not the call) in Task 3.
     router.push({ pathname: '/projects/[projectId]/deliverables/new', params: { projectId } });
   }
 
   function editDeliverable(deliverableId: string) {
-    // @ts-expect-error — the /projects/[projectId]/deliverables/[deliverableId]
-    // route does not exist until Task 3 creates it. Delete this directive (not
-    // the call) in Task 3.
     router.push({ pathname: '/projects/[projectId]/deliverables/[deliverableId]', params: { projectId, deliverableId } });
   }
 
