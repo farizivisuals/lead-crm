@@ -137,6 +137,7 @@ export default function BoardScreen() {
               {meta.isLoading && deptStages.length === 0 && (
                 <Text style={styles.muted}>Loading stages…</Text>
               )}
+              {meta.error && <Text style={styles.error}>{meta.error.message}</Text>}
 
               {visible.length === 0 ? (
                 <Text style={styles.muted}>
