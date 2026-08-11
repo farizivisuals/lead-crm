@@ -28,7 +28,13 @@
           "imageWidth": 180
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "mode": "production"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

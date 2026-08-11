@@ -5,6 +5,7 @@ import { queryClient } from './query-client';
 import { supabase } from './supabase';
 import type { UserType } from './routing';
 import { parseRecoveryLink } from './recovery-link';
+import { registerPushToken, unregisterPushToken } from './push';
 
 type EmployeeRole = 'root' | 'ceo' | 'cfo' | 'manager' | 'employee';
 
@@ -197,11 +198,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // sanctioned way to force a re-run without touching that guard.
   }, [session?.user?.id, retryNonce]);
 
+  useEffect(() => {
+    // Keyed on the user id alone, deliberately matching the profile effect
+    // above: TOKEN_REFRESHED hands us a new session object for the same user
+    // roughly hourly, and re-registering the token on every refresh would be
+    // pure noise. Registration is idempotent (composite PK upsert), so one run
+    // per signed-in identity is exactly right.
+    const userId = session?.user?.id;
+    if (!userId) return;
+    registerPushToken(userId).catch(() => {
+      // Push is a nice-to-have: a simulator, a denied permission or a missing
+      // project id must never surface as an error on a working session.
+    });
+  }, [session?.user?.id]);
+
   function retryProfile() {
     setRetryNonce((n) => n + 1);
   }
 
   async function signOut() {
+    // Drop this device's push token BEFORE the session goes away — the delete
+    // runs under the signed-in user's RLS, so it cannot succeed afterwards.
+    // Never let a push failure block signing out.
+    const userId = session?.user?.id;
+    if (userId) {
+      try {
+        await unregisterPushToken(userId);
+      } catch {
+        // Intentionally swallowed: a stale token is a smaller problem than a
+        // user who cannot sign out.
+      }
+    }
     await supabase.auth.signOut();
     // The QueryClient is module-scoped and outlives the session. Only
     // `dashboardEmployee` is user-scoped — ['tasks'], ['projects'] and

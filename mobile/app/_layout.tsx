@@ -4,7 +4,9 @@ import { Stack, useRouter, usePathname } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
 import { queryClient } from '../lib/query-client';
+import { routeForNotification } from '../lib/push';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { resolveRoute } from '../lib/routing';
 import { theme } from '../lib/theme';
@@ -43,6 +45,24 @@ export function SessionGate() {
       router.replace('/update-password');
     }
   }, [recovering, pathname, router]);
+
+  // Deep-link a tapped push notification. Only attached once a session exists,
+  // because every destination sits behind a Stack.Protected guard — navigating
+  // there while signed out would be dropped, exactly like the recovery-link
+  // case above. Keyed on `session` presence rather than the user id: the
+  // listener is identity-agnostic, so a token refresh must not re-subscribe.
+  useEffect(() => {
+    if (!session) return;
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as {
+        entity_type?: string;
+        entity_id?: string;
+      };
+      const route = routeForNotification(data?.entity_type, data?.entity_id);
+      if (route) router.push(route as never);
+    });
+    return () => sub.remove();
+  }, [!!session, router]);
 
   // `target` can't be *used* until useAuth() resolves — keep the loading
   // early-return so we never render Stack.Protected guards with a stale target.
