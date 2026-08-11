@@ -144,61 +144,70 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
     if (error) patchTask(task.id, { current_stage_id: task.current_stage_id });
   }
 
-  async function assignDeliverable(
+  /** Upsert one (deliverable, current stage) row, merging only the given columns
+   *  so setting a date never clobbers the assignee and vice versa. */
+  async function patchStageRow(
     task: Task,
     d: TaskDeliverable,
-    profileId: string | null
+    cols: { assigned_to?: string | null; scheduled_date?: string | null }
   ) {
     const stage = deliverableStage(d, task);
     if (!stage) return;
+    const existing = (d.task_deliverable_assignments ?? []).find(
+      (a) => a.stage_id === stage.id
+    );
     const others = (d.task_deliverable_assignments ?? []).filter(
       (a) => a.stage_id !== stage.id
     );
 
-    if (profileId) {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase
-        .from("task_deliverable_assignments")
-        .upsert(
-          {
-            deliverable_id: d.id,
-            stage_id: stage.id,
-            assigned_to: profileId,
-            assigned_by: user?.id ?? null,
-          },
-          { onConflict: "deliverable_id,stage_id" }
-        );
-      if (error) return;
-      const name =
-        employees.find((e) => e.profile_id === profileId)?.profiles?.full_name ?? "?";
-      patchDeliverable(task.id, d.id, {
-        task_deliverable_assignments: [
-          ...others,
-          {
-            deliverable_id: d.id,
-            stage_id: stage.id,
-            assigned_to: profileId,
-            assigned_by: null,
-            assigned_at: new Date().toISOString(),
-            employees: { profiles: { full_name: name } },
-          },
-        ],
-      });
-    } else {
-      const { error } = await supabase
-        .from("task_deliverable_assignments")
-        .delete()
-        .eq("deliverable_id", d.id)
-        .eq("stage_id", stage.id);
-      if (error) return;
-      patchDeliverable(task.id, d.id, { task_deliverable_assignments: others });
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    const payload: Record<string, string | null> = {
+      deliverable_id: d.id,
+      stage_id: stage.id,
+      ...cols,
+    };
+    if (cols.assigned_to !== undefined) payload.assigned_by = user?.id ?? null;
+
+    const { error } = await supabase
+      .from("task_deliverable_assignments")
+      .upsert(payload, { onConflict: "deliverable_id,stage_id" });
+    if (error) return;
+
+    const assignee =
+      cols.assigned_to !== undefined ? cols.assigned_to : existing?.assigned_to ?? null;
+    const name = assignee
+      ? employees.find((e) => e.profile_id === assignee)?.profiles?.full_name ?? "?"
+      : null;
+    patchDeliverable(task.id, d.id, {
+      task_deliverable_assignments: [
+        ...others,
+        {
+          deliverable_id: d.id,
+          stage_id: stage.id,
+          assigned_to: assignee,
+          assigned_by: null,
+          assigned_at: existing?.assigned_at ?? new Date().toISOString(),
+          scheduled_date:
+            cols.scheduled_date !== undefined
+              ? cols.scheduled_date
+              : existing?.scheduled_date ?? null,
+          employees: name ? { profiles: { full_name: name } } : null,
+        },
+      ],
+    });
   }
 
   /** One click: assign every deliverable's current phase to one person. */
   async function assignAll(task: Task, profileId: string) {
     for (const d of task.task_deliverables ?? []) {
-      await assignDeliverable(task, d, profileId);
+      await patchStageRow(task, d, { assigned_to: profileId });
+    }
+  }
+
+  /** One date for every deliverable's current phase. */
+  async function dateAll(task: Task, date: string) {
+    for (const d of task.task_deliverables ?? []) {
+      await patchStageRow(task, d, { scheduled_date: date || null });
     }
   }
 
@@ -268,20 +277,29 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
                   </button>
                 </div>
 
-                {/* Assign-all: one person for every deliverable's current phase */}
+                {/* One person / one date for every deliverable's current phase */}
                 {deliverables.length > 1 && (
-                  <Select value="" onValueChange={(v) => assignAll(task, v)}>
-                    <SelectTrigger className="w-36 h-7 text-xs text-white/50">
-                      <SelectValue placeholder="Assign all to…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employees.map((emp) => (
-                        <SelectItem key={emp.profile_id} value={emp.profile_id}>
-                          {emp.profiles?.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-1.5">
+                    <Select value="" onValueChange={(v) => assignAll(task, v)}>
+                      <SelectTrigger className="w-36 h-7 text-xs text-white/50">
+                        <SelectValue placeholder="Assign all to…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((emp) => (
+                          <SelectItem key={emp.profile_id} value={emp.profile_id}>
+                            {emp.profiles?.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <input
+                      type="date"
+                      value=""
+                      onChange={(e) => e.target.value && dateAll(task, e.target.value)}
+                      className="h-7 w-[8.2rem] rounded-md border border-white/[0.12] bg-white/[0.06] px-2 text-xs text-white/50 focus:outline-none focus:border-white/30 [color-scheme:dark]"
+                      title="One date for all deliverables"
+                    />
+                  </div>
                 )}
               </div>
 
@@ -333,18 +351,25 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
                     const next = ordered[idx + 1];
                     const isLastMove = !!next?.is_terminal;
                     const stageColor = stage.color ?? "#71717a";
-                    const currentAssignee =
-                      d.task_deliverable_assignments?.find((a) => a.stage_id === stage.id)
-                        ?.assigned_to ?? NONE;
+                    const stageRow = d.task_deliverable_assignments?.find(
+                      (a) => a.stage_id === stage.id
+                    );
+                    const currentAssignee = stageRow?.assigned_to ?? NONE;
+                    const currentDate = stageRow?.scheduled_date ?? "";
                     const record = ordered
                       .filter((s) => s.position < stage.position)
                       .map((s) => {
                         const a = d.task_deliverable_assignments?.find(
                           (x) => x.stage_id === s.id
                         );
-                        return a
-                          ? `${s.name}: ${(a.employees?.profiles?.full_name ?? "?").split(" ")[0]}`
-                          : null;
+                        if (!a || (!a.assigned_to && !a.scheduled_date)) return null;
+                        const parts = [
+                          a.assigned_to
+                            ? (a.employees?.profiles?.full_name ?? "?").split(" ")[0]
+                            : null,
+                          a.scheduled_date ? formatDate(a.scheduled_date) : null,
+                        ].filter(Boolean);
+                        return `${s.name}: ${parts.join(", ")}`;
                       })
                       .filter(Boolean);
 
@@ -366,7 +391,7 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
                         <Select
                           value={currentAssignee}
                           onValueChange={(v) =>
-                            assignDeliverable(task, d, v === NONE ? null : v)
+                            patchStageRow(task, d, { assigned_to: v === NONE ? null : v })
                           }
                         >
                           <SelectTrigger className="w-32 h-7 text-xs">
@@ -381,6 +406,16 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
                             ))}
                           </SelectContent>
                         </Select>
+
+                        <input
+                          type="date"
+                          value={currentDate}
+                          onChange={(e) =>
+                            patchStageRow(task, d, { scheduled_date: e.target.value || null })
+                          }
+                          className="h-7 w-[8.2rem] rounded-md border border-white/[0.12] bg-white/[0.06] px-2 text-xs text-white/70 focus:outline-none focus:border-white/30 [color-scheme:dark]"
+                          title={`${stage.name} date`}
+                        />
 
                         <span className="flex items-center gap-1">
                           <Button

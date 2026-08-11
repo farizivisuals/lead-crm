@@ -134,9 +134,10 @@ export interface TaskCreative {
 export interface TaskDeliverableAssignment {
   deliverable_id: string;
   stage_id: string;
-  assigned_to: string;
+  assigned_to: string | null;
   assigned_by: string | null;
   assigned_at: string;
+  scheduled_date: string | null;
   employees?: { profiles?: { full_name: string } | null } | null;
 }
 

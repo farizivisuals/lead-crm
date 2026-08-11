@@ -29,8 +29,23 @@ export default async function CalendarPage({ searchParams }: Props) {
     tasksQuery = tasksQuery.eq("assigned_to", user.id);
   }
 
-  const [{ data: tasks }, { data: employees }] = await Promise.all([
+  // Scheduled deliverable phases (e.g. "Video 1 Shoot") with a date set.
+  let delivQuery = supabase
+    .from("task_deliverable_assignments")
+    .select(
+      "deliverable_id, stage_id, scheduled_date, assigned_to, department_stages(name, color), task_deliverables!inner(title, tasks!inner(project_id, department_id, projects(clients(company_name))))"
+    )
+    .not("scheduled_date", "is", null);
+
+  if (isExec && emp) {
+    delivQuery = delivQuery.eq("assigned_to", emp);
+  } else if (isMine && user) {
+    delivQuery = delivQuery.eq("assigned_to", user.id);
+  }
+
+  const [{ data: tasks }, { data: delivRows }, { data: employees }] = await Promise.all([
     tasksQuery,
+    delivQuery,
     // Executives can filter by a specific employee; everyone else only mine/all.
     isExec
       ? supabase.from("employees").select("profile_id, profiles(full_name)").order("role")
@@ -59,6 +74,34 @@ export default async function CalendarPage({ searchParams }: Props) {
         project_id: t.project_id,
       };
     });
+
+  const deliverableEvents: CalendarEvent[] = (delivRows ?? []).map((r) => {
+    const stage = r.department_stages as unknown as { name: string; color: string | null } | null;
+    const td = r.task_deliverables as unknown as {
+      title: string;
+      tasks: {
+        project_id: string;
+        department_id: string;
+        projects: { clients?: { company_name: string } | null } | null;
+      };
+    };
+    const clientName = td.tasks.projects?.clients?.company_name;
+    const label = `${td.title} ${stage?.name ?? ""}`.trim();
+    return {
+      id: `${r.deliverable_id}-${r.stage_id}`,
+      entity_id: `${r.deliverable_id}-${r.stage_id}`,
+      entity_type: "task" as const,
+      title: clientName ? `${clientName} · ${label}` : label,
+      start: r.scheduled_date as string,
+      end: null,
+      color: stage?.color ?? "#71717a",
+      department_id: td.tasks.department_id,
+      client_id: null,
+      project_id: td.tasks.project_id,
+    };
+  });
+
+  const allEvents = [...datedEvents, ...deliverableEvents];
 
   const undatedTasks = (tasks ?? []).filter((t) => !t.start_date && !t.due_date);
 
@@ -123,7 +166,7 @@ export default async function CalendarPage({ searchParams }: Props) {
       </div>
 
       {/* Calendar */}
-      <CompanyCalendar events={datedEvents} />
+      <CompanyCalendar events={allEvents} />
 
       {/* Unscheduled tasks */}
       {undatedTasks.length > 0 && (

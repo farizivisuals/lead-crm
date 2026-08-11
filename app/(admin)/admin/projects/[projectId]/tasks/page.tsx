@@ -22,7 +22,7 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
       .single(),
     supabase
       .from("tasks")
-      .select("*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name))), task_deliverables(id, task_id, title, position, current_stage_id, created_at, task_deliverable_assignments(deliverable_id, stage_id, assigned_to, assigned_by, assigned_at, employees!task_deliverable_assignments_assigned_to_fkey(profiles(full_name))))")
+      .select("*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name))), task_deliverables(id, task_id, title, position, current_stage_id, created_at, task_deliverable_assignments(deliverable_id, stage_id, assigned_to, assigned_by, assigned_at, scheduled_date, employees!task_deliverable_assignments_assigned_to_fkey(profiles(full_name))))")
       .eq("project_id", projectId)
       .order("created_at"),
     supabase
