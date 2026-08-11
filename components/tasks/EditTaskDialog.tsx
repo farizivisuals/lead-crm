@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/browser";
-import type { Task, DepartmentStage } from "@/lib/types";
+import type { Task, TaskDeliverable, DepartmentStage } from "@/lib/types";
+import AssignDeliverablesDialog from "./AssignDeliverablesDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { Loader2, Trash2, AlertTriangle, Plus, Users } from "lucide-react";
 
 interface Employee {
   profile_id: string;
@@ -55,6 +56,18 @@ export default function EditTaskDialog({
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>(
     (task.task_creatives ?? []).map((tc) => tc.profile_id)
   );
+
+  // Deliverable titles being edited (id null = newly added row).
+  const [items, setItems] = useState<{ id: string | null; title: string }[]>(
+    [...(task.task_deliverables ?? [])]
+      .sort((a, b) => a.position - b.position)
+      .map((d) => ({ id: d.id, title: d.title }))
+  );
+  // Authoritative deliverable rows incl. assignment joins, kept fresh by the assign dialog.
+  const [assignments, setAssignments] = useState<TaskDeliverable[]>(
+    task.task_deliverables ?? []
+  );
+  const [assignOpen, setAssignOpen] = useState(false);
 
   const [form, setForm] = useState({
     title: task.title,
@@ -145,8 +158,62 @@ export default function EditTaskDialog({
         .in("profile_id", toRemove));
     }
 
+    if (cErr) { setLoading(false); setError(cErr.message); return; }
+
+    // Sync deliverables: insert new, update kept, delete removed.
+    const original = task.task_deliverables ?? [];
+    const kept = items
+      .map((it) => ({ ...it, title: it.title.trim() }))
+      .filter((it) => it.title);
+    const removedIds = original
+      .filter((o) => !kept.some((k) => k.id === o.id))
+      .map((o) => o.id);
+
+    let dErr: { message: string } | null = null;
+    let finalDeliverables: TaskDeliverable[] = [];
+
+    const toInsert = kept
+      .map((it, i) => ({ it, i }))
+      .filter((x) => x.it.id === null);
+    let inserted: TaskDeliverable[] = [];
+    if (toInsert.length > 0) {
+      const { data, error } = await supabase
+        .from("task_deliverables")
+        .insert(toInsert.map((x) => ({ task_id: task.id, title: x.it.title, position: x.i })))
+        .select("id, task_id, title, position, created_at");
+      dErr = error;
+      inserted = (data ?? []) as TaskDeliverable[];
+    }
+    for (const [i, it] of kept.entries()) {
+      if (dErr || it.id === null) continue;
+      ({ error: dErr } = await supabase
+        .from("task_deliverables")
+        .update({ title: it.title, position: i })
+        .eq("id", it.id));
+    }
+    if (!dErr && removedIds.length > 0) {
+      ({ error: dErr } = await supabase
+        .from("task_deliverables")
+        .delete()
+        .in("id", removedIds));
+    }
+
     setLoading(false);
-    if (cErr) { setError(cErr.message); return; }
+    if (dErr) { setError(dErr.message); return; }
+
+    let insertIdx = 0;
+    finalDeliverables = kept.map((it, i) => {
+      if (it.id === null) {
+        const row = inserted[insertIdx++];
+        return { ...row, position: i, task_deliverable_assignments: [] } as TaskDeliverable;
+      }
+      const existing = assignments.find((a) => a.id === it.id);
+      return {
+        ...(existing ?? { id: it.id, task_id: task.id, created_at: "" }),
+        title: it.title,
+        position: i,
+      } as TaskDeliverable;
+    });
 
     const task_creatives = selectedCreatives.map((profile_id) => ({
       task_id: task.id,
@@ -166,6 +233,7 @@ export default function EditTaskDialog({
     onSaved({
       ...patch,
       task_creatives,
+      task_deliverables: finalDeliverables,
       employees: (assignee
         ? { profiles: { full_name: assignee.profiles?.full_name ?? "?" } }
         : undefined) as Task["employees"],
@@ -292,6 +360,55 @@ export default function EditTaskDialog({
             </div>
           )}
 
+          <div className="space-y-2">
+            <Label>Deliverables</Label>
+            <div className="space-y-2">
+              {items.map((it, i) => (
+                <div key={it.id ?? `new-${i}`} className="flex gap-2">
+                  <Input
+                    value={it.title}
+                    placeholder="Video 1"
+                    onChange={(e) =>
+                      setItems((prev) =>
+                        prev.map((p, j) => (j === i ? { ...p, title: e.target.value } : p))
+                      )
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setItems((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-white/30 hover:text-red-400 px-2"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setItems((prev) => [...prev, { id: null, title: "" }])}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add deliverable
+              </Button>
+              {assignments.length > 0 && currentStage && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAssignOpen(true)}
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Assign for {currentStage.name}
+                </Button>
+              )}
+            </div>
+          </div>
+
           {/* Date fields: single shoot date vs start+due range */}
           {isShootStage ? (
             <div className="space-y-2">
@@ -364,6 +481,21 @@ export default function EditTaskDialog({
             </Button>
           </div>
         </form>
+
+        {assignOpen && currentStage && (
+          <AssignDeliverablesDialog
+            task={{ ...task, task_deliverables: assignments }}
+            stage={currentStage}
+            stages={stages}
+            employees={employees}
+            open={assignOpen}
+            onClose={() => setAssignOpen(false)}
+            onSaved={(updated) => {
+              setAssignments(updated);
+              onSaved({ task_deliverables: updated });
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
