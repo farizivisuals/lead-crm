@@ -22,7 +22,7 @@ export default async function DepartmentsSettingsPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Department Stages</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Customize the workflow stages for each department. These define the Kanban columns.
+          Customize the workflow stages for each department. Tasks move through these stages in order.
         </p>
       </div>
 

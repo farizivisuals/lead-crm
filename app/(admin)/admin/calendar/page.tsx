@@ -29,13 +29,33 @@ export default async function CalendarPage({ searchParams }: Props) {
     tasksQuery = tasksQuery.eq("assigned_to", user.id);
   }
 
-  const [{ data: tasks }, { data: employees }] = await Promise.all([
-    tasksQuery,
-    // Executives can filter by a specific employee; everyone else only mine/all.
-    isExec
-      ? supabase.from("employees").select("profile_id, profiles(full_name)").order("role")
-      : Promise.resolve({ data: [] as { profile_id: string; profiles: unknown }[] }),
-  ]);
+  // Scheduled deliverable phases (e.g. "Video 1 Shoot") with a date set.
+  let delivQuery = supabase
+    .from("task_deliverable_assignments")
+    .select(
+      "deliverable_id, stage_id, scheduled_date, assigned_to, department_stages(name, color), task_deliverables!inner(title, tasks!inner(project_id, department_id, projects(clients(company_name))))"
+    )
+    .not("scheduled_date", "is", null);
+
+  if (isExec && emp) {
+    delivQuery = delivQuery.eq("assigned_to", emp);
+  } else if (isMine && user) {
+    delivQuery = delivQuery.eq("assigned_to", user.id);
+  }
+
+  const [{ data: tasks }, { data: delivRows }, { data: employees }, { data: stageRows }] =
+    await Promise.all([
+      tasksQuery,
+      delivQuery,
+      // Executives can filter by a specific employee; everyone else only mine/all.
+      isExec
+        ? supabase.from("employees").select("profile_id, profiles(full_name)").order("role")
+        : Promise.resolve({ data: [] as { profile_id: string; profiles: unknown }[] }),
+      supabase
+        .from("department_stages")
+        .select("name, position, color, departments(name)")
+        .order("position"),
+    ]);
 
   const empList = (employees ?? []).map((e) => ({
     id: e.profile_id,
@@ -60,6 +80,34 @@ export default async function CalendarPage({ searchParams }: Props) {
       };
     });
 
+  const deliverableEvents: CalendarEvent[] = (delivRows ?? []).map((r) => {
+    const stage = r.department_stages as unknown as { name: string; color: string | null } | null;
+    const td = r.task_deliverables as unknown as {
+      title: string;
+      tasks: {
+        project_id: string;
+        department_id: string;
+        projects: { clients?: { company_name: string } | null } | null;
+      };
+    };
+    const clientName = td.tasks.projects?.clients?.company_name;
+    const label = `${td.title} ${stage?.name ?? ""}`.trim();
+    return {
+      id: `${r.deliverable_id}-${r.stage_id}`,
+      entity_id: `${r.deliverable_id}-${r.stage_id}`,
+      entity_type: "task" as const,
+      title: clientName ? `${clientName} · ${label}` : label,
+      start: r.scheduled_date as string,
+      end: null,
+      color: stage?.color ?? "#71717a",
+      department_id: td.tasks.department_id,
+      client_id: null,
+      project_id: td.tasks.project_id,
+    };
+  });
+
+  const allEvents = [...datedEvents, ...deliverableEvents];
+
   const undatedTasks = (tasks ?? []).filter((t) => !t.start_date && !t.due_date);
 
   const PRIORITY_COLOR: Record<string, string> = {
@@ -69,11 +117,15 @@ export default async function CalendarPage({ searchParams }: Props) {
     urgent: "bg-red-400",
   };
 
-  const legend = [
-    { color: "#71717a", label: "Video tasks" },
-    { color: "#ec4899", label: "Photo tasks" },
-    { color: "#f59e0b", label: "PR tasks" },
-  ];
+  // Legend mirrors the real stage colours, grouped by department, so every hue
+  // on the calendar is accounted for.
+  const legend = new Map<string, { name: string; color: string }[]>();
+  for (const s of stageRows ?? []) {
+    const dept = (s.departments as unknown as { name: string } | null)?.name;
+    if (!dept) continue;
+    if (!legend.has(dept)) legend.set(dept, []);
+    legend.get(dept)!.push({ name: s.name, color: s.color ?? "#71717a" });
+  }
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -109,21 +161,30 @@ export default async function CalendarPage({ searchParams }: Props) {
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex gap-4 flex-wrap">
-        {legend.map(({ color, label }) => (
-          <div key={label} className="flex items-center gap-2">
-            <span
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}80` }}
-            />
-            <span className="text-sm text-white/40">{label}</span>
+      {/* Legend — one row per department, one swatch per stage */}
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] px-4 py-3 space-y-2">
+        {[...legend.entries()].map(([dept, stages]) => (
+          <div key={dept} className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-semibold text-white/50 w-20 flex-shrink-0">
+              {dept}
+            </span>
+            <div className="flex gap-3 flex-wrap">
+              {stages.map((s) => (
+                <div key={`${dept}-${s.name}`} className="flex items-center gap-1.5">
+                  <span
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: s.color, boxShadow: `0 0 6px ${s.color}80` }}
+                  />
+                  <span className="text-xs text-white/40">{s.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
 
       {/* Calendar */}
-      <CompanyCalendar events={datedEvents} />
+      <CompanyCalendar events={allEvents} />
 
       {/* Unscheduled tasks */}
       {undatedTasks.length > 0 && (

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import StageBoard from "@/components/kanban/StageBoard";
+import TaskCards from "@/components/tasks/TaskCards";
 import NewTaskDialog from "./NewTaskDialog";
 import { requireEmployee } from "@/lib/auth/guards";
 import { isExecutive } from "@/lib/rbac";
@@ -22,7 +22,7 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
       .single(),
     supabase
       .from("tasks")
-      .select("*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name)))")
+      .select("*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name))), task_deliverables(id, task_id, title, position, current_stage_id, created_at, task_deliverable_assignments(deliverable_id, stage_id, assigned_to, assigned_by, assigned_at, scheduled_date, employees!task_deliverable_assignments_assigned_to_fkey(profiles(full_name))))")
       .eq("project_id", projectId)
       .order("created_at"),
     supabase
@@ -99,19 +99,18 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
         )}
       </div>
 
-      {/* Kanban boards per department */}
+      {/* Task cards per department */}
       <div className="space-y-8">
         {Object.values(stagesByDept).map(({ dept, stages: deptStages }) => {
           const deptTasks = (tasks ?? []).filter((t) => t.department_id === dept.id);
           return (
             <div key={dept.id}>
-              <StageBoard
+              <TaskCards
                 stages={deptStages ?? []}
                 tasks={deptTasks}
                 employees={deptEmployees.filter((e) => e.department_ids.includes(dept.id))}
                 creatives={projectCreatives}
                 deptName={dept.name}
-                deptSlug={dept.slug}
               />
             </div>
           );

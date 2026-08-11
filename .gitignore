@@ -41,3 +41,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# The Expo mobile client. Developed in this folder so Metro can resolve
+# @shared -> ../lib (types.ts and rbac.ts, shared with the web app so the role
+# hierarchy and status labels cannot drift), but deliberately not tracked here.
+# Its full history lives on the local `feat/mobile-app` branch.
+mobile/
