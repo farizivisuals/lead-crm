@@ -131,6 +131,24 @@ export interface TaskCreative {
   employees?: { profiles?: { full_name: string } | null } | null;
 }
 
+export interface TaskDeliverableAssignment {
+  deliverable_id: string;
+  stage_id: string;
+  assigned_to: string;
+  assigned_by: string | null;
+  assigned_at: string;
+  employees?: { profiles?: { full_name: string } | null } | null;
+}
+
+export interface TaskDeliverable {
+  id: string;
+  task_id: string;
+  title: string;
+  position: number;
+  created_at: string;
+  task_deliverable_assignments?: TaskDeliverableAssignment[];
+}
+
 export interface Task {
   id: string;
   project_id: string;
@@ -149,6 +167,7 @@ export interface Task {
   departments?: Department;
   employees?: { profiles?: Profile };
   task_creatives?: TaskCreative[];
+  task_deliverables?: TaskDeliverable[];
 }
 
 export interface TaskStageHistory {
