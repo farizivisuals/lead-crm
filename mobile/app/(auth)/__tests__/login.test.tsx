@@ -23,7 +23,10 @@ jest.mock('../../../lib/supabase', () => ({
   },
 }));
 
-const mockAuthValue: { profileError: string | null } = { profileError: null };
+const mockAuthValue: { profileError: string | null; retryProfile: () => void } = {
+  profileError: null,
+  retryProfile: jest.fn(),
+};
 
 jest.mock('../../../lib/auth', () => ({
   useAuth: () => mockAuthValue,

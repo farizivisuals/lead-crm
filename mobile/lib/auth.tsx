@@ -32,6 +32,12 @@ type AuthValue = {
   // legitimate "no profile" state. login.tsx uses this to stop the sign-in
   // button spinning and let the user retry instead of hanging forever.
   profileError: string | null;
+  // Re-runs the profile fetch without depending on `session?.user?.id`
+  // changing (that key must stay frozen against TOKEN_REFRESHED — see the
+  // profile effect below). login.tsx calls this on a repeat sign-in attempt
+  // after a profileError, since signing in again as the same user doesn't
+  // itself change the id and so wouldn't otherwise retrigger the fetch.
+  retryProfile: () => void;
   // Called once the new password is saved, or from a "back to sign in" escape
   // hatch on a failed link — routes the user onward normally again.
   clearRecovery: () => void;
@@ -49,6 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [recovering, setRecovering] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
+  // Bumped by retryProfile() to force the profile effect below to re-run
+  // without touching its `session?.user?.id` dependency.
+  const [retryNonce, setRetryNonce] = useState(0);
 
   function clearRecovery() {
     setRecovering(false);
@@ -166,11 +175,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setLoading(true);
+    // Cleared up front (not just inside `load()`'s branches) so a retry that
+    // fails the same way as last time still produces a real null -> message
+    // transition — otherwise login.tsx's effect (keyed on `profileError`)
+    // would never re-fire and the button would stay stuck.
+    setProfileError(null);
     load();
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id]);
+    // `retryNonce` deliberately sits ALONGSIDE `session?.user?.id`, not in
+    // place of it: that id must stay the only thing that reacts to identity
+    // changes (TOKEN_REFRESHED fires a new session object for the same user
+    // roughly hourly, and must not re-run this). retryNonce is the one
+    // sanctioned way to force a re-run without touching that guard.
+  }, [session?.user?.id, retryNonce]);
+
+  function retryProfile() {
+    setRetryNonce((n) => n + 1);
+  }
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -188,6 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         recovering,
         recoveryError,
         profileError,
+        retryProfile,
         clearRecovery,
         signOut,
       }}

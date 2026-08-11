@@ -10,7 +10,7 @@ import { Input } from '../../components/ui/Input';
 import { theme } from '../../lib/theme';
 
 export default function LoginScreen() {
-  const { profileError } = useAuth();
+  const { profileError, retryProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,6 +32,17 @@ export default function LoginScreen() {
   async function handleLogin() {
     setLoading(true);
     setError(null);
+
+    // A repeat tap after a profile-fetch failure: the user is already signed
+    // in (signInWithPassword succeeded last time), so re-authenticating
+    // wouldn't change `session?.user?.id` and wouldn't retrigger the profile
+    // fetch on its own (see the effect in auth.tsx). Ask for that fetch
+    // directly instead.
+    if (profileError) {
+      retryProfile();
+      return;
+    }
+
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     if (authError) {
       setError(authError.message);
