@@ -20,6 +20,11 @@ export const qk = {
 
   project: (projectId: string) => ['project', projectId] as const,
   projectTasks: (projectId: string) => ['project', projectId, 'tasks'] as const,
+  // Both nested under `project` so the existing qk.project(id) invalidation in
+  // the deliverable and task mutations cascades here without new call sites.
+  projectDeliverables: (projectId: string) =>
+    ['project', projectId, 'deliverables'] as const,
+  projectActivity: (projectId: string) => ['project', projectId, 'activity'] as const,
   // Sorted so the same set of department ids in a different order shares one
   // cache entry — `[...deptIds]` avoids mutating the caller's array in place.
   boardMeta: (deptIds: string[]) => ['board-meta', [...deptIds].sort().join(',')] as const,

@@ -600,7 +600,7 @@ Expected: clean. Two `@ts-expect-error` directives remain live in this file. A c
 npm test
 ```
 
-Expected: 66 passing across 9 suites — the 62 baseline plus Task 1's 4. This task adds no tests.
+Expected: 66 passing across 10 suites — the 62 baseline plus Task 1's 4. This task adds no tests.
 
 - [ ] **Step 4: Commit**
 
@@ -1074,7 +1074,7 @@ npm test
 grep -rn "ts-expect-error" "app/(employee)/projects"
 ```
 
-Expected: typecheck clean; 66 tests across 9 suites; the grep prints nothing. If the typecheck complains about an unused `@ts-expect-error`, you removed a directive whose route now resolves — that is the expected outcome of Step 3, not an error to suppress.
+Expected: typecheck clean; 66 tests across 10 suites; the grep prints nothing. If the typecheck complains about an unused `@ts-expect-error`, you removed a directive whose route now resolves — that is the expected outcome of Step 3, not an error to suppress.
 
 - [ ] **Step 5: Commit**
 
@@ -1233,7 +1233,7 @@ npm test
 grep -rn "Soon" "app/(employee)/projects"
 ```
 
-Expected: typecheck clean; 66 tests across 9 suites; the grep prints nothing, since these were the last two `· Soon` affixes under `projects/`.
+Expected: typecheck clean; 66 tests across 10 suites; the grep prints nothing, since these were the last two `· Soon` affixes under `projects/`.
 
 - [ ] **Step 4: Commit**
 
@@ -1378,7 +1378,7 @@ node node_modules/typescript/bin/tsc --noEmit
 npm test
 ```
 
-Expected: typecheck clean inside `mobile/`, 66 tests across 9 suites.
+Expected: typecheck clean inside `mobile/`, 66 tests across 10 suites.
 
 Then from the repo root, confirm the web still compiles:
 
@@ -1399,7 +1399,7 @@ git commit -m "fix: point activity feeds at task_stage_history and scope project
 
 ## Phase 3a Done When
 
-- [ ] `npm test` passes — 66 tests across 9 suites
+- [ ] `npm test` passes — 66 tests across 10 suites
 - [ ] `npx tsc --noEmit` is clean inside `mobile/`
 - [ ] `grep -rn "ts-expect-error" "mobile/app/(employee)/projects"` returns nothing
 - [ ] `grep -rn "Soon" "mobile/app/(employee)/projects"` returns nothing
