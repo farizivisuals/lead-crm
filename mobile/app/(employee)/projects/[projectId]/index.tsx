@@ -122,8 +122,6 @@ export default function ProjectDetailScreen() {
   }
 
   function openTasks() {
-    // @ts-expect-error — the /projects/[projectId]/tasks route does not exist
-    // until Task 4 creates it. Delete this directive (not the call) in Task 4.
     router.push({ pathname: '/projects/[projectId]/tasks', params: { projectId } });
   }
 
