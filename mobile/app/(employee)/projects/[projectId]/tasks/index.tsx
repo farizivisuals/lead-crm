@@ -36,8 +36,6 @@ export default function BoardScreen() {
   const [selected, setSelected] = useState<Record<string, string | null>>({});
 
   function openTask(taskId: string) {
-    // @ts-expect-error — the /projects/[projectId]/tasks/[taskId] route does not
-    // exist until Task 5 creates it. Delete this directive (not the call) in Task 5.
     router.push({ pathname: '/projects/[projectId]/tasks/[taskId]', params: { projectId, taskId } });
   }
 
