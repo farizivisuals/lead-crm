@@ -45,6 +45,14 @@ export const qk = {
 
   allTasks: () => ['tasks'] as const,
 
+  // Keyed by the query text, so TanStack caches each search and the "stale
+  // response overwrites a newer one" race the web guards with a request id
+  // cannot happen here.
+  search: (query: string) => ['search', query] as const,
+
+  // Keyed by the month's first day — one cache entry per month browsed.
+  calendar: (monthStart: string) => ['calendar', monthStart] as const,
+
   team: () => ['team'] as const,
   // Keyed by user: notifications are per-recipient, and a sign-out must not
   // leave the next user reading the previous one's rows.

@@ -24,6 +24,9 @@ export default function More() {
         </GlassCard>
 
         <GlassCard>
+          <Pressable onPress={() => router.push('/settings/search')}>
+            <Text style={styles.rowLive}>Search</Text>
+          </Pressable>
           {exec && (
             <Pressable onPress={() => router.push('/clients')}>
               <Text style={styles.rowLive}>Clients</Text>
@@ -34,7 +37,8 @@ export default function More() {
               <Text style={styles.rowLive}>Team</Text>
             </Pressable>
           )}
-          {exec && <Text style={styles.row}>Stages · Soon</Text>}
+          {/* Stage settings stay web-only — configuring department stages is
+              rare, fiddly admin work that does not belong on a phone. */}
           <Pressable onPress={() => router.push('/settings/profile')}>
             <Text style={styles.rowLive}>Profile</Text>
           </Pressable>
