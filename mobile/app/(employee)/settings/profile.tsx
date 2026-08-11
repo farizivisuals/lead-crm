@@ -141,5 +141,5 @@ const styles = StyleSheet.create({
   },
   value: { color: '#fff', fontSize: 15, marginTop: 6 },
   role: { color: theme.text.dim, fontSize: 13, marginTop: 2 },
-  hint: { color: '#fbbf24', fontSize: 12 },
+  hint: { color: theme.colors.warning, fontSize: 12 },
 });

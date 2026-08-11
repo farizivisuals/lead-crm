@@ -90,5 +90,5 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 60, gap: 4 },
   emptyTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
   muted: { color: theme.text.dim, fontSize: 13, textAlign: 'center' },
-  error: { color: '#f87171', fontSize: 13, textAlign: 'center', paddingVertical: 40 },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center', paddingVertical: 40 },
 });

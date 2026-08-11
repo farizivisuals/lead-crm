@@ -15,8 +15,8 @@ export default function EmployeeLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#fff',
-        tabBarInactiveTintColor: theme.text.dimmer,
+        tabBarActiveTintColor: theme.colors.accent,
+        tabBarInactiveTintColor: theme.text.dim,
         tabBarStyle: { position: 'absolute', borderTopColor: theme.colors.border },
         tabBarBackground: () => (
           <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />

@@ -1,11 +1,20 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { theme } from '../../lib/theme';
+import { theme, withAlpha } from '../../lib/theme';
 
 export function Badge({ label, color }: { label: string; color?: string }) {
-  const tint = color ?? theme.text.label;
+  // Colored badges get a tinted fill derived from their color; neutral badges
+  // stay quiet white-alpha.
+  const tinted = color?.startsWith('#');
   return (
-    <View style={[styles.wrap, { borderColor: tint }]}>
-      <Text style={[styles.text, { color: tint }]} numberOfLines={1}>
+    <View
+      style={[
+        styles.wrap,
+        tinted
+          ? { borderColor: withAlpha(color!, 0.3), backgroundColor: withAlpha(color!, 0.15) }
+          : { borderColor: theme.colors.borderMd },
+      ]}
+    >
+      <Text style={[styles.text, { color: color ?? theme.text.label }]} numberOfLines={1}>
         {label}
       </Text>
     </View>

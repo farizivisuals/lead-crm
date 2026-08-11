@@ -68,6 +68,6 @@ const styles = StyleSheet.create({
   title: { color: '#fff', fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
   subtitle: { color: theme.text.dim, fontSize: 13, marginTop: 4 },
   form: { gap: 16, marginTop: 24 },
-  errorText: { color: '#f87171', fontSize: 13 },
+  errorText: { color: theme.colors.danger, fontSize: 13 },
   back: { marginTop: 16 },
 });

@@ -12,7 +12,7 @@ import {
   latestRevision,
   type DeliverableRow,
 } from '../../../../../lib/queries/deliverables';
-import { theme } from '../../../../../lib/theme';
+import { DELIVERABLE_STATUS_COLORS, theme } from '../../../../../lib/theme';
 
 export default function DeliverablesScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -104,7 +104,7 @@ function DeliverableCard({
             By {submitter} · {shortDate(deliverable.submitted_at)}
           </Text>
         </View>
-        <Badge label={DELIVERABLE_STATUS_LABELS[deliverable.status]} />
+        <Badge label={DELIVERABLE_STATUS_LABELS[deliverable.status]} color={DELIVERABLE_STATUS_COLORS[deliverable.status]} />
       </View>
 
       {revision && (
@@ -136,7 +136,7 @@ function DeliverableCard({
 const styles = StyleSheet.create({
   scroll: { padding: 20, gap: 12, paddingBottom: 140 },
   flex: { flex: 1 },
-  newButton: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  newButton: { color: theme.colors.accent, fontSize: 15, fontWeight: '600' },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   typeChip: {
@@ -161,13 +161,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  approved: { color: '#34d399', fontSize: 12, fontWeight: '600' },
-  revisionRequested: { color: '#fb923c', fontSize: 12, fontWeight: '600' },
+  approved: { color: theme.colors.success, fontSize: 12, fontWeight: '600' },
+  revisionRequested: { color: theme.colors.danger, fontSize: 12, fontWeight: '600' },
   revisionNote: { color: theme.text.label, fontSize: 13, marginTop: 4 },
   revisionMeta: { color: theme.text.dimmer, fontSize: 11, marginTop: 6 },
   actions: { flexDirection: 'row', gap: 20, marginTop: 12 },
   action: { color: theme.text.label, fontSize: 13, fontWeight: '500' },
   emptyTitle: { color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 4 },
   muted: { color: theme.text.dim, fontSize: 13 },
-  error: { color: '#f87171', fontSize: 13 },
+  error: { color: theme.colors.danger, fontSize: 13 },
 });

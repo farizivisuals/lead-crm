@@ -15,6 +15,23 @@ export type ExecutiveDashboardData = {
   clientCount: number;
   projectCount: number;
   openTaskCount: number;
+  overdueCount: number;
+  overdueTasks: {
+    id: string;
+    title: string;
+    priority: TaskPriority;
+    due_date: string;
+    project_id: string;
+    projects: { name: string } | { name: string }[] | null;
+  }[];
+  reviewDeliverables: {
+    id: string;
+    title: string;
+    status: DeliverableStatus;
+    updated_at: string;
+    project_id: string;
+    projects: { name: string } | { name: string }[] | null;
+  }[];
   activity: StageChange[];
   recentProjects: {
     id: string;
@@ -28,7 +45,22 @@ export function useExecutiveDashboard(deptId: string | null) {
   return useQuery({
     queryKey: qk.dashboardExec(deptId),
     queryFn: async (): Promise<ExecutiveDashboardData> => {
-      const [deptsRes, clientsRes, projectCountRes, openTasksRes, activityRes, recentRes] =
+      // Same "today" convention as isTaskOverdue() in lib/data.ts.
+      const today = new Date().toISOString().slice(0, 10);
+
+      let overdueQuery = supabase
+        .from('tasks')
+        .select(
+          'id, title, priority, due_date, project_id, projects(name), department_stages!current_stage_id!inner(is_terminal)',
+          { count: 'exact' }
+        )
+        .eq('department_stages.is_terminal', false)
+        .lt('due_date', today)
+        .order('due_date', { ascending: true })
+        .limit(5);
+      if (deptId) overdueQuery = overdueQuery.eq('department_id', deptId);
+
+      const [deptsRes, clientsRes, projectCountRes, openTasksRes, overdueRes, reviewRes, activityRes, recentRes] =
         await Promise.all([
           supabase.from('departments').select('id, name').order('name'),
 
@@ -63,6 +95,18 @@ export function useExecutiveDashboard(deptId: string | null) {
                 })
                 .eq('department_stages.is_terminal', false),
 
+          overdueQuery,
+
+          // Like the activity feed below, always agency-wide: deliverables
+          // carry no department_id, and review bottlenecks are an
+          // exec-attention item regardless of the department filter.
+          supabase
+            .from('deliverables')
+            .select('id, title, status, updated_at, project_id, projects(name)')
+            .in('status', ['internal_review', 'client_review'])
+            .order('updated_at', { ascending: false })
+            .limit(5),
+
           // activity_log has no writer anywhere in the schema, so this panel was
           // always empty. task_stage_history is written by log_task_stage_change()
           // on every real stage change. Never department-filtered — always
@@ -93,10 +137,15 @@ export function useExecutiveDashboard(deptId: string | null) {
       if (clientsRes.error) throw clientsRes.error;
       if (projectCountRes.error) throw projectCountRes.error;
       if (openTasksRes.error) throw openTasksRes.error;
+      if (overdueRes.error) throw overdueRes.error;
+      if (reviewRes.error) throw reviewRes.error;
       if (activityRes.error) throw activityRes.error;
       if (recentRes.error) throw recentRes.error;
 
       return {
+        overdueCount: overdueRes.count ?? 0,
+        overdueTasks: (overdueRes.data ?? []) as unknown as ExecutiveDashboardData['overdueTasks'],
+        reviewDeliverables: (reviewRes.data ?? []) as unknown as ExecutiveDashboardData['reviewDeliverables'],
         departments: (deptsRes.data ?? []) as { id: string; name: string }[],
         // Filtered: distinct clients across the department's projects.
         // Unfiltered: the head-count the query already returned.

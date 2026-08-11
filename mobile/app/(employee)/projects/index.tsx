@@ -8,7 +8,7 @@ import { ScreenHeader } from '../../../components/ui/ScreenHeader';
 import { useAuth } from '../../../lib/auth';
 import { one, shortDate } from '../../../lib/data';
 import { useProjectsList, type ProjectListRow } from '../../../lib/queries/projects';
-import { theme } from '../../../lib/theme';
+import { PROJECT_STATUS_COLORS, theme } from '../../../lib/theme';
 
 export default function ProjectsScreen() {
   const router = useRouter();
@@ -86,7 +86,10 @@ function ProjectCard({
           <Text style={styles.cardTitle} numberOfLines={1}>
             {project.name}
           </Text>
-          <Badge label={PROJECT_STATUS_LABELS[project.status]} />
+          <Badge
+            label={PROJECT_STATUS_LABELS[project.status]}
+            color={PROJECT_STATUS_COLORS[project.status]}
+          />
         </View>
         <Text style={styles.client}>{client}</Text>
         {project.description ? (
@@ -119,7 +122,7 @@ function ProjectCard({
 
 const styles = StyleSheet.create({
   list: { padding: 20, gap: 12, paddingBottom: 120 },
-  newButton: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  newButton: { color: theme.colors.accent, fontSize: 15, fontWeight: '600' },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardTitle: { color: '#fff', fontSize: 16, fontWeight: '600', flex: 1 },
   client: { color: theme.text.label, fontSize: 13, marginTop: 4 },
@@ -128,10 +131,10 @@ const styles = StyleSheet.create({
   due: { color: theme.text.dimmer, fontSize: 12 },
   progressWrap: { marginTop: 12, gap: 6 },
   track: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.08)' },
-  fill: { height: 4, borderRadius: 2, backgroundColor: '#fafafa' },
-  progressText: { color: theme.text.dimmer, fontSize: 11 },
+  fill: { height: 4, borderRadius: 2, backgroundColor: theme.colors.accentSolid },
+  progressText: { color: theme.text.dim, fontSize: 11 },
   empty: { alignItems: 'center', gap: 6, paddingVertical: 60 },
   emptyTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  muted: { color: theme.text.dim, fontSize: 13, textAlign: 'center' },
-  error: { color: '#f87171', fontSize: 13, textAlign: 'center', paddingVertical: 40 },
+  muted: { color: theme.text.label, fontSize: 13, textAlign: 'center' },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center', paddingVertical: 40 },
 });

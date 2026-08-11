@@ -82,5 +82,5 @@ const styles = StyleSheet.create({
   depts: { color: theme.text.dim, fontSize: 12, marginTop: 6 },
   footer: { color: theme.text.dimmer, fontSize: 12, textAlign: 'center', marginTop: 8 },
   muted: { color: theme.text.dim, fontSize: 13, textAlign: 'center', paddingVertical: 24 },
-  error: { color: '#f87171', fontSize: 13, textAlign: 'center', paddingVertical: 40 },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center', paddingVertical: 40 },
 });

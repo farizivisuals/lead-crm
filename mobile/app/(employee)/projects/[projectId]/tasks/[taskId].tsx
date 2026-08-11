@@ -32,10 +32,9 @@ import {
   shootDueDate,
   diffCreatives,
 } from '../../../../../lib/queries/task';
-import { theme } from '../../../../../lib/theme';
+import { PRIORITY_COLORS, theme, withAlpha } from '../../../../../lib/theme';
 
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
-const STAGE_FALLBACK_COLOR = '#71717a';
 
 export default function TaskDetailScreen() {
   const { projectId, taskId } = useLocalSearchParams<{ projectId: string; taskId: string }>();
@@ -260,7 +259,7 @@ export default function TaskDetailScreen() {
                 <View
                   style={[
                     styles.dot,
-                    { backgroundColor: stage?.color ?? STAGE_FALLBACK_COLOR },
+                    { backgroundColor: stage?.color ?? theme.colors.mutedForeground },
                   ]}
                 />
                 <Text style={styles.value}>
@@ -284,7 +283,9 @@ export default function TaskDetailScreen() {
 
               <Pressable onPress={() => setPicker('priority')}>
                 <Text style={styles.label}>PRIORITY</Text>
-                <Text style={styles.value}>{PRIORITY_LABELS[priority]}</Text>
+                <Text style={[styles.value, PRIORITY_COLORS[priority] ? { color: PRIORITY_COLORS[priority] } : null]}>
+                  {PRIORITY_LABELS[priority]}
+                </Text>
               </Pressable>
 
               <Pressable onPress={() => setPicker('assignee')}>
@@ -373,7 +374,7 @@ export default function TaskDetailScreen() {
           />
           <Button
             title="Delete task"
-            variant="ghost"
+            variant="destructive"
             onPress={confirmDelete}
             loading={deleteMutation.isPending}
           />
@@ -387,7 +388,7 @@ export default function TaskDetailScreen() {
         options={stages.map((s) => ({
           value: s.id,
           label: s.is_terminal ? `${s.name} ✓` : s.name,
-          color: s.color ?? STAGE_FALLBACK_COLOR,
+          color: s.color ?? theme.colors.mutedForeground,
         }))}
         onSelect={chooseStage}
         onClose={() => setPicker(null)}
@@ -447,11 +448,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  chipOn: { borderColor: '#fafafa', backgroundColor: 'rgba(255,255,255,0.10)' },
+  chipOn: {
+    borderColor: withAlpha(theme.colors.accentSolid, 0.5),
+    backgroundColor: withAlpha(theme.colors.accentSolid, 0.15),
+  },
   chipText: { color: theme.text.dim, fontSize: 13 },
-  chipTextOn: { color: '#fff', fontWeight: '600' },
-  conflictTitle: { color: '#fbbf24', fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  chipTextOn: { color: theme.colors.accent, fontWeight: '600' },
+  conflictTitle: { color: theme.colors.warning, fontSize: 14, fontWeight: '600', marginBottom: 6 },
   conflictRow: { color: theme.colors.foreground, fontSize: 13 },
   muted: { color: theme.text.dim, fontSize: 12, marginTop: 6 },
-  error: { color: '#f87171', fontSize: 13, textAlign: 'center' },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center' },
 });

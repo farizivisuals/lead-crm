@@ -2,13 +2,13 @@ import { View, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ReactNode } from 'react';
-import { theme } from '../../lib/theme';
+import { theme, withAlpha } from '../../lib/theme';
 
 export function Screen({ children }: { children: ReactNode }) {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={['rgba(255,255,255,0.04)', 'transparent']}
+        colors={[withAlpha(theme.colors.accentSolid, 0.07), 'transparent']}
         style={StyleSheet.absoluteFill}
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.8, y: 0.6 }}

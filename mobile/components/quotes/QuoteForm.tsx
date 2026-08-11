@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   sectionTitle: { color: '#fff', fontSize: 15, fontWeight: '600', marginTop: 12 },
   rowHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowIndex: { color: theme.text.dimmer, fontSize: 12, fontWeight: '600' },
-  remove: { color: '#f87171', fontSize: 12, fontWeight: '500' },
+  remove: { color: theme.colors.danger, fontSize: 12, fontWeight: '500' },
   numberRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
   label: {
     fontSize: 11,
@@ -184,5 +184,5 @@ const styles = StyleSheet.create({
   },
   addRow: { color: theme.text.label, fontSize: 14, fontWeight: '500', textAlign: 'center' },
   total: { color: '#fff', fontSize: 24, fontWeight: '700', marginTop: 6, letterSpacing: -0.5 },
-  error: { color: '#f87171', fontSize: 13 },
+  error: { color: theme.colors.danger, fontSize: 13 },
 });

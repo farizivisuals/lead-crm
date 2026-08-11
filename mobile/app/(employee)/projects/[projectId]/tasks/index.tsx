@@ -9,9 +9,8 @@ import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
 import { useAuth } from '../../../../../lib/auth';
 import { one, countByStage, isTaskOverdue, shortDate, firstName } from '../../../../../lib/data';
 import { useBoard, useBoardMeta, type BoardTask } from '../../../../../lib/queries/board';
-import { theme } from '../../../../../lib/theme';
+import { PRIORITY_COLORS, theme, withAlpha } from '../../../../../lib/theme';
 
-const STAGE_FALLBACK_COLOR = '#71717a';
 
 export default function BoardScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -104,7 +103,7 @@ export default function BoardScreen() {
                 <Chip
                   label="All"
                   count={deptTasks.length}
-                  color="#fafafa"
+                  color="#fff"
                   active={activeStage === null}
                   onPress={() => setSelected((s) => ({ ...s, [dept.id]: null }))}
                 />
@@ -113,7 +112,7 @@ export default function BoardScreen() {
                     key={stage.id}
                     label={stage.is_terminal ? `${stage.name} ✓` : stage.name}
                     count={count}
-                    color={stage.color ?? STAGE_FALLBACK_COLOR}
+                    color={stage.color ?? theme.colors.mutedForeground}
                     active={activeStage === stage.id}
                     onPress={() =>
                       setSelected((s) => ({
@@ -165,8 +164,8 @@ function Chip({
       onPress={onPress}
       style={[
         styles.chip,
-        { borderColor: color },
-        active && { backgroundColor: 'rgba(255,255,255,0.12)' },
+        { borderColor: active ? color : withAlpha(color, 0.45) },
+        active && { backgroundColor: withAlpha(color, 0.18) },
       ]}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>
@@ -192,7 +191,7 @@ function TaskCard({ task, onPress }: { task: BoardTask; onPress: () => void }) {
             {overdue ? '⚠ ' : ''}
             {task.title}
           </Text>
-          <Badge label={PRIORITY_LABELS[task.priority]} />
+          <Badge label={PRIORITY_LABELS[task.priority]} color={PRIORITY_COLORS[task.priority]} />
         </View>
         <View style={styles.cardMeta}>
           <Text style={overdue ? styles.overdue : styles.meta}>
@@ -212,7 +211,7 @@ function TaskCard({ task, onPress }: { task: BoardTask; onPress: () => void }) {
 const styles = StyleSheet.create({
   scroll: { padding: 20, gap: 20, paddingBottom: 140 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  newButton: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  newButton: { color: theme.colors.accent, fontSize: 15, fontWeight: '600' },
   section: { gap: 10 },
   deptName: { color: '#fff', fontSize: 15, fontWeight: '600' },
   chipRow: { gap: 8, paddingRight: 20 },
@@ -224,7 +223,7 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#fff', fontSize: 15, fontWeight: '600', flex: 1 },
   cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 },
   meta: { color: theme.text.dim, fontSize: 12 },
-  overdue: { color: '#f87171', fontSize: 12 },
+  overdue: { color: theme.colors.danger, fontSize: 12, fontWeight: '600' },
   muted: { color: theme.text.dim, fontSize: 13 },
-  error: { color: '#f87171', fontSize: 13, textAlign: 'center' },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center' },
 });

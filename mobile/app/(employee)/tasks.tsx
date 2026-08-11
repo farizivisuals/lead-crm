@@ -8,9 +8,9 @@ import { Badge } from '../../components/ui/Badge';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { PickerSheet } from '../../components/ui/PickerSheet';
 import { useAuth } from '../../lib/auth';
-import { one, shortDate, firstName, distinctAssignees } from '../../lib/data';
+import { isTaskOverdue, one, shortDate, firstName, distinctAssignees } from '../../lib/data';
 import { useAllTasks, type AllTasksRow } from '../../lib/queries/all-tasks';
-import { theme } from '../../lib/theme';
+import { PRIORITY_COLORS, theme } from '../../lib/theme';
 
 export default function TasksScreen() {
   const router = useRouter();
@@ -111,6 +111,7 @@ function TaskRow({ task, onPress }: { task: AllTasksRow; onPress: () => void }) 
     .filter(Boolean)
     .join(' · ');
   const assignee = one(task.employees)?.profiles?.full_name;
+  const overdue = isTaskOverdue(task.due_date, done);
 
   return (
     <Pressable onPress={onPress}>
@@ -119,13 +120,16 @@ function TaskRow({ task, onPress }: { task: AllTasksRow; onPress: () => void }) 
           <Text style={[styles.title, done && styles.titleDone]} numberOfLines={2}>
             {task.title}
           </Text>
-          <Badge label={PRIORITY_LABELS[task.priority]} />
+          <Badge label={PRIORITY_LABELS[task.priority]} color={PRIORITY_COLORS[task.priority]} />
         </View>
         <Text style={styles.subtitle} numberOfLines={1}>
           {subtitle}
         </Text>
         <View style={styles.rowMeta}>
-          <Text style={styles.meta}>{shortDate(task.due_date)}</Text>
+          <Text style={[styles.meta, overdue && styles.metaOverdue]}>
+            {overdue ? 'Overdue · ' : ''}
+            {shortDate(task.due_date)}
+          </Text>
           <Text style={styles.meta}>{assignee ? firstName(assignee) : 'Unassigned'}</Text>
         </View>
       </GlassCard>
@@ -135,15 +139,16 @@ function TaskRow({ task, onPress }: { task: AllTasksRow; onPress: () => void }) 
 
 const styles = StyleSheet.create({
   list: { padding: 20, gap: 12, paddingBottom: 120 },
-  filterButton: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  filterButton: { color: theme.colors.accent, fontSize: 14, fontWeight: '600' },
   rowTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   title: { color: '#fff', fontSize: 15, fontWeight: '600', flex: 1 },
   titleDone: { color: theme.colors.mutedForeground, textDecorationLine: 'line-through' },
   subtitle: { color: theme.text.dim, fontSize: 12, marginTop: 6 },
   rowMeta: { flexDirection: 'row', gap: 16, marginTop: 8 },
-  meta: { color: theme.text.dimmer, fontSize: 12 },
+  meta: { color: theme.text.dim, fontSize: 12 },
+  metaOverdue: { color: theme.colors.danger, fontWeight: '600' },
   empty: { alignItems: 'center', paddingVertical: 60 },
   emptyTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  muted: { color: theme.text.dim, fontSize: 13, textAlign: 'center', paddingVertical: 24 },
-  error: { color: '#f87171', fontSize: 13, textAlign: 'center', paddingVertical: 40 },
+  muted: { color: theme.text.label, fontSize: 13, textAlign: 'center', paddingVertical: 24 },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center', paddingVertical: 40 },
 });

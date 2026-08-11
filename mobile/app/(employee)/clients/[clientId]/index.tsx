@@ -10,7 +10,7 @@ import { one, shortDate } from '../../../../lib/data';
 import { qk } from '../../../../lib/queries/keys';
 import { useClientDetail, type QuoteRow } from '../../../../lib/queries/clients';
 import { deleteQuote, formatKD, quoteTotal } from '../../../../lib/queries/quotes';
-import { theme } from '../../../../lib/theme';
+import { PROJECT_STATUS_COLORS, QUOTE_STATUS_COLORS, theme } from '../../../../lib/theme';
 
 export default function ClientDetailScreen() {
   const { clientId } = useLocalSearchParams<{ clientId: string }>();
@@ -105,7 +105,7 @@ export default function ClientDetailScreen() {
                   <Text style={styles.title} numberOfLines={1}>
                     {quote.title}
                   </Text>
-                  <Badge label={quote.status} />
+                  <Badge label={quote.status[0].toUpperCase() + quote.status.slice(1)} color={QUOTE_STATUS_COLORS[quote.status]} />
                 </View>
                 <Text style={styles.meta}>
                   {quote.quote_number} · {shortDate(quote.created_at)}
@@ -139,7 +139,7 @@ export default function ClientDetailScreen() {
                   <Text style={styles.title} numberOfLines={1}>
                     {project.name}
                   </Text>
-                  <Badge label={PROJECT_STATUS_LABELS[project.status]} />
+                  <Badge label={PROJECT_STATUS_LABELS[project.status]} color={PROJECT_STATUS_COLORS[project.status]} />
                 </View>
                 <Text style={styles.meta}>
                   {project.target_end_date ? `Due ${shortDate(project.target_end_date)}` : 'Due —'}
@@ -156,7 +156,7 @@ export default function ClientDetailScreen() {
 const styles = StyleSheet.create({
   scroll: { padding: 20, gap: 12, paddingBottom: 140 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  newButton: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  newButton: { color: theme.colors.accent, fontSize: 15, fontWeight: '600' },
   sectionTitle: { color: '#fff', fontSize: 15, fontWeight: '600', marginTop: 12 },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { color: '#fff', fontSize: 15, fontWeight: '600', flex: 1 },
@@ -166,5 +166,5 @@ const styles = StyleSheet.create({
   total: { color: '#fff', fontSize: 17, fontWeight: '700', marginTop: 8, letterSpacing: -0.3 },
   hint: { color: theme.text.dimmer, fontSize: 11, marginTop: 6 },
   muted: { color: theme.text.dim, fontSize: 13 },
-  error: { color: '#f87171', fontSize: 13, textAlign: 'center' },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center' },
 });

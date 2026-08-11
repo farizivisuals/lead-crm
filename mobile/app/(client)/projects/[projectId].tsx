@@ -33,7 +33,7 @@ import {
   submitRevision,
   type PortalDeliverable,
 } from '../../../lib/queries/portal';
-import { theme } from '../../../lib/theme';
+import { DELIVERABLE_STATUS_COLORS, PROJECT_STATUS_COLORS, theme } from '../../../lib/theme';
 
 export default function ClientProjectDetail() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -69,7 +69,7 @@ export default function ClientProjectDetail() {
         <GlassCard>
           <View style={styles.rowTop}>
             <Text style={styles.label}>STATUS</Text>
-            <Badge label={PROJECT_STATUS_LABELS[project.status]} />
+            <Badge label={PROJECT_STATUS_LABELS[project.status]} color={PROJECT_STATUS_COLORS[project.status]} />
           </View>
           <Text style={styles.meta}>
             {project.start_date ? `Start ${shortDate(project.start_date)}` : 'No start date'}
@@ -152,7 +152,7 @@ function DeliverableCard({
           </Text>
           <Text style={styles.meta}>Shared {shortDate(deliverable.submitted_at)}</Text>
         </View>
-        <Badge label={DELIVERABLE_STATUS_LABELS[deliverable.status]} />
+        <Badge label={DELIVERABLE_STATUS_LABELS[deliverable.status]} color={DELIVERABLE_STATUS_COLORS[deliverable.status]} />
       </View>
 
       {revision && (
@@ -250,8 +250,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  approved: { color: '#34d399', fontSize: 12, fontWeight: '600' },
-  revisionRequested: { color: '#fb923c', fontSize: 12, fontWeight: '600' },
+  approved: { color: theme.colors.success, fontSize: 12, fontWeight: '600' },
+  revisionRequested: { color: theme.colors.danger, fontSize: 12, fontWeight: '600' },
   revisionNote: { color: theme.text.label, fontSize: 13, marginTop: 4 },
   revisionMeta: { color: theme.text.dimmer, fontSize: 11, marginTop: 6 },
   openRow: { marginTop: 12 },
@@ -264,8 +264,8 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.border,
     paddingTop: 12,
   },
-  approve: { color: '#34d399', fontSize: 14, fontWeight: '600' },
-  request: { color: '#fb923c', fontSize: 14, fontWeight: '600' },
+  approve: { color: theme.colors.success, fontSize: 14, fontWeight: '600' },
+  request: { color: theme.colors.danger, fontSize: 14, fontWeight: '600' },
   form: {
     gap: 12,
     marginTop: 12,
@@ -275,5 +275,5 @@ const styles = StyleSheet.create({
   },
   formTitle: { color: '#fff', fontSize: 14, fontWeight: '600' },
   muted: { color: theme.text.dim, fontSize: 13 },
-  error: { color: '#f87171', fontSize: 13, textAlign: 'center' },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center' },
 });

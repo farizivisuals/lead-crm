@@ -21,7 +21,7 @@ import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
 import { PickerSheet } from '../../../../../components/ui/PickerSheet';
 import { qk } from '../../../../../lib/queries/keys';
 import { useDeliverables, updateDeliverable } from '../../../../../lib/queries/deliverables';
-import { theme } from '../../../../../lib/theme';
+import { DELIVERABLE_STATUS_COLORS, theme } from '../../../../../lib/theme';
 
 const STATUSES: DeliverableStatus[] = [
   'draft',
@@ -163,7 +163,7 @@ export default function EditDeliverableScreen() {
 
               <Pressable onPress={() => setPickerOpen(true)}>
                 <Text style={styles.label}>STATUS</Text>
-                <Text style={styles.value}>{DELIVERABLE_STATUS_LABELS[status]}</Text>
+                <Text style={[styles.value, DELIVERABLE_STATUS_COLORS[status] ? { color: DELIVERABLE_STATUS_COLORS[status] } : null]}>{DELIVERABLE_STATUS_LABELS[status]}</Text>
               </Pressable>
             </View>
           </GlassCard>
@@ -208,5 +208,5 @@ const styles = StyleSheet.create({
   versionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   bump: { color: theme.text.label, fontSize: 12, fontWeight: '500' },
   muted: { color: theme.text.dim, fontSize: 13 },
-  error: { color: '#f87171', fontSize: 13, textAlign: 'center' },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center' },
 });

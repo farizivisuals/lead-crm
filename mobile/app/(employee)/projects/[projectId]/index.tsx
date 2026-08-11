@@ -21,7 +21,7 @@ import {
   addProjectCreative,
   removeProjectCreative,
 } from '../../../../lib/queries/project-detail';
-import { theme } from '../../../../lib/theme';
+import { PROJECT_STATUS_COLORS, theme, withAlpha } from '../../../../lib/theme';
 
 const STATUSES: ProjectStatus[] = ['planning', 'active', 'on_hold', 'completed', 'cancelled'];
 
@@ -154,10 +154,13 @@ export default function ProjectDetailScreen() {
                 onPress={() => setStatusPickerOpen(true)}
                 disabled={statusMutation.isPending}
               >
-                <Badge label={`${PROJECT_STATUS_LABELS[status]}  ▾`} />
+                <Badge
+                  label={`${PROJECT_STATUS_LABELS[status]}  ▾`}
+                  color={PROJECT_STATUS_COLORS[status]}
+                />
               </Pressable>
             ) : (
-              <Badge label={PROJECT_STATUS_LABELS[status]} />
+              <Badge label={PROJECT_STATUS_LABELS[status]} color={PROJECT_STATUS_COLORS[status]} />
             )}
             {depts.map((d) => (
               <Badge key={d.slug} label={d.name} color={DEPT_COLORS[d.slug]} />
@@ -186,8 +189,8 @@ export default function ProjectDetailScreen() {
                   <Text style={styles.muted}>No creatives assigned</Text>
                 )}
                 {availableCreatives.length > 0 && (
-                  <Pressable onPress={() => setCreativePickerOpen(true)} style={styles.chip}>
-                    <Text style={styles.chipText}>+ Add</Text>
+                  <Pressable onPress={() => setCreativePickerOpen(true)} style={[styles.chip, styles.chipAdd]}>
+                    <Text style={styles.chipAddText}>+ Add</Text>
                   </Pressable>
                 )}
               </View>
@@ -322,10 +325,15 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   chipText: { color: theme.colors.foreground, fontSize: 13 },
+  chipAdd: {
+    borderColor: withAlpha(theme.colors.accentSolid, 0.3),
+    backgroundColor: withAlpha(theme.colors.accentSolid, 0.15),
+  },
+  chipAddText: { color: theme.colors.accent, fontSize: 13, fontWeight: '600' },
   moodboardForm: { gap: 12, marginTop: 12 },
   moodboardRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
-  link: { color: '#a5b4fc', fontSize: 13 },
-  editText: { color: theme.text.dim, fontSize: 13 },
+  link: { color: theme.colors.accent, fontSize: 13 },
+  editText: { color: theme.colors.accent, fontSize: 13, fontWeight: '600' },
   placeholderCard: {
     color: theme.text.dim,
     fontSize: 13,
@@ -339,5 +347,5 @@ const styles = StyleSheet.create({
   },
   tileTitle: { color: '#fff', fontSize: 16, fontWeight: '600', marginBottom: 4 },
   muted: { color: theme.text.dim, fontSize: 13 },
-  error: { color: '#f87171', fontSize: 13, textAlign: 'center' },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center' },
 });

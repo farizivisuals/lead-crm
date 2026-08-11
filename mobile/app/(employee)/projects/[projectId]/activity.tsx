@@ -68,8 +68,8 @@ const styles = StyleSheet.create({
   sentence: { color: theme.colors.foreground, fontSize: 13, lineHeight: 19 },
   strong: { fontWeight: '600', color: '#fff' },
   stage: { color: theme.text.dim },
-  toStage: { color: '#a78bfa' },
+  toStage: { color: '#fff' },
   meta: { color: theme.text.dimmer, fontSize: 11, marginTop: 2 },
   muted: { color: theme.text.dim, fontSize: 13 },
-  error: { color: '#f87171', fontSize: 13 },
+  error: { color: theme.colors.danger, fontSize: 13 },
 });

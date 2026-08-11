@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   list: { padding: 20, gap: 12, paddingBottom: 140 },
   action: { color: '#fff', fontSize: 14, fontWeight: '600' },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#60a5fa' },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.accent },
   title: { color: '#fff', fontSize: 15, fontWeight: '600', flex: 1 },
   titleRead: { color: theme.colors.foreground, fontWeight: '500' },
   body: { color: theme.text.dim, fontSize: 13, marginTop: 6 },
@@ -139,5 +139,5 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 60, gap: 4 },
   emptyTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
   muted: { color: theme.text.dim, fontSize: 13, textAlign: 'center' },
-  error: { color: '#f87171', fontSize: 13, textAlign: 'center', paddingVertical: 40 },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center', paddingVertical: 40 },
 });

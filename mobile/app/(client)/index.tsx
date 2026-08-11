@@ -9,7 +9,7 @@ import { useAuth } from '../../lib/auth';
 import { one, shortDate } from '../../lib/data';
 import { useClientId, usePortalHome, type PortalQuote } from '../../lib/queries/portal';
 import { formatKD, quoteTotal } from '../../lib/queries/quotes';
-import { theme } from '../../lib/theme';
+import { PROJECT_STATUS_COLORS, QUOTE_STATUS_COLORS, theme } from '../../lib/theme';
 
 export default function ClientProjects() {
   const router = useRouter();
@@ -67,7 +67,7 @@ export default function ClientProjects() {
                         <Text style={styles.title} numberOfLines={2}>
                           {project.name}
                         </Text>
-                        <Badge label={PROJECT_STATUS_LABELS[project.status]} />
+                        <Badge label={PROJECT_STATUS_LABELS[project.status]} color={PROJECT_STATUS_COLORS[project.status]} />
                       </View>
                       <Text style={styles.meta}>
                         {depts.map((d) => d.name).join(' · ') || 'No departments'}
@@ -104,7 +104,7 @@ function QuoteCard({ quote }: { quote: PortalQuote }) {
         <Text style={styles.title} numberOfLines={1}>
           {quote.title}
         </Text>
-        <Badge label={quote.status} />
+        <Badge label={quote.status[0].toUpperCase() + quote.status.slice(1)} color={QUOTE_STATUS_COLORS[quote.status]} />
       </View>
       <Text style={styles.meta}>{quote.quote_number}</Text>
       <Text style={styles.total}>{formatKD(total)}</Text>
@@ -124,5 +124,5 @@ const styles = StyleSheet.create({
   sectionTitle: { color: '#fff', fontSize: 15, fontWeight: '600', marginTop: 12 },
   emptyTitle: { color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 6 },
   muted: { color: theme.text.dim, fontSize: 13 },
-  error: { color: '#f87171', fontSize: 13 },
+  error: { color: theme.colors.danger, fontSize: 13 },
 });

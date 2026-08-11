@@ -7,7 +7,7 @@ import { Screen } from '../../components/ui/Screen';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { theme } from '../../lib/theme';
+import { theme, withAlpha } from '../../lib/theme';
 
 export default function LoginScreen() {
   const { profileError, retryProfile } = useAuth();
@@ -126,14 +126,14 @@ const styles = StyleSheet.create({
   subtitle: { color: theme.text.dim, fontSize: 13, marginTop: 4 },
   form: { gap: 16, marginTop: 24 },
   error: {
-    backgroundColor: 'rgba(220,40,40,0.10)',
+    backgroundColor: withAlpha(theme.colors.danger, 0.10),
     borderWidth: 1,
-    borderColor: 'rgba(220,40,40,0.20)',
+    borderColor: withAlpha(theme.colors.danger, 0.20),
     borderRadius: theme.radius,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  errorText: { color: '#f87171', fontSize: 13 },
+  errorText: { color: theme.colors.danger, fontSize: 13 },
   forgot: { alignItems: 'center', paddingVertical: 4 },
   forgotText: { color: theme.text.dimmer, fontSize: 12 },
 });

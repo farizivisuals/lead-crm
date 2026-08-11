@@ -230,8 +230,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  chipOn: { borderColor: '#fafafa', backgroundColor: 'rgba(255,255,255,0.10)' },
+  chipOn: { borderColor: theme.colors.accentTintBorder, backgroundColor: theme.colors.accentTintBg },
   chipText: { color: theme.text.dim, fontSize: 13 },
   chipTextOn: { color: '#fff', fontWeight: '600' },
-  error: { color: '#f87171', fontSize: 13 },
+  error: { color: theme.colors.danger, fontSize: 13 },
 });

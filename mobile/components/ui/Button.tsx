@@ -1,5 +1,7 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { theme } from '../../lib/theme';
+import { theme, withAlpha } from '../../lib/theme';
+
+type Variant = 'primary' | 'ghost' | 'destructive';
 
 export function Button({
   title,
@@ -12,9 +14,8 @@ export function Button({
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  variant?: 'primary' | 'ghost';
+  variant?: Variant;
 }) {
-  const isPrimary = variant === 'primary';
   const off = disabled || loading;
   return (
     <Pressable
@@ -22,15 +23,15 @@ export function Button({
       disabled={off}
       style={({ pressed }) => [
         styles.base,
-        isPrimary ? styles.primary : styles.ghost,
+        styles[variant],
         off && styles.off,
         pressed && !off && styles.pressed,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isPrimary ? '#18181b' : '#fff'} />
+        <ActivityIndicator color={variant === 'destructive' ? theme.colors.danger : '#fff'} />
       ) : (
-        <Text style={[styles.text, isPrimary ? styles.primaryText : styles.ghostText]}>{title}</Text>
+        <Text style={[styles.text, textStyles[variant]]}>{title}</Text>
       )}
     </Pressable>
   );
@@ -38,11 +39,20 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: { height: 44, borderRadius: theme.radius, alignItems: 'center', justifyContent: 'center' },
-  primary: { backgroundColor: '#fafafa' },
+  primary: { backgroundColor: theme.colors.accentSolid },
   ghost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.colors.border },
+  destructive: {
+    backgroundColor: withAlpha(theme.colors.danger, 0.15),
+    borderWidth: 1,
+    borderColor: withAlpha(theme.colors.danger, 0.3),
+  },
   off: { opacity: 0.5 },
   pressed: { transform: [{ scale: 0.98 }] },
   text: { fontSize: 14, fontWeight: '600' },
-  primaryText: { color: '#18181b' },
-  ghostText: { color: theme.colors.foreground },
+});
+
+const textStyles = StyleSheet.create({
+  primary: { color: '#fff' },
+  ghost: { color: theme.colors.foreground },
+  destructive: { color: theme.colors.danger },
 });

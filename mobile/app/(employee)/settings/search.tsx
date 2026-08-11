@@ -100,5 +100,5 @@ const styles = StyleSheet.create({
   title: { color: '#fff', fontSize: 15, fontWeight: '600' },
   subtitle: { color: theme.text.dim, fontSize: 12, marginTop: 4 },
   muted: { color: theme.text.dim, fontSize: 13, textAlign: 'center', paddingVertical: 24 },
-  error: { color: '#f87171', fontSize: 13 },
+  error: { color: theme.colors.danger, fontSize: 13 },
 });

@@ -197,5 +197,5 @@ const styles = StyleSheet.create({
   },
   value: { color: '#fff', fontSize: 15, marginTop: 6 },
   muted: { color: theme.text.dim, fontSize: 12, marginTop: 6 },
-  error: { color: '#f87171', fontSize: 13 },
+  error: { color: theme.colors.danger, fontSize: 13 },
 });
