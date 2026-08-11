@@ -28,6 +28,9 @@ export default function EmployeeLayout() {
       <Tabs.Screen name="tasks" options={{ title: 'Tasks', tabBarIcon: icon('checklist') }} />
       <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: icon('calendar') }} />
       <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: icon('ellipsis.circle') }} />
+      {/* Reached from More, not the tab bar. href: null keeps the whole
+          clients/ stack out of the tabs without making it unreachable. */}
+      <Tabs.Screen name="clients" options={{ href: null }} />
     </Tabs>
   );
 }
