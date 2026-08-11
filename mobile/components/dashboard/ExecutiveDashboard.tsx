@@ -92,12 +92,13 @@ export function ExecutiveDashboard() {
             {data!.activity.map((a) => (
               <View key={a.id} style={styles.activityRow}>
                 <Text style={styles.activityText} numberOfLines={2}>
-                  <Text style={styles.actor}>
-                    {one(a.profiles)?.full_name ?? 'Someone'}{' '}
-                  </Text>
-                  {a.action}
+                  <Text style={styles.actor}>{a.actor}</Text>
+                  {' moved '}
+                  <Text style={styles.actor}>{a.taskTitle}</Text>
+                  {a.fromStage ? ` from ${a.fromStage}` : ''}
+                  {` → ${a.toStage}`}
                 </Text>
-                <Text style={styles.meta}>{relativeTime(a.created_at)}</Text>
+                <Text style={styles.meta}>{relativeTime(a.movedAt)}</Text>
               </View>
             ))}
           </GlassCard>

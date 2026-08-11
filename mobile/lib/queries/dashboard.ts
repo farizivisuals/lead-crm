@@ -3,18 +3,19 @@ import type { ProjectStatus, TaskPriority, DeliverableStatus } from '@shared/typ
 import { supabase } from '../supabase';
 import { qk } from './keys';
 import { distinctClientCount } from '../data';
+import {
+  STAGE_HISTORY_SELECT,
+  describeStageChange,
+  type StageChange,
+  type StageChangeRow,
+} from './activity';
 
 export type ExecutiveDashboardData = {
   departments: { id: string; name: string }[];
   clientCount: number;
   projectCount: number;
   openTaskCount: number;
-  activity: {
-    id: string;
-    action: string;
-    created_at: string;
-    profiles: { full_name: string } | { full_name: string }[] | null;
-  }[];
+  activity: StageChange[];
   recentProjects: {
     id: string;
     name: string;
@@ -62,11 +63,16 @@ export function useExecutiveDashboard(deptId: string | null) {
                 })
                 .eq('department_stages.is_terminal', false),
 
-          // Activity is never department-filtered — always agency-wide.
+          // activity_log has no writer anywhere in the schema, so this panel was
+          // always empty. task_stage_history is written by log_task_stage_change()
+          // on every real stage change. Never department-filtered — always
+          // agency-wide, as the panel has always been — and RLS
+          // (task_history_select) already scopes it to projects this employee
+          // can see.
           supabase
-            .from('activity_log')
-            .select('*, profiles(full_name)')
-            .order('created_at', { ascending: false })
+            .from('task_stage_history')
+            .select(STAGE_HISTORY_SELECT)
+            .order('moved_at', { ascending: false })
             .limit(8),
 
           deptId
@@ -99,7 +105,7 @@ export function useExecutiveDashboard(deptId: string | null) {
           : (clientsRes.count ?? 0),
         projectCount: projectCountRes.count ?? 0,
         openTaskCount: openTasksRes.count ?? 0,
-        activity: (activityRes.data ?? []) as unknown as ExecutiveDashboardData['activity'],
+        activity: ((activityRes.data ?? []) as unknown as StageChangeRow[]).map(describeStageChange),
         recentProjects: (recentRes.data ?? []) as unknown as ExecutiveDashboardData['recentProjects'],
       };
     },
