@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { qk } from './keys';
+import { gridRange, type LaidOutEvent } from '../calendar-layout';
 
 export type CalendarEvent = {
   entity_id: string;
@@ -14,83 +15,52 @@ export type CalendarEvent = {
   project_id: string | null;
 };
 
-export type DayGroup = { day: string; events: CalendarEvent[] };
+/** A month-grid event: the raw row plus the day keys the grid positions it by. */
+export type GridEvent = LaidOutEvent & { source: CalendarEvent };
 
 /**
  * get_calendar_events returns `start` as TEXT, and the formats are NOT uniform:
  * projects and tasks come back as plain dates ("2026-07-15") while deliverables
- * come back as full timestamps ("2026-06-11 10:41:45.971904+00"). Slicing the
- * first ten characters is deliberate — `new Date(...)` on a plain date string
- * parses as UTC midnight and then renders in local time, which drags events
- * onto the previous day for anyone west of UTC.
+ * come back as full timestamps ("2026-08-05 18:55:27+00"). Slicing the first ten
+ * characters is deliberate — `new Date(...)` on a plain date string parses as
+ * UTC midnight and then renders in local time, dragging events onto the
+ * previous day for anyone west of UTC.
  */
 export function dayKey(start: string): string {
   return start.slice(0, 10);
 }
 
-/** Zero-padded YYYY-MM-DD for the first and last day of a month. */
-export function monthRange(year: number, month: number): { start: string; end: string } {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  // Day 0 of the next month is the last day of this one.
-  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+/** Deliverables have no `end`; they occupy a single cell. */
+export function toGridEvent(e: CalendarEvent): GridEvent {
+  const day = dayKey(e.start);
+  const endDay = e.end ? dayKey(e.end) : day;
   return {
-    start: `${year}-${pad(month + 1)}-01`,
-    end: `${year}-${pad(month + 1)}-${pad(lastDay)}`,
-  };
-}
-
-/** Groups events under their day, days ascending, each day's events by title. */
-export function groupByDay(events: CalendarEvent[]): DayGroup[] {
-  const byDay = new Map<string, CalendarEvent[]>();
-  for (const event of events) {
-    const key = dayKey(event.start);
-    const bucket = byDay.get(key);
-    if (bucket) bucket.push(event);
-    else byDay.set(key, [event]);
-  }
-  return [...byDay.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([day, dayEvents]) => ({
-      day,
-      events: [...dayEvents].sort((a, b) => a.title.localeCompare(b.title)),
-    }));
-}
-
-/**
- * The RPC includes anything OVERLAPPING the range — its filter is
- * `"end" >= p_start OR start >= p_start` — so browsing August also returns a
- * project that started in July and runs into it. Those are real August work
- * and must not be dropped, but filing them under a July date header while the
- * screen says "August" reads as a bug. They get their own leading group.
- */
-export function splitCarriedOver(
-  events: CalendarEvent[],
-  monthStart: string
-): { carriedOver: CalendarEvent[]; days: DayGroup[] } {
-  const carriedOver: CalendarEvent[] = [];
-  const withinMonth: CalendarEvent[] = [];
-  for (const event of events) {
-    if (dayKey(event.start) < monthStart) carriedOver.push(event);
-    else withinMonth.push(event);
-  }
-  return {
-    carriedOver: [...carriedOver].sort((a, b) => a.title.localeCompare(b.title)),
-    days: groupByDay(withinMonth),
+    id: `${e.entity_type}-${e.entity_id}`,
+    title: e.title,
+    day,
+    // A malformed row with end before start would produce a negative span and
+    // break the lane packer; clamp instead of trusting the data.
+    endDay: endDay < day ? day : endDay,
+    color: e.color,
+    source: e,
   };
 }
 
 export function useCalendar(year: number, month: number) {
-  const { start, end } = monthRange(year, month);
+  // The grid shows adjacent-month days in its first and last rows, so the
+  // query must cover the whole grid — not just the month, or those cells
+  // render blank.
+  const { start, end } = gridRange(year, month);
   return useQuery({
     queryKey: qk.calendar(start),
-    queryFn: async (): Promise<CalendarEvent[]> => {
+    queryFn: async (): Promise<GridEvent[]> => {
       // SECURITY INVOKER, so RLS scopes this to what the caller can see.
       const { data, error } = await supabase.rpc('get_calendar_events', {
         p_start: start,
         p_end: end,
       });
       if (error) throw error;
-      return (data ?? []) as CalendarEvent[];
+      return ((data ?? []) as CalendarEvent[]).map(toGridEvent);
     },
   });
 }
