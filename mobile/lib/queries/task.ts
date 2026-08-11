@@ -208,3 +208,54 @@ export async function deleteTask(taskId: string) {
   const { error } = await supabase.from('tasks').delete().eq('id', taskId);
   if (error) throw error;
 }
+
+export type CreateTaskInput = {
+  project_id: string;
+  department_id: string;
+  /** The department's lowest-position stage — new tasks always start there. */
+  current_stage_id: string;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  start_date: string;
+  due_date: string;
+  isShoot: boolean;
+  assigned_to: string | null;
+  creativeProfileIds: string[];
+  userId: string;
+};
+
+/**
+ * No rollback here, matching the web: a failed `task_creatives` insert leaves
+ * the task in place. That differs from `createProject`, which does roll
+ * back — the difference is in the source, so this stays as-is.
+ */
+export async function createTask(input: CreateTaskInput): Promise<string> {
+  const { data, error } = await supabase
+    .from('tasks')
+    .insert({
+      project_id: input.project_id,
+      department_id: input.department_id,
+      current_stage_id: input.current_stage_id,
+      title: input.title,
+      description: input.description || null,
+      priority: input.priority,
+      start_date: input.start_date,
+      due_date: input.isShoot ? input.start_date : input.due_date,
+      assigned_to: input.assigned_to || null,
+      created_by: input.userId,
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+  if (!data) throw new Error('Task insert returned no row');
+
+  const taskId = data.id as string;
+  if (input.creativeProfileIds.length > 0) {
+    const { error: creativesError } = await supabase
+      .from('task_creatives')
+      .insert(input.creativeProfileIds.map((profile_id) => ({ task_id: taskId, profile_id })));
+    if (creativesError) throw creativesError;
+  }
+  return taskId;
+}

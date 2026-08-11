@@ -40,8 +40,6 @@ export default function BoardScreen() {
   }
 
   function newTask() {
-    // @ts-expect-error — the /projects/[projectId]/tasks/new route does not
-    // exist until Task 6 creates it. Delete this directive (not the call) in Task 6.
     router.push({ pathname: '/projects/[projectId]/tasks/new', params: { projectId } });
   }
 
