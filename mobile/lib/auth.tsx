@@ -8,7 +8,12 @@ import { parseRecoveryLink } from './recovery-link';
 type EmployeeRole = 'root' | 'ceo' | 'cfo' | 'manager' | 'employee';
 
 type Profile = { id: string; full_name: string; user_type: UserType };
-type EmployeeRow = { role: EmployeeRole };
+type EmployeeRow = {
+  role: EmployeeRole;
+  // Needed by isCreativeEmployee() in lib/data.ts — a plain employee in the
+  // creatives department may edit project moodboards.
+  employee_departments?: { department_id: string; departments?: { slug: string } | null }[];
+};
 
 type AuthValue = {
   session: Session | null;
@@ -145,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, user_type, employees(role)')
+        .select('id, full_name, user_type, employees(role, employee_departments(department_id, departments(slug)))')
         .eq('id', userId)
         .single();
 

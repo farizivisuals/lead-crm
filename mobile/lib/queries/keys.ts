@@ -1,0 +1,29 @@
+/**
+ * Every query key in the app. Hierarchical, broadest segment first, so an
+ * invalidation of ['project', id] also clears ['project', id, 'tasks'].
+ * Never inline a key at a call site — mutations in one file invalidate keys
+ * owned by another, and string drift between them fails silently.
+ */
+export const qk = {
+  dashboardExec: (deptId: string | null) => ['dashboard', 'exec', deptId] as const,
+  dashboardEmployee: (userId: string) => ['dashboard', 'employee', userId] as const,
+
+  projects: () => ['projects'] as const,
+  projectFormOptions: () => ['projects', 'form-options'] as const,
+
+  project: (projectId: string) => ['project', projectId] as const,
+  projectTasks: (projectId: string) => ['project', projectId, 'tasks'] as const,
+  boardMeta: (deptIds: string[]) => ['board-meta', deptIds.join(',')] as const,
+
+  task: (taskId: string) => ['task', taskId] as const,
+  taskPickers: (projectId: string, deptId: string) =>
+    ['task-pickers', projectId, deptId] as const,
+  taskConflicts: (
+    assignedTo: string,
+    startDate: string,
+    dueDate: string,
+    excludeTaskId: string | null
+  ) => ['task-conflicts', assignedTo, startDate, dueDate, excludeTaskId] as const,
+
+  allTasks: () => ['tasks'] as const,
+};
