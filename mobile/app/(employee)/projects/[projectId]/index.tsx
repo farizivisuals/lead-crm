@@ -42,6 +42,11 @@ export default function ProjectDetailScreen() {
   const [creativePickerOpen, setCreativePickerOpen] = useState(false);
   const [editingMoodboard, setEditingMoodboard] = useState(false);
   const [moodboardDraft, setMoodboardDraft] = useState('');
+  // Local mirror of the just-saved moodboard URL, shown immediately after a
+  // successful save so there's no stale flash during the invalidate/refetch
+  // round-trip (web parity — MoodboardEditor.tsx's local `setUrl`).
+  // `undefined` means "no local override, trust the query result".
+  const [savedMoodboardUrl, setSavedMoodboardUrl] = useState<string | null | undefined>(undefined);
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
@@ -61,7 +66,8 @@ export default function ProjectDetailScreen() {
 
   const moodboardMutation = useMutation({
     mutationFn: (url: string | null) => updateMoodboardUrl(projectId, url),
-    onSuccess: () => {
+    onSuccess: (_data, url) => {
+      setSavedMoodboardUrl(url);
       setEditingMoodboard(false);
       invalidate();
     },
@@ -103,13 +109,14 @@ export default function ProjectDetailScreen() {
   const { project, progress, deliverableCount, assignedCreatives, availableCreatives } = data;
   const clientName = one(project.clients)?.company_name ?? '—';
   const status = pendingStatus ?? project.status;
+  const moodboardUrl = savedMoodboardUrl !== undefined ? savedMoodboardUrl : project.moodboard_url;
   const depts = (project.project_departments ?? [])
     .map((pd) => one(pd.departments))
     .filter((d): d is { name: string; slug: string } => !!d);
 
   function chooseStatus(next: string) {
     setStatusPickerOpen(false);
-    if (next === project.status) return; // web parity: skip the no-op write
+    if (next === status) return; // web parity: skip the no-op write — compare against the effective (possibly in-flight) status, not the stale server value
     setPendingStatus(next as ProjectStatus); // optimistic
     statusMutation.mutate(next as ProjectStatus);
   }
@@ -132,7 +139,10 @@ export default function ProjectDetailScreen() {
 
           <View style={styles.statusRow}>
             {canManage ? (
-              <Pressable onPress={() => setStatusPickerOpen(true)}>
+              <Pressable
+                onPress={() => setStatusPickerOpen(true)}
+                disabled={statusMutation.isPending}
+              >
                 <Badge label={`${PROJECT_STATUS_LABELS[status]}  ▾`} />
               </Pressable>
             ) : (
@@ -161,6 +171,9 @@ export default function ProjectDetailScreen() {
                     <Text style={styles.chipText}>{c.full_name}  ×</Text>
                   </Pressable>
                 ))}
+                {assignedCreatives.length === 0 && (
+                  <Text style={styles.muted}>No creatives assigned</Text>
+                )}
                 {availableCreatives.length > 0 && (
                   <Pressable onPress={() => setCreativePickerOpen(true)} style={styles.chip}>
                     <Text style={styles.chipText}>+ Add</Text>
@@ -191,20 +204,20 @@ export default function ProjectDetailScreen() {
               />
               <Button title="Cancel" variant="ghost" onPress={() => setEditingMoodboard(false)} />
             </View>
-          ) : project.moodboard_url ? (
+          ) : moodboardUrl ? (
             <View style={styles.moodboardRow}>
               <Pressable
                 style={styles.flex}
-                onPress={() => Linking.openURL(project.moodboard_url!)}
+                onPress={() => Linking.openURL(moodboardUrl)}
               >
                 <Text style={styles.link} numberOfLines={1}>
-                  {project.moodboard_url}
+                  {moodboardUrl}
                 </Text>
               </Pressable>
               {canEditMoodboard && (
                 <Pressable
                   onPress={() => {
-                    setMoodboardDraft(project.moodboard_url ?? '');
+                    setMoodboardDraft(moodboardUrl ?? '');
                     setEditingMoodboard(true);
                   }}
                 >
