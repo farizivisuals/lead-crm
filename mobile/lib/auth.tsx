@@ -27,6 +27,11 @@ type AuthValue = {
   // getting established.
   recovering: boolean;
   recoveryError: string | null;
+  // Set when the post-sign-in profile fetch itself fails (network, RLS
+  // denial, etc.) — as opposed to succeeding with no row, which is a
+  // legitimate "no profile" state. login.tsx uses this to stop the sign-in
+  // button spinning and let the user retry instead of hanging forever.
+  profileError: string | null;
   // Called once the new password is saved, or from a "back to sign in" escape
   // hatch on a failed link — routes the user onward normally again.
   clearRecovery: () => void;
@@ -43,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [recoveryChecked, setRecoveryChecked] = useState(false);
   const [recovering, setRecovering] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   function clearRecovery() {
     setRecovering(false);
@@ -124,10 +130,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!userId) {
         setProfile(null);
         setEmployee(null);
+        setProfileError(null);
         setLoading(false);
         return;
       }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, user_type, employees(role)')
         .eq('id', userId)
@@ -135,10 +142,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (cancelled) return;
 
-      if (!data) {
+      if (error) {
+        // Transient network failure, RLS denial, or a genuinely missing row
+        // (`.single()` errors on zero rows) — surface it rather than leaving
+        // the caller (login.tsx) with no signal and a permanently spinning
+        // button.
         setProfile(null);
         setEmployee(null);
+        setProfileError(error.message);
+      } else if (!data) {
+        setProfile(null);
+        setEmployee(null);
+        setProfileError(null);
       } else {
+        setProfileError(null);
         const { employees, ...rest } = data as any;
         setProfile(rest as Profile);
         // `employees` is embedded via a PK foreign key, so Supabase may return
@@ -170,6 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         recoveryChecked,
         recovering,
         recoveryError,
+        profileError,
         clearRecovery,
         signOut,
       }}

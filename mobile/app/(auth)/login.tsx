@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
 import { Screen } from '../../components/ui/Screen';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
@@ -9,10 +10,24 @@ import { Input } from '../../components/ui/Input';
 import { theme } from '../../lib/theme';
 
 export default function LoginScreen() {
+  const { profileError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The profile fetch that follows a successful sign-in can itself fail
+  // (network blip, RLS denial) — auth.tsx surfaces that as `profileError`.
+  // Without this, `loading` stays true forever (see handleLogin below) with
+  // no error shown and no way to retry. Only the failure path resets the
+  // button; a successful sign-in still deliberately stays busy through the
+  // gate transition.
+  useEffect(() => {
+    if (profileError) {
+      setLoading(false);
+      setError(profileError);
+    }
+  }, [profileError]);
 
   async function handleLogin() {
     setLoading(true);

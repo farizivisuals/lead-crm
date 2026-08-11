@@ -20,11 +20,3 @@ export const theme = {
     label: 'rgba(255,255,255,0.6)',
   },
 } as const;
-
-// Department colours — mirrors DEPT_COLORS in lib/rbac.ts
-export const DEPT_COLORS: Record<string, string> = {
-  video: '#6366f1',
-  photo: '#ec4899',
-  pr: '#f59e0b',
-  creatives: '#7c3aed',
-};

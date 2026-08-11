@@ -134,6 +134,20 @@ test('warm: a URL event with a genuine recovery link also triggers setSession', 
   expect(ctx().recovering).toBe(true);
 });
 
+test('getInitialURL() rejecting still resolves recoveryChecked instead of hanging forever', async () => {
+  // A permanent spinner is worse than the one-frame flash the `recoveryChecked`
+  // gate exists to prevent — the `.catch()` in auth.tsx's cold-start branch
+  // covers this, but nothing previously asserted it.
+  mockGetInitialURL.mockRejectedValue(new Error('native module unavailable'));
+
+  const { mount, ctx } = renderAuth();
+  await mount();
+
+  expect(ctx().recoveryChecked).toBe(true);
+  expect(ctx().recovering).toBe(false);
+  expect(mockSetSession).not.toHaveBeenCalled();
+});
+
 test('a non-recovery URL never touches setSession', async () => {
   mockGetInitialURL.mockResolvedValue('leadcrm://update-password?foo=bar');
 
