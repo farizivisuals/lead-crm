@@ -29,10 +29,18 @@ export default function More() {
               <Text style={styles.rowLive}>Clients</Text>
             </Pressable>
           )}
-          {exec && <Text style={styles.row}>Team · Soon</Text>}
+          {exec && (
+            <Pressable onPress={() => router.push('/settings/team')}>
+              <Text style={styles.rowLive}>Team</Text>
+            </Pressable>
+          )}
           {exec && <Text style={styles.row}>Stages · Soon</Text>}
-          <Text style={styles.row}>Profile · Soon</Text>
-          <Text style={styles.row}>Notifications · Soon</Text>
+          <Pressable onPress={() => router.push('/settings/profile')}>
+            <Text style={styles.rowLive}>Profile</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/settings/notifications')}>
+            <Text style={styles.rowLive}>Notifications</Text>
+          </Pressable>
         </GlassCard>
 
         <Button title="Sign out" variant="ghost" onPress={signOut} />

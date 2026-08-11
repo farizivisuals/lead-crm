@@ -31,6 +31,7 @@ export default function EmployeeLayout() {
       {/* Reached from More, not the tab bar. href: null keeps the whole
           clients/ stack out of the tabs without making it unreachable. */}
       <Tabs.Screen name="clients" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }

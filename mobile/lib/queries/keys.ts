@@ -45,6 +45,11 @@ export const qk = {
 
   allTasks: () => ['tasks'] as const,
 
+  team: () => ['team'] as const,
+  // Keyed by user: notifications are per-recipient, and a sign-out must not
+  // leave the next user reading the previous one's rows.
+  notifications: (userId: string) => ['notifications', userId] as const,
+
   clients: () => ['clients'] as const,
   // Quotes live under the client that owns them, so a quote mutation
   // invalidating client(id) refreshes the detail screen's quote list for free.
