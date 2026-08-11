@@ -8,7 +8,6 @@
     "scheme": "leadcrm",
     "userInterfaceStyle": "dark",
     "ios": {
-      "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.farizivisuals.leadcrm",
       "supportsTablet": false,
       "infoPlist": {
@@ -24,9 +23,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#06060a",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 180
         }
       ],
       "expo-sqlite"
