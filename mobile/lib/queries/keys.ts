@@ -50,8 +50,10 @@ export const qk = {
   // cannot happen here.
   search: (query: string) => ['search', query] as const,
 
-  // Keyed by the month's first day — one cache entry per month browsed.
-  calendar: (monthStart: string) => ['calendar', monthStart] as const,
+  // Deliberately unparameterised: the calendar fetches every dated task once
+  // and does month paging and the All/Mine filter in memory, so neither
+  // refetches.
+  calendarTasks: () => ['calendar', 'tasks'] as const,
 
   // Client portal. Everything hangs off the client_id resolved from
   // client_contacts, so that lookup is cached separately from what it unlocks.

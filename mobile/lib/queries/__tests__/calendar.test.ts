@@ -1,58 +1,84 @@
 jest.mock('../../supabase', () => ({ supabase: {} }));
 
-import { dayKey, toGridEvent, type CalendarEvent } from '../calendar';
+import {
+  toCalendarTask,
+  filterByAssignee,
+  type CalendarTaskRow,
+  type CalendarTask,
+} from '../calendar';
 
-const row = (over: Partial<CalendarEvent>): CalendarEvent => ({
-  entity_id: 'e1',
-  entity_type: 'task',
-  title: 'Task',
-  start: '2026-08-11',
-  end: null,
-  color: null,
-  department_id: null,
-  client_id: null,
+const row = (over: Partial<CalendarTaskRow>): CalendarTaskRow => ({
+  id: 't1',
+  title: 'Edit the reel',
+  start_date: '2026-08-11',
+  due_date: '2026-08-13',
+  assigned_to: 'user-1',
   project_id: 'p1',
+  department_stages: { color: '#a78bfa' },
   ...over,
 });
 
-describe('dayKey', () => {
-  it('handles both formats the RPC actually returns', () => {
-    // Projects and tasks come back as plain dates; deliverables as timestamps.
-    expect(dayKey('2026-07-15')).toBe('2026-07-15');
-    expect(dayKey('2026-08-05 18:55:27.099832+00')).toBe('2026-08-05');
+describe('toCalendarTask', () => {
+  it('spans start_date to due_date', () => {
+    const t = toCalendarTask(row({}))!;
+    expect(t.day).toBe('2026-08-11');
+    expect(t.endDay).toBe('2026-08-13');
+    expect(t.color).toBe('#a78bfa');
   });
 
-  it('does not shift the day, which parsing as a Date would', () => {
-    // new Date('2026-01-01') is UTC midnight; rendered west of UTC that is
-    // 2025-12-31. Slicing keeps the day the database meant.
-    expect(dayKey('2026-01-01')).toBe('2026-01-01');
+  it('falls back to the other date when one is missing', () => {
+    // The query keeps a task with only one of the two dates, so each must
+    // stand in for the other or the bar has no width.
+    const onlyDue = toCalendarTask(row({ start_date: null, due_date: '2026-08-20' }))!;
+    expect(onlyDue.day).toBe('2026-08-20');
+    expect(onlyDue.endDay).toBe('2026-08-20');
+
+    const onlyStart = toCalendarTask(row({ start_date: '2026-08-02', due_date: null }))!;
+    expect(onlyStart.day).toBe('2026-08-02');
+    expect(onlyStart.endDay).toBe('2026-08-02');
+  });
+
+  it('drops a task with no dates at all', () => {
+    expect(toCalendarTask(row({ start_date: null, due_date: null }))).toBeNull();
+  });
+
+  it('clamps a due date that precedes the start', () => {
+    // A negative span would make the lane packer lay out a zero-width bar.
+    const t = toCalendarTask(row({ start_date: '2026-08-20', due_date: '2026-08-01' }))!;
+    expect(t.endDay).toBe('2026-08-20');
+  });
+
+  it('uses the view’s indigo fallback when the stage has no colour', () => {
+    expect(toCalendarTask(row({ department_stages: { color: null } }))!.color).toBe('#6366f1');
+    expect(toCalendarTask(row({ department_stages: null }))!.color).toBe('#6366f1');
+  });
+
+  it('unwraps the stage embed when Supabase returns it as an array', () => {
+    const t = toCalendarTask(row({ department_stages: [{ color: '#34d399' }] }))!;
+    expect(t.color).toBe('#34d399');
   });
 });
 
-describe('toGridEvent', () => {
-  it('collapses a null end onto the start day', () => {
-    // Deliverables have no end and must occupy exactly one cell.
-    const e = toGridEvent(row({ entity_type: 'deliverable', start: '2026-08-05 18:55:27+00' }));
-    expect(e.day).toBe('2026-08-05');
-    expect(e.endDay).toBe('2026-08-05');
+describe('filterByAssignee', () => {
+  const tasks = [
+    { assignedTo: 'me' },
+    { assignedTo: 'someone-else' },
+    { assignedTo: null },
+  ] as CalendarTask[];
+
+  it('keeps everything in "all" scope, including unassigned', () => {
+    expect(filterByAssignee(tasks, 'all', 'me')).toHaveLength(3);
   });
 
-  it('keeps a real span for a project', () => {
-    const e = toGridEvent(row({ entity_type: 'project', start: '2026-07-15', end: '2026-08-03' }));
-    expect(e.day).toBe('2026-07-15');
-    expect(e.endDay).toBe('2026-08-03');
+  it('keeps only this user’s tasks in "mine" scope', () => {
+    const mine = filterByAssignee(tasks, 'mine', 'me');
+    expect(mine).toHaveLength(1);
+    expect(mine[0].assignedTo).toBe('me');
   });
 
-  it('clamps an end that precedes the start', () => {
-    // A negative span would make the lane packer compute span <= 0 and lay out
-    // a bar of zero or negative width. Bad data must not break the grid.
-    const e = toGridEvent(row({ start: '2026-08-10', end: '2026-08-01' }));
-    expect(e.endDay).toBe('2026-08-10');
-  });
-
-  it('namespaces the id by type, so a task and a project cannot collide', () => {
-    const t = toGridEvent(row({ entity_type: 'task', entity_id: 'same' }));
-    const p = toGridEvent(row({ entity_type: 'project', entity_id: 'same' }));
-    expect(t.id).not.toBe(p.id);
+  it('shows nothing rather than everything when the user id is missing', () => {
+    // Failing open here would quietly show the whole agency's tasks under a
+    // filter labelled "My tasks".
+    expect(filterByAssignee(tasks, 'mine', undefined)).toHaveLength(0);
   });
 });

@@ -3,13 +3,18 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '../../components/ui/Screen';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
-import { useCalendar, type GridEvent } from '../../lib/queries/calendar';
+import {
+  useCalendarTasks,
+  filterByAssignee,
+  type CalendarTask,
+} from '../../lib/queries/calendar';
 import {
   monthGrid,
   layoutWeek,
   eventsOnDay,
   utcToDay,
 } from '../../lib/calendar-layout';
+import { useAuth } from '../../lib/auth';
 import { theme } from '../../lib/theme';
 
 const MONTHS = [
@@ -18,13 +23,11 @@ const MONTHS = [
 ];
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const TYPE_LABELS: Record<GridEvent['source']['entity_type'], string> = {
-  project: 'Project',
-  task: 'Task',
-  deliverable: 'Deliverable',
-};
-
 const FALLBACK_COLOR = '#71717a';
+const SCOPES = [
+  { value: 'all' as const, label: 'All tasks' },
+  { value: 'mine' as const, label: 'My tasks' },
+];
 /** Bars per cell before the rest collapse into "+N". Four rows fit the cell. */
 const MAX_LANES = 4;
 const LANE_HEIGHT = 15;
@@ -35,12 +38,20 @@ export default function CalendarScreen() {
   const router = useRouter();
   const todayKey = utcToDay(Date.now());
 
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [month, setMonth] = useState(() => new Date().getMonth());
   const [selected, setSelected] = useState(todayKey);
+  const [scope, setScope] = useState<'all' | 'mine'>('all');
 
-  const { data, isLoading, error } = useCalendar(year, month);
-  const events = useMemo(() => data ?? [], [data]);
+  const { data, isLoading, error } = useCalendarTasks();
+  // One fetch covers every month; paging and the All/Mine switch are in-memory.
+  const events = useMemo(
+    () => filterByAssignee(data ?? [], scope, userId),
+    [data, scope, userId]
+  );
 
   const weeks = useMemo(() => monthGrid(year, month), [year, month]);
   const layouts = useMemo(
@@ -62,11 +73,11 @@ export default function CalendarScreen() {
     }
   }
 
-  function open(event: GridEvent) {
-    const src = event.source;
-    const projectId = src.entity_type === 'project' ? src.entity_id : src.project_id;
-    if (!projectId) return;
-    router.push({ pathname: '/projects/[projectId]', params: { projectId } });
+  function open(task: CalendarTask) {
+    router.push({
+      pathname: '/projects/[projectId]/tasks/[taskId]',
+      params: { projectId: task.projectId, taskId: task.id },
+    });
   }
 
   return (
@@ -91,6 +102,23 @@ export default function CalendarScreen() {
           <Pressable onPress={() => shift(1)} hitSlop={14}>
             <Text style={styles.arrow}>›</Text>
           </Pressable>
+        </View>
+
+        <View style={styles.scopeRow}>
+          {SCOPES.map((s) => {
+            const active = scope === s.value;
+            return (
+              <Pressable
+                key={s.value}
+                onPress={() => setScope(s.value)}
+                style={[styles.scopeChip, active && styles.scopeChipActive]}
+              >
+                <Text style={[styles.scopeText, active && styles.scopeTextActive]}>
+                  {s.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <View style={styles.weekdayRow}>
@@ -193,22 +221,22 @@ export default function CalendarScreen() {
             {isLoading ? (
               <Text style={styles.muted}>Loading…</Text>
             ) : selectedEvents.length === 0 ? (
-              <Text style={styles.muted}>Nothing on this day</Text>
+              <Text style={styles.muted}>
+                {scope === 'mine' ? 'Nothing assigned to you on this day' : 'No tasks on this day'}
+              </Text>
             ) : (
-              selectedEvents.map((event) => (
-                <Pressable key={event.id} onPress={() => open(event)} style={styles.detailRow}>
-                  <View
-                    style={[styles.dot, { borderColor: event.color ?? FALLBACK_COLOR }]}
-                  />
+              selectedEvents.map((task) => (
+                <Pressable key={task.id} onPress={() => open(task)} style={styles.detailRow}>
+                  <View style={[styles.dot, { borderColor: task.color ?? FALLBACK_COLOR }]} />
                   <View style={styles.flex}>
                     <Text style={styles.detailTitle} numberOfLines={1}>
-                      {event.title}
+                      {task.title}
                     </Text>
                     <Text style={styles.detailMeta}>
-                      {TYPE_LABELS[event.source.entity_type]}
-                      {event.endDay !== event.day
-                        ? ` · ${formatShort(event.day)} – ${formatShort(event.endDay)}`
-                        : ''}
+                      {task.endDay !== task.day
+                        ? `${formatShort(task.day)} – ${formatShort(task.endDay)}`
+                        : formatShort(task.day)}
+                      {scope === 'all' && !task.assignedTo ? ' · Unassigned' : ''}
                     </Text>
                   </View>
                 </Pressable>
@@ -253,6 +281,17 @@ const styles = StyleSheet.create({
   },
   arrow: { color: '#fff', fontSize: 26, paddingHorizontal: 14 },
   month: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  scopeRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 4, marginBottom: 10 },
+  scopeChip: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  scopeChipActive: { borderColor: '#fafafa', backgroundColor: 'rgba(255,255,255,0.10)' },
+  scopeText: { color: theme.text.dim, fontSize: 12 },
+  scopeTextActive: { color: '#fff', fontWeight: '600' },
   weekdayRow: { flexDirection: 'row' },
   weekday: {
     flex: 1,

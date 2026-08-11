@@ -1,66 +1,91 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { qk } from './keys';
-import { gridRange, type LaidOutEvent } from '../calendar-layout';
-
-export type CalendarEvent = {
-  entity_id: string;
-  entity_type: 'project' | 'task' | 'deliverable';
-  title: string;
-  start: string;
-  end: string | null;
-  color: string | null;
-  department_id: string | null;
-  client_id: string | null;
-  project_id: string | null;
-};
-
-/** A month-grid event: the raw row plus the day keys the grid positions it by. */
-export type GridEvent = LaidOutEvent & { source: CalendarEvent };
+import { one } from '../data';
+import type { LaidOutEvent } from '../calendar-layout';
 
 /**
- * get_calendar_events returns `start` as TEXT, and the formats are NOT uniform:
- * projects and tasks come back as plain dates ("2026-07-15") while deliverables
- * come back as full timestamps ("2026-08-05 18:55:27+00"). Slicing the first ten
- * characters is deliberate — `new Date(...)` on a plain date string parses as
- * UTC midnight and then renders in local time, dragging events onto the
- * previous day for anyone west of UTC.
+ * The calendar shows TASKS ONLY.
+ *
+ * It used to read the `calendar_events` view through get_calendar_events, which
+ * unions tasks with project start/end spans and submitted deliverables. Project
+ * bars ran 12-19 days and dominated the grid, so they are gone — and with two
+ * thirds of that union discarded, going straight at `tasks` is both leaner and
+ * gives us `assigned_to`, which the RPC never returned and the "Mine" filter
+ * needs.
+ *
+ * No date range: `useAllTasks` already fetches every task unfiltered, so the
+ * scale is proven. One cache entry means paging months and flipping All/Mine
+ * are pure client-side work with no refetch.
  */
-export function dayKey(start: string): string {
-  return start.slice(0, 10);
-}
 
-/** Deliverables have no `end`; they occupy a single cell. */
-export function toGridEvent(e: CalendarEvent): GridEvent {
-  const day = dayKey(e.start);
-  const endDay = e.end ? dayKey(e.end) : day;
+export type CalendarTaskRow = {
+  id: string;
+  title: string;
+  start_date: string | null;
+  due_date: string | null;
+  assigned_to: string | null;
+  project_id: string;
+  department_stages: { color: string | null } | { color: string | null }[] | null;
+};
+
+export type CalendarTask = LaidOutEvent & {
+  assignedTo: string | null;
+  projectId: string;
+};
+
+/** The view's fallback when a stage has no colour of its own. */
+const DEFAULT_TASK_COLOR = '#6366f1';
+
+/**
+ * A task occupies [start_date, due_date]. Either may be null — the query keeps
+ * a task with only one of them — so each falls back to the other, giving a
+ * single-day bar rather than an unbounded or zero-width one.
+ */
+export function toCalendarTask(row: CalendarTaskRow): CalendarTask | null {
+  const day = row.start_date ?? row.due_date;
+  const endDay = row.due_date ?? row.start_date;
+  if (!day || !endDay) return null;
   return {
-    id: `${e.entity_type}-${e.entity_id}`,
-    title: e.title,
+    id: row.id,
+    title: row.title,
     day,
-    // A malformed row with end before start would produce a negative span and
-    // break the lane packer; clamp instead of trusting the data.
+    // A due date before the start date would give a negative span and break
+    // the lane packer. Clamp rather than trust the row.
     endDay: endDay < day ? day : endDay,
-    color: e.color,
-    source: e,
+    color: one(row.department_stages)?.color ?? DEFAULT_TASK_COLOR,
+    assignedTo: row.assigned_to,
+    projectId: row.project_id,
   };
 }
 
-export function useCalendar(year: number, month: number) {
-  // The grid shows adjacent-month days in its first and last rows, so the
-  // query must cover the whole grid — not just the month, or those cells
-  // render blank.
-  const { start, end } = gridRange(year, month);
+export function useCalendarTasks() {
   return useQuery({
-    queryKey: qk.calendar(start),
-    queryFn: async (): Promise<GridEvent[]> => {
-      // SECURITY INVOKER, so RLS scopes this to what the caller can see.
-      const { data, error } = await supabase.rpc('get_calendar_events', {
-        p_start: start,
-        p_end: end,
-      });
+    queryKey: qk.calendarTasks(),
+    queryFn: async (): Promise<CalendarTask[]> => {
+      // `department_stages!current_stage_id` names the FK because `tasks` has
+      // more than one join path into that table. RLS scopes the rows.
+      const { data, error } = await supabase
+        .from('tasks')
+        .select(
+          'id, title, start_date, due_date, assigned_to, project_id, department_stages!current_stage_id(color)'
+        )
+        .or('start_date.not.is.null,due_date.not.is.null');
       if (error) throw error;
-      return ((data ?? []) as CalendarEvent[]).map(toGridEvent);
+      return ((data ?? []) as unknown as CalendarTaskRow[])
+        .map(toCalendarTask)
+        .filter((t): t is CalendarTask => t !== null);
     },
   });
+}
+
+/** `mine` keeps only what is assigned to this user; `all` keeps everything. */
+export function filterByAssignee(
+  tasks: CalendarTask[],
+  scope: 'all' | 'mine',
+  userId: string | undefined
+): CalendarTask[] {
+  if (scope === 'all') return tasks;
+  if (!userId) return [];
+  return tasks.filter((t) => t.assignedTo === userId);
 }
