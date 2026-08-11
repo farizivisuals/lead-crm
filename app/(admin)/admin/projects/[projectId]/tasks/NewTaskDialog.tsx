@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Loader2, AlertTriangle, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import type { DepartmentStage } from "@/lib/types";
 
@@ -27,6 +27,8 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
   const [error, setError] = useState<string | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState("");
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
+  const [deliverables, setDeliverables] = useState<string[]>([]);
+  const [deliverableInput, setDeliverableInput] = useState("");
   const [conflicting, setConflicting] = useState<{ id: string; title: string }[]>([]);
 
   const [form, setForm] = useState({
@@ -101,6 +103,12 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     if (selectedCreatives.length > 0) {
       await supabase.from("task_creatives").insert(
         selectedCreatives.map((profile_id) => ({ task_id: task.id, profile_id }))
+      );
+    }
+
+    if (deliverables.length > 0) {
+      await supabase.from("task_deliverables").insert(
+        deliverables.map((title, i) => ({ task_id: task.id, title, position: i }))
       );
     }
 
@@ -212,6 +220,59 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
               </div>
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label>Deliverables</Label>
+            <div className="flex gap-2">
+              <Input
+                value={deliverableInput}
+                onChange={(e) => setDeliverableInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const title = deliverableInput.trim();
+                    if (title) {
+                      setDeliverables((prev) => [...prev, title]);
+                      setDeliverableInput("");
+                    }
+                  }
+                }}
+                placeholder="Video 1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const title = deliverableInput.trim();
+                  if (title) {
+                    setDeliverables((prev) => [...prev, title]);
+                    setDeliverableInput("");
+                  }
+                }}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {deliverables.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                {deliverables.map((title, i) => (
+                  <span
+                    key={`${title}-${i}`}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full text-sm bg-white/[0.06] border border-white/[0.12] text-white/70"
+                  >
+                    {title}
+                    <button
+                      type="button"
+                      onClick={() => setDeliverables((prev) => prev.filter((_, j) => j !== i))}
+                      className="text-white/30 hover:text-white/70 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Date fields: single shoot date vs start+due range */}
           {isShootStage ? (
