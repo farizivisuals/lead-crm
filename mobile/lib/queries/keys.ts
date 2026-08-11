@@ -53,6 +53,13 @@ export const qk = {
   // Keyed by the month's first day — one cache entry per month browsed.
   calendar: (monthStart: string) => ['calendar', monthStart] as const,
 
+  // Client portal. Everything hangs off the client_id resolved from
+  // client_contacts, so that lookup is cached separately from what it unlocks.
+  clientContext: (userId: string) => ['client-context', userId] as const,
+  portalHome: (clientId: string) => ['portal', clientId] as const,
+  portalProject: (projectId: string) => ['portal-project', projectId] as const,
+  portalCalendar: (clientId: string) => ['portal-calendar', clientId] as const,
+
   team: () => ['team'] as const,
   // Keyed by user: notifications are per-recipient, and a sign-out must not
   // leave the next user reading the previous one's rows.
