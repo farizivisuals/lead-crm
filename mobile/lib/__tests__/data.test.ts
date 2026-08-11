@@ -100,6 +100,17 @@ describe('isCreativeEmployee', () => {
     expect(isCreativeEmployee({ role: 'employee' })).toBe(false);
     expect(isCreativeEmployee(null)).toBe(false);
   });
+  it('is true for an employee in creatives plus another department', () => {
+    expect(
+      isCreativeEmployee({
+        role: 'employee',
+        employee_departments: [
+          { department_id: 'd2', departments: { slug: 'video' } },
+          { department_id: 'd1', departments: { slug: 'creatives' } },
+        ],
+      })
+    ).toBe(true);
+  });
 });
 
 describe('shortDate', () => {
