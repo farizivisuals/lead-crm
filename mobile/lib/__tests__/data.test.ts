@@ -2,7 +2,6 @@ import {
   one,
   taskProgress,
   isTaskOverdue,
-  countByStage,
   isCreativeEmployee,
   shortDate,
   relativeTime,
@@ -53,30 +52,6 @@ describe('isTaskOverdue', () => {
   });
   it('does not flag a task with no due date', () => {
     expect(isTaskOverdue(null, false, '2026-08-11')).toBe(false);
-  });
-});
-
-describe('countByStage', () => {
-  const stages = [
-    { id: 's1', name: 'Brief', position: 0, is_terminal: false, color: null },
-    { id: 's2', name: 'Done', position: 1, is_terminal: true, color: '#0f0' },
-  ];
-  it('counts tasks per stage and keeps stage order', () => {
-    const result = countByStage(stages, [
-      { current_stage_id: 's1' },
-      { current_stage_id: 's2' },
-      { current_stage_id: 's2' },
-    ]);
-    expect(result.map((r) => [r.stage.id, r.count])).toEqual([
-      ['s1', 1],
-      ['s2', 2],
-    ]);
-  });
-  it('reports zero for a stage with no tasks', () => {
-    expect(countByStage(stages, [])).toEqual([
-      { stage: stages[0], count: 0 },
-      { stage: stages[1], count: 0 },
-    ]);
   });
 });
 

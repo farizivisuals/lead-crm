@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { isExecutive, PRIORITY_LABELS } from '@shared/rbac';
@@ -7,8 +7,14 @@ import { GlassCard } from '../../../../../components/ui/GlassCard';
 import { Badge } from '../../../../../components/ui/Badge';
 import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
 import { useAuth } from '../../../../../lib/auth';
-import { one, countByStage, isTaskOverdue, shortDate, firstName } from '../../../../../lib/data';
-import { useBoard, useBoardMeta, type BoardTask } from '../../../../../lib/queries/board';
+import { one, isTaskOverdue, shortDate, firstName } from '../../../../../lib/data';
+import { useBoard, useBoardMeta, type BoardTask, type BoardStage } from '../../../../../lib/queries/board';
+import {
+  sortDeliverables,
+  deliverableStageId,
+  stageRow,
+  assigneeName,
+} from '../../../../../lib/queries/task-deliverables';
 import { PRIORITY_COLORS, theme, withAlpha } from '../../../../../lib/theme';
 
 
@@ -24,10 +30,6 @@ export default function BoardScreen() {
     [board.data]
   );
   const meta = useBoardMeta(deptIds);
-
-  // One selected stage per department section, keyed by department id.
-  // null / absent = "All".
-  const [selected, setSelected] = useState<Record<string, string | null>>({});
 
   function openTask(taskId: string) {
     router.push({ pathname: '/projects/[projectId]/tasks/[taskId]', params: { projectId, taskId } });
@@ -82,60 +84,32 @@ export default function BoardScreen() {
         {departments.map((dept) => {
           const deptTasks = tasks.filter((t) => t.department_id === dept.id);
           const deptStages = stages.filter((s) => s.department_id === dept.id);
-          const counts = countByStage(deptStages, deptTasks);
-          const activeStage = selected[dept.id] ?? null;
-          const visible = activeStage
-            ? deptTasks.filter((t) => t.current_stage_id === activeStage)
-            : deptTasks;
 
           return (
             <View key={dept.id} style={styles.section}>
-              <Text style={styles.deptName}>
-                {dept.name}
-                {dept.is_primary ? ' · primary' : ''}
-              </Text>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipRow}
-              >
-                <Chip
-                  label="All"
-                  count={deptTasks.length}
-                  color="#fff"
-                  active={activeStage === null}
-                  onPress={() => setSelected((s) => ({ ...s, [dept.id]: null }))}
-                />
-                {counts.map(({ stage, count }) => (
-                  <Chip
-                    key={stage.id}
-                    label={stage.is_terminal ? `${stage.name} ✓` : stage.name}
-                    count={count}
-                    color={stage.color ?? theme.colors.mutedForeground}
-                    active={activeStage === stage.id}
-                    onPress={() =>
-                      setSelected((s) => ({
-                        ...s,
-                        [dept.id]: s[dept.id] === stage.id ? null : stage.id,
-                      }))
-                    }
-                  />
-                ))}
-              </ScrollView>
+              <View style={styles.deptRow}>
+                <Text style={styles.deptName}>
+                  {dept.name}
+                  {dept.is_primary ? ' · primary' : ''}
+                </Text>
+                <Text style={styles.deptCount}>{deptTasks.length}</Text>
+              </View>
 
               {meta.isLoading && deptStages.length === 0 && (
                 <Text style={styles.muted}>Loading stages…</Text>
               )}
               {meta.error && <Text style={styles.error}>{meta.error.message}</Text>}
 
-              {visible.length === 0 ? (
-                <Text style={styles.muted}>
-                  {deptTasks.length === 0 ? 'No tasks yet' : 'No tasks in this stage'}
-                </Text>
+              {deptTasks.length === 0 ? (
+                <Text style={styles.muted}>No tasks yet</Text>
               ) : (
-                visible.map((task) => (
-                  <TaskCard key={task.id} task={task} onPress={() => openTask(task.id)} />
+                deptTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    stages={deptStages}
+                    onPress={() => openTask(task.id)}
+                  />
                 ))
               )}
             </View>
@@ -146,42 +120,29 @@ export default function BoardScreen() {
   );
 }
 
-function Chip({
-  label,
-  count,
-  color,
-  active,
+function TaskCard({
+  task,
+  stages,
   onPress,
 }: {
-  label: string;
-  count: number;
-  color: string;
-  active: boolean;
+  task: BoardTask;
+  stages: BoardStage[];
   onPress: () => void;
 }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.chip,
-        { borderColor: active ? color : withAlpha(color, 0.45) },
-        active && { backgroundColor: withAlpha(color, 0.18) },
-      ]}
-    >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>
-        {label} · {count}
-      </Text>
-    </Pressable>
-  );
-}
-
-function TaskCard({ task, onPress }: { task: BoardTask; onPress: () => void }) {
-  const stage = one(task.department_stages);
-  const overdue = isTaskOverdue(task.due_date, !!stage?.is_terminal);
+  const taskStage = one(task.department_stages);
+  const overdue = isTaskOverdue(task.due_date, !!taskStage?.is_terminal);
   const assignee = one(task.employees)?.profiles?.full_name;
   const creativeNames = (task.task_creatives ?? [])
     .map((tc) => firstName(one(tc.employees)?.profiles?.full_name))
     .filter((n) => n !== '—');
+  const deliverables = sortDeliverables(task.task_deliverables);
+  // Every deliverable in a terminal stage = the whole task is done.
+  const allDone =
+    deliverables.length > 0 &&
+    deliverables.every(
+      (d) =>
+        stages.find((s) => s.id === deliverableStageId(d, task.current_stage_id))?.is_terminal
+    );
 
   return (
     <Pressable onPress={onPress}>
@@ -189,10 +150,12 @@ function TaskCard({ task, onPress }: { task: BoardTask; onPress: () => void }) {
         <View style={styles.cardTop}>
           <Text style={styles.cardTitle} numberOfLines={2}>
             {overdue ? '⚠ ' : ''}
+            {allDone ? '✓ ' : ''}
             {task.title}
           </Text>
           <Badge label={PRIORITY_LABELS[task.priority]} color={PRIORITY_COLORS[task.priority]} />
         </View>
+
         <View style={styles.cardMeta}>
           <Text style={overdue ? styles.overdue : styles.meta}>
             {shortDate(task.due_date)}
@@ -203,6 +166,55 @@ function TaskCard({ task, onPress }: { task: BoardTask; onPress: () => void }) {
             <Text style={styles.meta}>{creativeNames.join(', ')}</Text>
           ) : null}
         </View>
+
+        {deliverables.length > 0 ? (
+          <View style={styles.deliverables}>
+            {deliverables.map((d) => {
+              const stageId = deliverableStageId(d, task.current_stage_id);
+              const stage = stages.find((s) => s.id === stageId);
+              const row = stageRow(d, stageId);
+              const who = firstName(assigneeName(row));
+              const color = stage?.color ?? theme.colors.mutedForeground;
+              return (
+                <View key={d.id} style={styles.deliverableRow}>
+                  <Text style={styles.deliverableTitle} numberOfLines={1}>
+                    {d.title}
+                  </Text>
+                  <View style={[styles.stagePill, { backgroundColor: withAlpha(color, 0.16) }]}>
+                    <Text style={[styles.stagePillText, { color }]} numberOfLines={1}>
+                      {stage?.is_terminal ? `${stage.name} ✓` : stage?.name ?? '—'}
+                    </Text>
+                  </View>
+                  <Text style={styles.deliverableMeta} numberOfLines={1}>
+                    {who}
+                    {row?.scheduled_date ? ` · ${shortDate(row.scheduled_date)}` : ''}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          taskStage && (
+            <View style={styles.deliverables}>
+              <View
+                style={[
+                  styles.stagePill,
+                  styles.stagePillAlone,
+                  { backgroundColor: withAlpha(taskStage.color ?? theme.colors.mutedForeground, 0.16) },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.stagePillText,
+                    { color: taskStage.color ?? theme.colors.mutedForeground },
+                  ]}
+                >
+                  {taskStage.is_terminal ? `${taskStage.name} ✓` : taskStage.name}
+                </Text>
+              </View>
+            </View>
+          )
+        )}
       </GlassCard>
     </Pressable>
   );
@@ -213,17 +225,28 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   newButton: { color: theme.colors.accent, fontSize: 15, fontWeight: '600' },
   section: { gap: 10 },
+  deptRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   deptName: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  chipRow: { gap: 8, paddingRight: 20 },
-  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
-  chipText: { color: theme.text.dim, fontSize: 13 },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
+  deptCount: { color: theme.text.dim, fontSize: 12 },
   card: { marginTop: 2 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   cardTitle: { color: '#fff', fontSize: 15, fontWeight: '600', flex: 1 },
   cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 },
   meta: { color: theme.text.dim, fontSize: 12 },
   overdue: { color: theme.colors.danger, fontSize: 12, fontWeight: '600' },
+  deliverables: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.border,
+    gap: 6,
+  },
+  deliverableRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  deliverableTitle: { color: theme.colors.foreground, fontSize: 13, flex: 1 },
+  stagePill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  stagePillAlone: { alignSelf: 'flex-start' },
+  stagePillText: { fontSize: 11, fontWeight: '600' },
+  deliverableMeta: { color: theme.text.dim, fontSize: 11, minWidth: 76, textAlign: 'right' },
   muted: { color: theme.text.dim, fontSize: 13 },
   error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center' },
 });

@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -64,6 +65,17 @@ export default function NewTaskScreen() {
   const [dueDate, setDueDate] = useState('');
   const [creativeIds, setCreativeIds] = useState<string[]>([]);
   const [picker, setPicker] = useState<'dept' | 'priority' | 'assignee' | null>(null);
+  // Deliverables ("Video 1", "Video 2") — each becomes its own trackable item,
+  // starting in the department's first stage alongside the task.
+  const [deliverables, setDeliverables] = useState<string[]>([]);
+  const [deliverableInput, setDeliverableInput] = useState('');
+
+  function addDeliverable() {
+    const title = deliverableInput.trim();
+    if (!title) return;
+    setDeliverables((ds) => [...ds, title]);
+    setDeliverableInput('');
+  }
 
   const conflicts = useAvailabilityConflicts({
     assignedTo,
@@ -83,7 +95,13 @@ export default function NewTaskScreen() {
       queryClient.invalidateQueries({ queryKey: qk.dashboards() });
       router.back();
     },
-    onError: (e: Error) => Alert.alert('Could not create task', e.message),
+    onError: (e: Error) => {
+      // createTask can commit the task and fail only on its deliverables, so
+      // refresh regardless — otherwise the list hides a task that now exists
+      // and the user creates a duplicate.
+      queryClient.invalidateQueries({ queryKey: qk.projectTasks(projectId) });
+      Alert.alert('Could not create task', e.message);
+    },
   });
 
   const canSubmit =
@@ -116,6 +134,7 @@ export default function NewTaskScreen() {
       isShoot: shoot,
       assigned_to: assignedTo,
       creativeProfileIds: creativeIds,
+      deliverableTitles: deliverables,
       userId: session!.user.id,
     });
   }
@@ -201,6 +220,51 @@ export default function NewTaskScreen() {
                 </>
               )}
             </View>
+          </GlassCard>
+
+          <GlassCard>
+            <Text style={styles.label}>DELIVERABLES</Text>
+            <Text style={styles.muted}>
+              Each one is tracked and assigned separately once the task exists.
+            </Text>
+            <View style={styles.addRow}>
+              <TextInput
+                value={deliverableInput}
+                onChangeText={setDeliverableInput}
+                onSubmitEditing={addDeliverable}
+                placeholder="Video 1"
+                placeholderTextColor={theme.text.dimmer}
+                returnKeyType="done"
+                style={styles.addInput}
+              />
+              <Pressable
+                onPress={addDeliverable}
+                disabled={deliverableInput.trim().length === 0}
+                style={styles.addButton}
+              >
+                <Text
+                  style={[
+                    styles.addButtonText,
+                    deliverableInput.trim().length === 0 && styles.addButtonTextOff,
+                  ]}
+                >
+                  Add
+                </Text>
+              </Pressable>
+            </View>
+            {deliverables.length > 0 && (
+              <View style={styles.chipRow}>
+                {deliverables.map((title, i) => (
+                  <Pressable
+                    key={`${title}-${i}`}
+                    onPress={() => setDeliverables((ds) => ds.filter((_, j) => j !== i))}
+                    style={[styles.chip, styles.chipOn]}
+                  >
+                    <Text style={styles.chipTextOn}>{title} ✕</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </GlassCard>
 
           <GlassCard>
@@ -315,6 +379,27 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   value: { color: '#fff', fontSize: 15, marginTop: 6 },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  addInput: {
+    flex: 1,
+    height: 40,
+    borderRadius: theme.radius,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: '#fff',
+  },
+  addButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  addButtonText: { color: theme.colors.accent, fontSize: 13, fontWeight: '600' },
+  addButtonTextOff: { color: theme.text.dimmer },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   chip: {
     borderWidth: 1,

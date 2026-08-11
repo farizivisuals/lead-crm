@@ -52,28 +52,6 @@ export function isTaskOverdue(
   return dueDate.slice(0, 10) < today;
 }
 
-export type StageLike = {
-  id: string;
-  name: string;
-  position: number;
-  is_terminal: boolean;
-  color: string | null;
-};
-
-/**
- * Stage chips: preserves the stages' incoming order (already `.order('position')`
- * from the query) and counts the tasks currently sitting in each one.
- */
-export function countByStage<S extends StageLike>(
-  stages: S[],
-  tasks: { current_stage_id: string }[]
-): { stage: S; count: number }[] {
-  return stages.map((stage) => ({
-    stage,
-    count: tasks.filter((t) => t.current_stage_id === stage.id).length,
-  }));
-}
-
 export type EmployeeDeptRow = {
   department_id: string;
   departments?: { slug: string } | null;

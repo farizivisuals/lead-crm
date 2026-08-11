@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { TaskPriority } from '@shared/types';
 import { supabase } from '../supabase';
 import { one } from '../data';
+import { TASK_DELIVERABLES_SELECT, insertDeliverables, type TaskDeliverable } from './task-deliverables';
 import { qk } from './keys';
 
 export type TaskDetail = {
@@ -22,6 +23,7 @@ export type TaskDetail = {
   departments: { name: string } | { name: string }[] | null;
   employees: { profiles: { full_name: string } | null } | { profiles: { full_name: string } | null }[] | null;
   task_creatives: { profile_id: string }[] | null;
+  task_deliverables: TaskDeliverable[] | null;
 };
 
 export function useTask(taskId: string) {
@@ -32,7 +34,9 @@ export function useTask(taskId: string) {
       // one row. The FK-disambiguated relation names are required verbatim.
       const { data, error } = await supabase
         .from('tasks')
-        .select('*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name)))')
+        .select(
+          `*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name))), ${TASK_DELIVERABLES_SELECT}`
+        )
         .eq('id', taskId)
         .single();
       if (error) throw error;
@@ -247,6 +251,8 @@ export type CreateTaskInput = {
   isShoot: boolean;
   assigned_to: string | null;
   creativeProfileIds: string[];
+  /** Deliverable titles ("Video 1", "Video 2"), created in the starting stage. */
+  deliverableTitles: string[];
   userId: string;
 };
 
@@ -282,6 +288,18 @@ export async function createTask(input: CreateTaskInput): Promise<string> {
     await supabase
       .from('task_creatives')
       .insert(input.creativeProfileIds.map((profile_id) => ({ task_id: taskId, profile_id })));
+  }
+
+  // Deliverables are NOT swallowed the way creatives are: losing them silently
+  // would leave a task that looks complete but has no items to schedule. The
+  // task itself is already committed, so the message has to say so — retrying
+  // the form would create a duplicate.
+  try {
+    await insertDeliverables(taskId, input.deliverableTitles, input.current_stage_id);
+  } catch (e) {
+    throw new Error(
+      `Task created, but its deliverables were not saved (${(e as Error).message}). Add them from the task screen.`
+    );
   }
   return taskId;
 }

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { TaskPriority } from '@shared/types';
 import { supabase } from '../supabase';
 import { one } from '../data';
+import { TASK_DELIVERABLES_SELECT, type TaskDeliverable } from './task-deliverables';
 import { qk } from './keys';
 
 export type BoardDepartment = { id: string; name: string; slug: string; is_primary: boolean };
@@ -24,6 +25,7 @@ export type BoardTask = {
   task_creatives:
     | { profile_id: string; employees: { profiles: { full_name: string } | null } | { profiles: { full_name: string } | null }[] | null }[]
     | null;
+  task_deliverables: TaskDeliverable[] | null;
 };
 
 export type Board = {
@@ -44,7 +46,9 @@ export function useBoard(projectId: string) {
           .single(),
         supabase
           .from('tasks')
-          .select('*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name)))')
+          .select(
+            `*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name))), ${TASK_DELIVERABLES_SELECT}`
+          )
           .eq('project_id', projectId)
           .order('created_at'),
       ]);

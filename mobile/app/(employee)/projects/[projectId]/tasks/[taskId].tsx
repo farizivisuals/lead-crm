@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -19,8 +20,18 @@ import { Button } from '../../../../../components/ui/Button';
 import { Input } from '../../../../../components/ui/Input';
 import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
 import { PickerSheet } from '../../../../../components/ui/PickerSheet';
-import { one } from '../../../../../lib/data';
+import { one, firstName, shortDate } from '../../../../../lib/data';
 import { qk } from '../../../../../lib/queries/keys';
+import {
+  sortDeliverables,
+  deliverableStageId,
+  stageRow,
+  adjacentStage,
+  moveDeliverable,
+  saveDeliverableDrafts,
+  type DeliverableDraft,
+} from '../../../../../lib/queries/task-deliverables';
+import { useAuth } from '../../../../../lib/auth';
 import {
   useTask,
   useTaskPickers,
@@ -40,6 +51,7 @@ export default function TaskDetailScreen() {
   const { projectId, taskId } = useLocalSearchParams<{ projectId: string; taskId: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { session } = useAuth();
 
   const task = useTask(taskId);
   const pickers = useTaskPickers(projectId, task.data?.department_id);
@@ -55,6 +67,16 @@ export default function TaskDetailScreen() {
   // Optimistic stage while a move is in flight; null = show the persisted one.
   const [pendingStageId, setPendingStageId] = useState<string | null>(null);
   const [picker, setPicker] = useState<'stage' | 'priority' | 'assignee' | null>(null);
+  // Deliverables ("Video 1", "Video 2"): each carries its own stage, so one can
+  // be in Post-production while its siblings are still in Shoot.
+  const [drafts, setDrafts] = useState<DeliverableDraft[]>([]);
+  const [originalDeliverables, setOriginalDeliverables] = useState<
+    ReturnType<typeof sortDeliverables>
+  >([]);
+  // Which deliverable's assignee sheet is open — a row id, or 'all' for the
+  // one-tap "assign every deliverable to this person".
+  const [assignFor, setAssignFor] = useState<string | 'all' | null>(null);
+  const [bulkDate, setBulkDate] = useState('');
 
   useEffect(() => {
     // Keyed on the task ROW IDENTITY, not on `task.data` — that object is a new
@@ -72,6 +94,22 @@ export default function TaskDetailScreen() {
     const ids = (row.task_creatives ?? []).map((tc) => tc.profile_id);
     setCreativeIds(ids);
     setOriginalCreativeIds(ids);
+
+    const rows = sortDeliverables(row.task_deliverables);
+    setOriginalDeliverables(rows);
+    setDrafts(
+      rows.map((d) => {
+        const sid = deliverableStageId(d, row.current_stage_id);
+        const scheduled = stageRow(d, sid);
+        return {
+          id: d.id,
+          title: d.title,
+          stageId: sid,
+          assignedTo: scheduled?.assigned_to ?? null,
+          date: scheduled?.scheduled_date ?? '',
+        };
+      })
+    );
   }, [task.data?.id]);
 
   const stages = pickers.data?.stages ?? [];
@@ -87,6 +125,8 @@ export default function TaskDetailScreen() {
     stages.find((s) => s.id === stageId) ??
     (pendingStageId ? null : one(task.data?.department_stages ?? null));
   const shoot = isShootStage(stage?.name);
+  // With deliverables the task's own stage is derived, not chosen.
+  const hasDeliverables = drafts.length > 0;
 
   const conflicts = useAvailabilityConflicts({
     assignedTo,
@@ -120,9 +160,42 @@ export default function TaskDetailScreen() {
     },
   });
 
-  const saveMutation = useMutation({
-    mutationFn: saveTask,
+  // A deliverable move is its own write, like the task-level stage move above:
+  // it re-points one deliverable and then drags the parent task back to its
+  // least-advanced item so dashboards and done/total counts stay truthful.
+  const moveDeliverableMutation = useMutation({
+    mutationFn: (vars: Parameters<typeof moveDeliverable>[0] & { prevStageId: string }) =>
+      moveDeliverable(vars),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.task(taskId) });
+      queryClient.invalidateQueries({ queryKey: qk.projectTasks(projectId) });
+      queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
+      queryClient.invalidateQueries({ queryKey: qk.projects() });
+      queryClient.invalidateQueries({ queryKey: qk.allTasks() });
+      queryClient.invalidateQueries({ queryKey: qk.dashboards() });
+      queryClient.invalidateQueries({ queryKey: qk.calendarTasks() });
+    },
+    onError: (e: Error, vars) => {
+      setDrafts((ds) =>
+        ds.map((d) => (d.id === vars.deliverableId ? { ...d, stageId: vars.prevStageId } : d))
+      );
+      Alert.alert('Could not move deliverable', e.message);
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (vars: Parameters<typeof saveTask>[0]) => {
+      await saveTask(vars);
+      await saveDeliverableDrafts({
+        taskId,
+        drafts,
+        original: originalDeliverables,
+        userId: session?.user.id ?? null,
+      });
+    },
+    onSuccess: () => {
+      // Deliverable dates are calendar events of their own.
+      queryClient.invalidateQueries({ queryKey: qk.calendarTasks() });
       queryClient.invalidateQueries({ queryKey: qk.task(taskId) });
       queryClient.invalidateQueries({ queryKey: qk.projectTasks(projectId) });
       queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
@@ -185,6 +258,53 @@ export default function TaskDetailScreen() {
     if (nextStageId === stageId) return;
     setPendingStageId(nextStageId); // optimistic
     moveMutation.mutate(nextStageId);
+  }
+
+  function updateDraft(index: number, patch: Partial<DeliverableDraft>) {
+    setDrafts((ds) => ds.map((d, i) => (i === index ? { ...d, ...patch } : d)));
+  }
+
+  /**
+   * Move ONE deliverable a stage forward or back. Writes immediately (like the
+   * task-level stage move) and swaps in that stage's own assignee/date, because
+   * who shoots a video and who edits it are different rows.
+   */
+  function moveOne(index: number, dir: 1 | -1) {
+    const d = drafts[index];
+    if (!d?.id || moveDeliverableMutation.isPending) return;
+    const target = adjacentStage(stages, d.stageId, dir);
+    if (!target) return;
+
+    const original = originalDeliverables.find((o) => o.id === d.id);
+    const nextRow = original ? stageRow(original, target.id) : null;
+    const prevStageId = d.stageId;
+
+    updateDraft(index, {
+      stageId: target.id,
+      assignedTo: nextRow?.assigned_to ?? null,
+      date: nextRow?.scheduled_date ?? '',
+    });
+
+    moveDeliverableMutation.mutate({
+      deliverableId: d.id,
+      toStageId: target.id,
+      taskId,
+      // Current stages of every saved row, so the parent task lands on the
+      // least-advanced one once this move is applied.
+      deliverables: drafts
+        .filter((x) => x.id)
+        .map((x) => ({
+          id: x.id!,
+          task_id: taskId,
+          title: x.title,
+          position: 0,
+          current_stage_id: x.stageId,
+          task_deliverable_assignments: null,
+        })),
+      stages,
+      taskStageId: stageId,
+      prevStageId,
+    });
   }
 
   function confirmDelete() {
@@ -252,7 +372,7 @@ export default function TaskDetailScreen() {
                 why `pendingStageId` must never outrun the loaded stage list. */}
             <Pressable
               onPress={() => setPicker('stage')}
-              disabled={moveMutation.isPending || !pickers.isSuccess}
+              disabled={hasDeliverables || moveMutation.isPending || !pickers.isSuccess}
             >
               <Text style={styles.label}>STAGE</Text>
               <View style={styles.stageRow}>
@@ -268,6 +388,11 @@ export default function TaskDetailScreen() {
                 </Text>
                 {moveMutation.isPending && <Text style={styles.muted}>Moving…</Text>}
               </View>
+              {hasDeliverables && (
+                <Text style={styles.muted}>
+                  Follows the least-advanced deliverable — move them below.
+                </Text>
+              )}
             </Pressable>
           </GlassCard>
 
@@ -317,6 +442,162 @@ export default function TaskDetailScreen() {
                 </>
               )}
             </View>
+          </GlassCard>
+
+          <GlassCard>
+            <View style={styles.delivHeader}>
+              <Text style={styles.label}>DELIVERABLES</Text>
+              <Pressable
+                onPress={() =>
+                  setDrafts((ds) => [
+                    ...ds,
+                    { id: null, title: '', stageId, assignedTo: null, date: '' },
+                  ])
+                }
+                hitSlop={10}
+              >
+                <Text style={styles.linkAction}>Add</Text>
+              </Pressable>
+            </View>
+
+            {drafts.length === 0 && (
+              <Text style={styles.muted}>
+                No deliverables. Add one to track each video or photo set on its own.
+              </Text>
+            )}
+
+            {drafts.length > 1 && (
+              <View style={styles.bulkRow}>
+                <Pressable onPress={() => setAssignFor('all')} style={styles.bulkButton}>
+                  <Text style={styles.bulkButtonText}>Assign all to…</Text>
+                </Pressable>
+                <TextInput
+                  value={bulkDate}
+                  onChangeText={setBulkDate}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={theme.text.dimmer}
+                  autoCapitalize="none"
+                  style={[styles.cellInput, styles.bulkDate]}
+                />
+                <Pressable
+                  onPress={() =>
+                    setDrafts((ds) => ds.map((d) => ({ ...d, date: bulkDate.trim() })))
+                  }
+                  disabled={bulkDate.trim().length === 0}
+                  style={styles.bulkButton}
+                >
+                  <Text
+                    style={[
+                      styles.bulkButtonText,
+                      bulkDate.trim().length === 0 && styles.bulkButtonTextOff,
+                    ]}
+                  >
+                    Set all
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+
+            {drafts.map((d, index) => {
+              const rowStage = stages.find((s) => s.id === d.stageId);
+              const color = rowStage?.color ?? theme.colors.mutedForeground;
+              const back = adjacentStage(stages, d.stageId, -1);
+              const forward = adjacentStage(stages, d.stageId, 1);
+              const who =
+                pickers.data?.employees.find((e) => e.profile_id === d.assignedTo)?.full_name ??
+                null;
+              // What earlier phases recorded — "Shoot: Quintin, 14 Aug".
+              const history = stages
+                .filter((s) => s.position < (rowStage?.position ?? 0))
+                .map((s) => {
+                  const original = originalDeliverables.find((o) => o.id === d.id);
+                  const row = original ? stageRow(original, s.id) : null;
+                  if (!row || (!row.assigned_to && !row.scheduled_date)) return null;
+                  const name = row.assigned_to
+                    ? firstName(one(row.employees)?.profiles?.full_name)
+                    : null;
+                  return `${s.name}: ${[name, row.scheduled_date ? shortDate(row.scheduled_date) : null]
+                    .filter(Boolean)
+                    .join(', ')}`;
+                })
+                .filter(Boolean);
+
+              return (
+                <View key={d.id ?? `new-${index}`} style={styles.delivRow}>
+                  <View style={styles.delivTop}>
+                    <TextInput
+                      value={d.title}
+                      onChangeText={(t) => updateDraft(index, { title: t })}
+                      placeholder="Video 1"
+                      placeholderTextColor={theme.text.dimmer}
+                      autoCapitalize="sentences"
+                      style={[styles.cellInput, styles.delivTitle]}
+                    />
+                    <Pressable
+                      onPress={() => setDrafts((ds) => ds.filter((_, i) => i !== index))}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.removeAction}>Remove</Text>
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.delivControls}>
+                    <View style={[styles.stagePill, { backgroundColor: withAlpha(color, 0.16) }]}>
+                      <Text style={[styles.stagePillText, { color }]}>
+                        {rowStage?.is_terminal ? `${rowStage.name} ✓` : rowStage?.name ?? '—'}
+                      </Text>
+                    </View>
+                    <View style={styles.spacer} />
+                    <Pressable
+                      onPress={() => moveOne(index, -1)}
+                      disabled={!back || !d.id}
+                      hitSlop={8}
+                      style={[styles.moveButton, (!back || !d.id) && styles.moveButtonOff]}
+                    >
+                      <Text style={styles.moveButtonText}>←</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => moveOne(index, 1)}
+                      disabled={!forward || !d.id}
+                      hitSlop={8}
+                      style={[
+                        styles.moveButton,
+                        forward?.is_terminal && styles.moveButtonDone,
+                        (!forward || !d.id) && styles.moveButtonOff,
+                      ]}
+                    >
+                      <Text style={styles.moveButtonText}>
+                        {forward?.is_terminal ? 'Done ✓' : `${forward?.name ?? ''} →`}
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.delivControls}>
+                    <Pressable
+                      onPress={() => d.id !== null && setAssignFor(d.id)}
+                      disabled={d.id === null}
+                      style={styles.assignButton}
+                    >
+                      <Text style={who ? styles.assignText : styles.assignTextOff}>
+                        {who ?? 'Unassigned'}
+                      </Text>
+                    </Pressable>
+                    <TextInput
+                      value={d.date}
+                      onChangeText={(t) => updateDraft(index, { date: t })}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor={theme.text.dimmer}
+                      autoCapitalize="none"
+                      style={[styles.cellInput, styles.delivDate]}
+                    />
+                  </View>
+
+                  {history.length > 0 && (
+                    <Text style={styles.delivHistory}>{history.join(' · ')}</Text>
+                  )}
+                </View>
+              );
+            })}
           </GlassCard>
 
           <GlassCard>
@@ -421,6 +702,32 @@ export default function TaskDetailScreen() {
         }}
         onClose={() => setPicker(null)}
       />
+      <PickerSheet
+        visible={assignFor !== null}
+        title={assignFor === 'all' ? 'Assign every deliverable' : 'Assign deliverable'}
+        selected={
+          assignFor && assignFor !== 'all'
+            ? drafts.find((d) => d.id === assignFor)?.assignedTo ?? 'unassigned'
+            : 'unassigned'
+        }
+        options={[
+          { value: 'unassigned', label: 'Unassigned' },
+          ...(pickers.data?.employees ?? []).map((e) => ({
+            value: e.profile_id,
+            label: e.full_name,
+          })),
+        ]}
+        onSelect={(v) => {
+          const profileId = v === 'unassigned' ? null : v;
+          setDrafts((ds) =>
+            ds.map((d) =>
+              assignFor === 'all' || d.id === assignFor ? { ...d, assignedTo: profileId } : d
+            )
+          );
+          setAssignFor(null);
+        }}
+        onClose={() => setAssignFor(null)}
+      />
     </Screen>
   );
 }
@@ -454,6 +761,69 @@ const styles = StyleSheet.create({
   },
   chipText: { color: theme.text.dim, fontSize: 13 },
   chipTextOn: { color: theme.colors.accent, fontWeight: '600' },
+  delivHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  linkAction: { color: theme.colors.accent, fontSize: 13, fontWeight: '600' },
+  removeAction: { color: theme.colors.danger, fontSize: 12 },
+  bulkRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  bulkButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  bulkButtonText: { color: theme.colors.accent, fontSize: 12, fontWeight: '600' },
+  bulkButtonTextOff: { color: theme.text.dimmer },
+  bulkDate: { flex: 1 },
+  delivRow: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.border,
+    gap: 8,
+  },
+  delivTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  delivTitle: { flex: 1 },
+  delivControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  spacer: { flex: 1 },
+  cellInput: {
+    height: 38,
+    borderRadius: theme.radius,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 10,
+    fontSize: 13,
+    color: '#fff',
+  },
+  delivDate: { width: 132 },
+  stagePill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  stagePillText: { fontSize: 11, fontWeight: '600' },
+  moveButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  moveButtonDone: {
+    borderColor: withAlpha(theme.colors.success, 0.5),
+    backgroundColor: withAlpha(theme.colors.success, 0.15),
+  },
+  moveButtonOff: { opacity: 0.3 },
+  moveButtonText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  assignButton: {
+    flex: 1,
+    height: 38,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius,
+    paddingHorizontal: 10,
+  },
+  assignText: { color: '#fff', fontSize: 13 },
+  assignTextOff: { color: theme.text.dimmer, fontSize: 13 },
+  delivHistory: { color: theme.text.dimmer, fontSize: 11 },
   conflictTitle: { color: theme.colors.warning, fontSize: 14, fontWeight: '600', marginBottom: 6 },
   conflictRow: { color: theme.colors.foreground, fontSize: 13 },
   muted: { color: theme.text.dim, fontSize: 12, marginTop: 6 },
