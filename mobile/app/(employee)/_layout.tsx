@@ -1,8 +1,7 @@
 import { Tabs } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { BlurView } from 'expo-blur';
-import { StyleSheet, type ColorValue } from 'react-native';
-import { theme } from '../../lib/theme';
+import { type ColorValue } from 'react-native';
+import { usePillTabOptions } from '../../components/ui/tabBar';
 
 function icon(name: string) {
   return ({ color }: { color: ColorValue }) => (
@@ -12,17 +11,7 @@ function icon(name: string) {
 
 export default function EmployeeLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: theme.colors.accent,
-        tabBarInactiveTintColor: theme.text.dim,
-        tabBarStyle: { position: 'absolute', borderTopColor: theme.colors.border },
-        tabBarBackground: () => (
-          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
-        ),
-      }}
-    >
+    <Tabs screenOptions={usePillTabOptions()} safeAreaInsets={{ bottom: 0 }}>
       <Tabs.Screen name="dashboard" options={{ title: 'Dashboard', tabBarIcon: icon('square.grid.2x2') }} />
       <Tabs.Screen name="projects" options={{ title: 'Projects', tabBarIcon: icon('folder') }} />
       <Tabs.Screen name="tasks" options={{ title: 'Tasks', tabBarIcon: icon('checklist') }} />
