@@ -60,8 +60,6 @@ export default function NewProjectScreen() {
     mutationFn: createProject,
     onSuccess: (projectId) => {
       queryClient.invalidateQueries({ queryKey: qk.projects() });
-      // @ts-expect-error — the /projects/[projectId] route does not exist until
-      // Task 3 creates it. Delete this directive (not the call) in Task 3.
       router.replace({ pathname: '/projects/[projectId]', params: { projectId } });
     },
     onError: (e: Error) => Alert.alert('Could not create project', e.message),

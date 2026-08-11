@@ -17,8 +17,6 @@ export default function ProjectsScreen() {
   const { data, isLoading, error } = useProjectsList();
 
   function openProject(projectId: string) {
-    // @ts-expect-error — the /projects/[projectId] route does not exist until
-    // Task 3 creates it. Delete this directive (not the call) in Task 3.
     router.push({ pathname: '/projects/[projectId]', params: { projectId } });
   }
 
