@@ -145,6 +145,8 @@ export interface TaskDeliverable {
   task_id: string;
   title: string;
   position: number;
+  /** NULL means "use the parent task's current stage". */
+  current_stage_id: string | null;
   created_at: string;
   task_deliverable_assignments?: TaskDeliverableAssignment[];
 }

@@ -108,7 +108,12 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
 
     if (deliverables.length > 0) {
       await supabase.from("task_deliverables").insert(
-        deliverables.map((title, i) => ({ task_id: task.id, title, position: i }))
+        deliverables.map((title, i) => ({
+          task_id: task.id,
+          title,
+          position: i,
+          current_stage_id: firstStage.id,
+        }))
       );
     }
 

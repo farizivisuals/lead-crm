@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import type { Task, TaskDeliverable, DepartmentStage } from "@/lib/types";
-import AssignDeliverablesDialog from "./AssignDeliverablesDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Trash2, AlertTriangle, Plus, Users } from "lucide-react";
+import { Loader2, Trash2, AlertTriangle, Plus } from "lucide-react";
 
 interface Employee {
   profile_id: string;
@@ -63,11 +62,8 @@ export default function EditTaskDialog({
       .sort((a, b) => a.position - b.position)
       .map((d) => ({ id: d.id, title: d.title }))
   );
-  // Authoritative deliverable rows incl. assignment joins, kept fresh by the assign dialog.
-  const [assignments, setAssignments] = useState<TaskDeliverable[]>(
-    task.task_deliverables ?? []
-  );
-  const [assignOpen, setAssignOpen] = useState(false);
+  // Original deliverable rows incl. assignment joins, used to rebuild the onSaved patch.
+  const assignments = task.task_deliverables ?? [];
 
   const [form, setForm] = useState({
     title: task.title,
@@ -179,8 +175,13 @@ export default function EditTaskDialog({
     if (toInsert.length > 0) {
       const { data, error } = await supabase
         .from("task_deliverables")
-        .insert(toInsert.map((x) => ({ task_id: task.id, title: x.it.title, position: x.i })))
-        .select("id, task_id, title, position, created_at");
+        .insert(toInsert.map((x) => ({
+          task_id: task.id,
+          title: x.it.title,
+          position: x.i,
+          current_stage_id: form.current_stage_id,
+        })))
+        .select("id, task_id, title, position, current_stage_id, created_at");
       dErr = error;
       inserted = (data ?? []) as TaskDeliverable[];
     }
@@ -385,28 +386,15 @@ export default function EditTaskDialog({
                 </div>
               ))}
             </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setItems((prev) => [...prev, { id: null, title: "" }])}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add deliverable
-              </Button>
-              {assignments.length > 0 && currentStage && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setAssignOpen(true)}
-                >
-                  <Users className="h-3.5 w-3.5" />
-                  Assign for {currentStage.name}
-                </Button>
-              )}
-            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setItems((prev) => [...prev, { id: null, title: "" }])}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add deliverable
+            </Button>
           </div>
 
           {/* Date fields: single shoot date vs start+due range */}
@@ -481,21 +469,6 @@ export default function EditTaskDialog({
             </Button>
           </div>
         </form>
-
-        {assignOpen && currentStage && (
-          <AssignDeliverablesDialog
-            task={{ ...task, task_deliverables: assignments }}
-            stage={currentStage}
-            stages={stages}
-            employees={employees}
-            open={assignOpen}
-            onClose={() => setAssignOpen(false)}
-            onSaved={(updated) => {
-              setAssignments(updated);
-              onSaved({ task_deliverables: updated });
-            }}
-          />
-        )}
       </DialogContent>
     </Dialog>
   );
