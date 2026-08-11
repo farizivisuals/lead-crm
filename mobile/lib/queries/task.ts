@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { TaskPriority } from '@shared/types';
 import { supabase } from '../supabase';
+import { one } from '../data';
 import { qk } from './keys';
 
 export type TaskDetail = {
@@ -77,23 +78,15 @@ export function useTaskPickers(projectId: string, departmentId: string | undefin
       if (employeesRes.error) throw employeesRes.error;
       if (creativesRes.error) throw creativesRes.error;
 
-      const name = (row: any, nested = false) => {
-        const source = nested
-          ? Array.isArray(row.employees) ? row.employees[0] : row.employees
-          : row;
-        const profiles = Array.isArray(source?.profiles) ? source.profiles[0] : source?.profiles;
-        return profiles?.full_name ?? 'Unknown';
-      };
-
       return {
         stages: (stagesRes.data ?? []) as TaskPickers['stages'],
         employees: (employeesRes.data ?? []).map((row: any) => ({
           profile_id: row.profile_id as string,
-          full_name: name(row),
+          full_name: one(row.profiles)?.full_name ?? 'Unknown',
         })),
         projectCreatives: (creativesRes.data ?? []).map((row: any) => ({
           profile_id: row.profile_id as string,
-          full_name: name(row, true),
+          full_name: one(one(row.employees)?.profiles)?.full_name ?? 'Unknown',
         })),
       };
     },

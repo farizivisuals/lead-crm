@@ -325,6 +325,12 @@ export default function TaskDetailScreen() {
             </GlassCard>
           )}
 
+          {conflicts.error && (
+            <GlassCard>
+              <Text style={styles.error}>{conflicts.error.message}</Text>
+            </GlassCard>
+          )}
+
           <Button
             title="Save changes"
             onPress={submit}
