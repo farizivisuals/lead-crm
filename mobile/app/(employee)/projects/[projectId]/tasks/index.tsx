@@ -8,12 +8,7 @@ import { Badge } from '../../../../../components/ui/Badge';
 import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
 import { useAuth } from '../../../../../lib/auth';
 import { one, countByStage, isTaskOverdue, shortDate, firstName } from '../../../../../lib/data';
-import {
-  useBoard,
-  useBoardMeta,
-  type BoardTask,
-  type BoardStage,
-} from '../../../../../lib/queries/board';
+import { useBoard, useBoardMeta, type BoardTask } from '../../../../../lib/queries/board';
 import { theme } from '../../../../../lib/theme';
 
 const STAGE_FALLBACK_COLOR = '#71717a';
@@ -88,7 +83,7 @@ export default function BoardScreen() {
         {departments.map((dept) => {
           const deptTasks = tasks.filter((t) => t.department_id === dept.id);
           const deptStages = stages.filter((s) => s.department_id === dept.id);
-          const counts = countByStage(deptStages as BoardStage[], deptTasks);
+          const counts = countByStage(deptStages, deptTasks);
           const activeStage = selected[dept.id] ?? null;
           const visible = activeStage
             ? deptTasks.filter((t) => t.current_stage_id === activeStage)

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
+import { queryClient } from './query-client';
 import { supabase } from './supabase';
 import type { UserType } from './routing';
 import { parseRecoveryLink } from './recovery-link';
@@ -202,6 +203,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut();
+    // The QueryClient is module-scoped and outlives the session. Only
+    // `dashboardEmployee` is user-scoped — ['tasks'], ['projects'] and
+    // ['project', id] are not, so without this the next user sees the previous
+    // user's rows painted from cache until staleTime (30s) expires.
+    queryClient.clear();
     clearRecovery();
   }
 

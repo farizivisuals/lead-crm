@@ -145,6 +145,31 @@ export function isShootStage(stageName: string | null | undefined): boolean {
   return (stageName ?? '').toLowerCase() === 'shoot';
 }
 
+/**
+ * A shoot-stage task has one date, not two: the form hides the due-date field
+ * and `due_date` mirrors `start_date`. Used by both writers AND by the
+ * availability-conflict window on both task screens — those four places must
+ * agree, or a shoot task is checked against a range it never gets written with.
+ */
+export function shootDueDate(isShoot: boolean, startDate: string, dueDate: string): string {
+  return isShoot ? startDate : dueDate;
+}
+
+/**
+ * Which `task_creatives` rows a save has to insert and which to delete. Both
+ * lists must be derived from the SAME pair — a mismatch silently duplicates a
+ * row (insert of one already present) or strips a collaborator.
+ */
+export function diffCreatives(
+  next: string[],
+  original: string[]
+): { toAdd: string[]; toRemove: string[] } {
+  return {
+    toAdd: next.filter((id) => !original.includes(id)),
+    toRemove: original.filter((id) => !next.includes(id)),
+  };
+}
+
 /** The stage move. One column, one row — identical to the web board's drop write. */
 export async function moveTaskStage(taskId: string, stageId: string) {
   const { error } = await supabase
@@ -183,7 +208,7 @@ export async function saveTask(input: SaveTaskInput) {
       assigned_to: input.assigned_to || null,
       current_stage_id: input.current_stage_id,
       start_date: input.start_date || null,
-      due_date: input.isShoot ? input.start_date || null : input.due_date || null,
+      due_date: shootDueDate(input.isShoot, input.start_date, input.due_date) || null,
     })
     .eq('id', input.taskId);
   if (error) throw error;
@@ -243,7 +268,7 @@ export async function createTask(input: CreateTaskInput): Promise<string> {
       description: input.description || null,
       priority: input.priority,
       start_date: input.start_date,
-      due_date: input.isShoot ? input.start_date : input.due_date,
+      due_date: shootDueDate(input.isShoot, input.start_date, input.due_date),
       assigned_to: input.assigned_to || null,
       created_by: input.userId,
     })

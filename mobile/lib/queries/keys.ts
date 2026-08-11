@@ -5,6 +5,13 @@
  * owned by another, and string drift between them fails silently.
  */
 export const qk = {
+  /**
+   * Both dashboards at once. Every dashboard metric is derived from the whole
+   * project/task table, so any project or task mutation makes both stale — and
+   * with no focusManager wiring, no RefreshControl and permanently-mounted tab
+   * screens, invalidation is their ONLY refresh path.
+   */
+  dashboards: () => ['dashboard'] as const,
   dashboardExec: (deptId: string | null) => ['dashboard', 'exec', deptId] as const,
   dashboardEmployee: (userId: string) => ['dashboard', 'employee', userId] as const,
 
@@ -18,8 +25,12 @@ export const qk = {
   boardMeta: (deptIds: string[]) => ['board-meta', [...deptIds].sort().join(',')] as const,
 
   task: (taskId: string) => ['task', taskId] as const,
+  // Nested under `project` (like projectTasks) because its `projectCreatives`
+  // comes from `project_creatives` — adding or removing a creative on the
+  // project detail screen invalidates `project(id)` and must cascade here, or
+  // the task forms keep offering the old creative list.
   taskPickers: (projectId: string, deptId: string) =>
-    ['task-pickers', projectId, deptId] as const,
+    ['project', projectId, 'task-pickers', deptId] as const,
   taskConflicts: (
     assignedTo: string,
     startDate: string,

@@ -27,6 +27,7 @@ import {
   useTaskPickers,
   useAvailabilityConflicts,
   isShootStage,
+  shootDueDate,
 } from '../../../../../lib/queries/task';
 import { theme } from '../../../../../lib/theme';
 
@@ -67,7 +68,7 @@ export default function NewTaskScreen() {
   const conflicts = useAvailabilityConflicts({
     assignedTo,
     startDate,
-    dueDate: shoot ? startDate : dueDate,
+    dueDate: shootDueDate(shoot, startDate, dueDate),
     excludeTaskId: null,
   });
   const conflicting = conflicts.data ?? [];
@@ -79,6 +80,7 @@ export default function NewTaskScreen() {
       queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
       queryClient.invalidateQueries({ queryKey: qk.projects() });
       queryClient.invalidateQueries({ queryKey: qk.allTasks() });
+      queryClient.invalidateQueries({ queryKey: qk.dashboards() });
       router.back();
     },
     onError: (e: Error) => Alert.alert('Could not create task', e.message),

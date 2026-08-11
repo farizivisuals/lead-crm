@@ -60,6 +60,7 @@ export default function NewProjectScreen() {
     mutationFn: createProject,
     onSuccess: (projectId) => {
       queryClient.invalidateQueries({ queryKey: qk.projects() });
+      queryClient.invalidateQueries({ queryKey: qk.dashboards() });
       router.replace({ pathname: '/projects/[projectId]', params: { projectId } });
     },
     onError: (e: Error) => Alert.alert('Could not create project', e.message),

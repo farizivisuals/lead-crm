@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { TaskPriority } from '@shared/types';
 import { supabase } from '../supabase';
+import { one } from '../data';
 import { qk } from './keys';
 
 export type BoardDepartment = { id: string; name: string; slug: string; is_primary: boolean };
@@ -53,7 +54,7 @@ export function useBoard(projectId: string) {
 
       const departments = ((projectRes.data as any).project_departments ?? [])
         .map((pd: any) => {
-          const dept = Array.isArray(pd.departments) ? pd.departments[0] : pd.departments;
+          const dept = one<any>(pd.departments);
           if (!dept) return null;
           return {
             id: dept.id as string,
@@ -84,48 +85,29 @@ export type BoardStage = {
 
 export type BoardMeta = {
   stages: BoardStage[];
-  employees: { profile_id: string; full_name: string; department_id: string }[];
 };
 
 /**
  * Batch 2 of the web page's two sequential fetches — it needs the department
  * ids that batch 1 produced, so it stays disabled until they arrive.
+ *
+ * The web also fetches the departments' members here, for its assignee
+ * dropdowns. The mobile board has none (assignment happens on the task screens,
+ * which fetch their own single-department list via `useTaskPickers`), so that
+ * query is deliberately not ported — nothing ever read it.
  */
 export function useBoardMeta(deptIds: string[]) {
   return useQuery({
     queryKey: qk.boardMeta(deptIds),
     enabled: deptIds.length > 0,
     queryFn: async (): Promise<BoardMeta> => {
-      const [stagesRes, employeesRes] = await Promise.all([
-        supabase
-          .from('department_stages')
-          .select('*')
-          .in('department_id', deptIds)
-          .order('position'),
-        supabase
-          .from('employees')
-          .select('profile_id, profiles(full_name), employee_departments!inner(department_id)')
-          .in('employee_departments.department_id', deptIds),
-      ]);
-      if (stagesRes.error) throw stagesRes.error;
-      if (employeesRes.error) throw employeesRes.error;
-
-      const employees: BoardMeta['employees'] = [];
-      for (const row of (employeesRes.data ?? []) as any[]) {
-        const profiles = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-        const memberships = Array.isArray(row.employee_departments)
-          ? row.employee_departments
-          : [row.employee_departments].filter(Boolean);
-        for (const m of memberships) {
-          employees.push({
-            profile_id: row.profile_id as string,
-            full_name: profiles?.full_name ?? 'Unknown',
-            department_id: m.department_id as string,
-          });
-        }
-      }
-
-      return { stages: (stagesRes.data ?? []) as BoardStage[], employees };
+      const { data, error } = await supabase
+        .from('department_stages')
+        .select('*')
+        .in('department_id', deptIds)
+        .order('position');
+      if (error) throw error;
+      return { stages: (data ?? []) as BoardStage[] };
     },
   });
 }

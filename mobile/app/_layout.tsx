@@ -1,16 +1,13 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { Stack, useRouter, usePathname } from 'expo-router';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { queryClient } from '../lib/query-client';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { resolveRoute } from '../lib/routing';
 import { theme } from '../lib/theme';
-
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
-});
 
 export function SessionGate() {
   const { session, profile, loading, recoveryChecked, recovering } = useAuth();

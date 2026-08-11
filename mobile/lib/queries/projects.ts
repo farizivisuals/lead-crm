@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ProjectStatus } from '@shared/types';
 import { supabase } from '../supabase';
 import { qk } from './keys';
-import { taskProgress, type Progress, type TaskProgressRow } from '../data';
+import { one, taskProgress, type Progress, type TaskProgressRow } from '../data';
 
 export type ProjectListRow = {
   id: string;
@@ -48,30 +48,40 @@ export type ClientOption = { id: string; company_name: string };
 export type DepartmentOption = { id: string; name: string; slug: string };
 export type CreativeOption = { profile_id: string; full_name: string };
 
+/**
+ * Every employee in the `creatives` department — the agency-wide roster the new
+ * project form and the project detail screen both offer. One definition, used
+ * by both `queryFn`s; the select string is verbatim from the porting brief
+ * (including `employee_departments!inner(departments!inner(slug))`) and must
+ * stay character-identical to the web's.
+ */
+export async function creativeEmployees(): Promise<CreativeOption[]> {
+  const { data, error } = await supabase
+    .from('employees')
+    .select('profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))')
+    .eq('employee_departments.departments.slug', 'creatives');
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    profile_id: row.profile_id as string,
+    full_name: one<{ full_name: string }>(row.profiles)?.full_name ?? 'Unknown',
+  }));
+}
+
 export function useProjectFormOptions() {
   return useQuery({
     queryKey: qk.projectFormOptions(),
     queryFn: async () => {
-      const [clientsRes, deptsRes, creativesRes] = await Promise.all([
+      const [clientsRes, deptsRes, creatives] = await Promise.all([
         supabase.from('clients').select('id, company_name').order('company_name'),
         supabase.from('departments').select('*').order('name'),
-        supabase
-          .from('employees')
-          .select('profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))')
-          .eq('employee_departments.departments.slug', 'creatives'),
+        creativeEmployees(),
       ]);
       if (clientsRes.error) throw clientsRes.error;
       if (deptsRes.error) throw deptsRes.error;
-      if (creativesRes.error) throw creativesRes.error;
       return {
         clients: (clientsRes.data ?? []) as ClientOption[],
         departments: (deptsRes.data ?? []) as DepartmentOption[],
-        creatives: (creativesRes.data ?? []).map((row: any) => ({
-          profile_id: row.profile_id as string,
-          full_name:
-            (Array.isArray(row.profiles) ? row.profiles[0] : row.profiles)?.full_name ??
-            'Unknown',
-        })) as CreativeOption[],
+        creatives,
       };
     },
   });

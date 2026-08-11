@@ -29,6 +29,8 @@ import {
   saveTask,
   deleteTask,
   isShootStage,
+  shootDueDate,
+  diffCreatives,
 } from '../../../../../lib/queries/task';
 import { theme } from '../../../../../lib/theme';
 
@@ -76,13 +78,21 @@ export default function TaskDetailScreen() {
   const stages = pickers.data?.stages ?? [];
   const persistedStageId = task.data?.current_stage_id ?? '';
   const stageId = pendingStageId ?? persistedStageId;
-  const stage = stages.find((s) => s.id === stageId) ?? one(task.data?.department_stages ?? null);
+  // The fallback is the PERSISTED stage, so it is only ever correct while no
+  // move is pending. `shoot` (derived from the name) decides one date field vs
+  // two AND which column saveTask writes, so resolving a pending id to the old
+  // stage would write the wrong column — render '—' rather than guess. The
+  // stage Pressable is gated on `pickers.isSuccess`, which is what keeps
+  // `pendingStageId` from ever being set before `stages` has loaded.
+  const stage =
+    stages.find((s) => s.id === stageId) ??
+    (pendingStageId ? null : one(task.data?.department_stages ?? null));
   const shoot = isShootStage(stage?.name);
 
   const conflicts = useAvailabilityConflicts({
     assignedTo,
     startDate,
-    dueDate: shoot ? startDate : dueDate,
+    dueDate: shootDueDate(shoot, startDate, dueDate),
     excludeTaskId: taskId,
   });
   const conflicting = conflicts.data ?? [];
@@ -94,9 +104,14 @@ export default function TaskDetailScreen() {
       queryClient.invalidateQueries({ queryKey: qk.task(taskId) });
       queryClient.invalidateQueries({ queryKey: qk.projectTasks(projectId) });
       queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
+      // `project(id)` does NOT prefix-match `projects()` — different first
+      // segment — and the projects list renders a done/total fraction that a
+      // move to or from a terminal stage changes.
+      queryClient.invalidateQueries({ queryKey: qk.projects() });
       // All Tasks selects department_stages(name, is_terminal) and strikes
       // through terminal tasks — a stage move changes exactly that.
       queryClient.invalidateQueries({ queryKey: qk.allTasks() });
+      queryClient.invalidateQueries({ queryKey: qk.dashboards() });
     },
     onError: (e: Error) => {
       // Targeted rollback of just this field — the row snaps back to the
@@ -112,7 +127,11 @@ export default function TaskDetailScreen() {
       queryClient.invalidateQueries({ queryKey: qk.task(taskId) });
       queryClient.invalidateQueries({ queryKey: qk.projectTasks(projectId) });
       queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
+      // saveTask writes current_stage_id, so it can change the projects list's
+      // done/total fraction too. `project(id)` doesn't reach `projects()`.
+      queryClient.invalidateQueries({ queryKey: qk.projects() });
       queryClient.invalidateQueries({ queryKey: qk.allTasks() });
+      queryClient.invalidateQueries({ queryKey: qk.dashboards() });
       router.back();
     },
     onError: (e: Error) => Alert.alert('Could not save task', e.message),
@@ -123,7 +142,10 @@ export default function TaskDetailScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.projectTasks(projectId) });
       queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
+      // A deletion changes the projects list's `total`.
+      queryClient.invalidateQueries({ queryKey: qk.projects() });
       queryClient.invalidateQueries({ queryKey: qk.allTasks() });
+      queryClient.invalidateQueries({ queryKey: qk.dashboards() });
       router.back();
     },
     onError: (e: Error) => Alert.alert('Could not delete task', e.message),
@@ -186,6 +208,7 @@ export default function TaskDetailScreen() {
     !conflicts.error;
 
   function submit() {
+    const { toAdd, toRemove } = diffCreatives(creativeIds, originalCreativeIds);
     saveMutation.mutate({
       taskId,
       title: title.trim(),
@@ -196,8 +219,8 @@ export default function TaskDetailScreen() {
       start_date: startDate,
       due_date: dueDate,
       isShoot: shoot,
-      creativesToAdd: creativeIds.filter((id) => !originalCreativeIds.includes(id)),
-      creativesToRemove: originalCreativeIds.filter((id) => !creativeIds.includes(id)),
+      creativesToAdd: toAdd,
+      creativesToRemove: toRemove,
     });
   }
 
@@ -217,10 +240,21 @@ export default function TaskDetailScreen() {
             onBack={() => router.back()}
           />
 
+          {pickers.error && (
+            <GlassCard>
+              <Text style={styles.error}>{pickers.error.message}</Text>
+            </GlassCard>
+          )}
+
           <GlassCard>
             {/* Disabled while a move is in flight so a second tap can't open the
-                sheet and dispatch another write before the first one lands. */}
-            <Pressable onPress={() => setPicker('stage')} disabled={moveMutation.isPending}>
+                sheet and dispatch another write before the first one lands, and
+                until `pickers` resolves — see the `stage` derivation above for
+                why `pendingStageId` must never outrun the loaded stage list. */}
+            <Pressable
+              onPress={() => setPicker('stage')}
+              disabled={moveMutation.isPending || !pickers.isSuccess}
+            >
               <Text style={styles.label}>STAGE</Text>
               <View style={styles.stageRow}>
                 <View

@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import type { ProjectStatus } from '@shared/types';
 import { supabase } from '../supabase';
 import { qk } from './keys';
-import { taskProgress, type TaskProgressRow } from '../data';
+import { creativeEmployees } from './projects';
+import { one, taskProgress, type TaskProgressRow } from '../data';
 
 export type ProjectDetail = {
   project: {
@@ -28,22 +29,24 @@ export type ProjectDetail = {
   availableCreatives: { profile_id: string; full_name: string }[];
 };
 
-function creativeName(row: any): string {
-  const employee = Array.isArray(row.employees) ? row.employees[0] : row.employees;
-  const profiles = Array.isArray(employee?.profiles) ? employee.profiles[0] : employee?.profiles;
-  return profiles?.full_name ?? 'Unknown';
-}
-
-function employeeName(row: any): string {
-  const profiles = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-  return profiles?.full_name ?? 'Unknown';
+/**
+ * The roster minus whoever is already on the project — what the "+ Add" picker
+ * offers. Getting this wrong silently offers a duplicate `project_creatives`
+ * insert, which the unique constraint then rejects at the worst moment.
+ */
+export function unassignedCreatives<T extends { profile_id: string }>(
+  all: T[],
+  assigned: { profile_id: string }[]
+): T[] {
+  const assignedIds = new Set(assigned.map((c) => c.profile_id));
+  return all.filter((c) => !assignedIds.has(c.profile_id));
 }
 
 export function useProjectDetail(projectId: string) {
   return useQuery({
     queryKey: qk.project(projectId),
     queryFn: async (): Promise<ProjectDetail> => {
-      const [projectRes, tasksRes, deliverablesRes, assignedRes, allCreativesRes] =
+      const [projectRes, tasksRes, deliverablesRes, assignedRes, allCreatives] =
         await Promise.all([
           supabase
             .from('projects')
@@ -62,10 +65,7 @@ export function useProjectDetail(projectId: string) {
             .from('project_creatives')
             .select('profile_id, employees(profiles(full_name))')
             .eq('project_id', projectId),
-          supabase
-            .from('employees')
-            .select('profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))')
-            .eq('employee_departments.departments.slug', 'creatives'),
+          creativeEmployees(),
         ]);
 
       if (projectRes.error) throw projectRes.error;
@@ -73,7 +73,6 @@ export function useProjectDetail(projectId: string) {
       if (tasksRes.error) throw tasksRes.error;
       if (deliverablesRes.error) throw deliverablesRes.error;
       if (assignedRes.error) throw assignedRes.error;
-      if (allCreativesRes.error) throw allCreativesRes.error;
 
       // The task rows carry no project_id (the query is already .eq'd to this
       // project), so key them under `projectId` to reuse the same reducer the
@@ -85,21 +84,16 @@ export function useProjectDetail(projectId: string) {
 
       const assigned = (assignedRes.data ?? []).map((row: any) => ({
         profile_id: row.profile_id as string,
-        full_name: creativeName(row),
+        // Same unwrap as useTaskPickers' projectCreatives — identical select.
+        full_name: one<any>(one<any>(row.employees)?.profiles)?.full_name ?? 'Unknown',
       }));
-      const assignedIds = new Set(assigned.map((c) => c.profile_id));
 
       return {
         project: projectRes.data as unknown as ProjectDetail['project'],
         progress: taskProgress(progressRows)[projectId] ?? { total: 0, done: 0 },
         deliverableCount: deliverablesRes.count ?? 0,
         assignedCreatives: assigned,
-        availableCreatives: (allCreativesRes.data ?? [])
-          .map((row: any) => ({
-            profile_id: row.profile_id as string,
-            full_name: employeeName(row),
-          }))
-          .filter((c) => !assignedIds.has(c.profile_id)),
+        availableCreatives: unassignedCreatives(allCreatives, assigned),
       };
     },
   });

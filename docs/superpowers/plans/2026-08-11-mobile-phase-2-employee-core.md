@@ -4430,7 +4430,7 @@ git commit -m "fix(mobile): show More screen's unimplemented rows as pending"
 ## Judgement calls made in this plan
 
 - **Stage board → chips + picker.** Specified in Task 4 (chips, counts, tap-to-filter, per-department sections) and Task 5 (picker, optimistic move, targeted rollback). Nothing of substance is lost: the web's only persisted drag effect is a one-column write, and its same-column reorder never worked. Accepted regression: interaction cost.
-- **Filters stay local per-screen state.** Following the porting brief. The dashboard's `dept_id` is `useState` in `ExecutiveDashboard`, threaded into the query key; it resets on screen entry, matching the web's per-page search param. My Tasks' assignee filter was already local state on the web. No store, no persistence.
+- **Filters stay local per-screen state.** Following the porting brief. The dashboard's `dept_id` is `useState` in `ExecutiveDashboard`, threaded into the query key. Unlike the web's per-page search param, it does NOT reset when you leave the screen: Expo Router keeps tab screens mounted, so the filter (and the scroll position) survive a tab switch and only reset when the app process restarts. Verified on device. That is acceptable — it is one screen's local state — but do not describe it as per-page. My Tasks' assignee filter was already local state on the web. No store, no persistence.
 - **Data layer.** Hooks in `mobile/lib/queries/*.ts`, keys centralised in `keys.ts`, invalidation in `onSuccess`, no wrapper over the Supabase client. Documented at the top of this plan so Phases 3–5 inherit it.
 - **No FlashList.** RN's `FlatList` is already virtualized and already installed; a phone-scale project or task list does not justify a new dependency. Revisit only if a real list proves slow.
 - **`isCreativeEmployee` is duplicated, not shared.** It lives in `lib/auth/guards.ts`, which imports `next/navigation` and the server Supabase client and therefore cannot resolve under Metro. Task 1 copies it into `mobile/lib/data.ts` with a comment naming the source and a test pinning the semantics. Role *tier* checks still come from `@shared/rbac`.
@@ -4440,6 +4440,5 @@ git commit -m "fix(mobile): show More screen's unimplemented rows as pending"
 ## Carried into later phases
 
 - Native date pickers. Dates are `YYYY-MM-DD` text inputs in this phase — the web uses `<input type="date">`, and adding a picker dependency for four optional fields was not worth it. Revisit in Phase 6 polish.
-- `DEPT_COLORS` exists both in `mobile/lib/theme.ts` (unused) and in `@shared/rbac` (used by this phase). Delete the theme copy in Phase 6 rather than mid-phase.
-- Realtime task/board updates. Reads refetch on invalidation and on TanStack Query's default focus behaviour; live subscription is Phase 5 alongside push.
+- Realtime task/board updates. Reads refetch on invalidation only — TanStack Query's default focus listener binds `visibilitychange`, which never fires under React Native, and nothing wires `focusManager` to `AppState`. Live subscription is Phase 5 alongside push.
 - Project detail's Deliverables and Activity tiles become real navigation in Phase 3, at which point the "· Soon" affixes come off both there and on the More screen.

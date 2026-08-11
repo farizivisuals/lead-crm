@@ -48,8 +48,13 @@ export default function ProjectDetailScreen() {
   // `undefined` means "no local override, trust the query result".
   const [savedMoodboardUrl, setSavedMoodboardUrl] = useState<string | null | undefined>(undefined);
 
-  const invalidate = () =>
+  // `qk.project(projectId)` is a prefix, so this also clears the board's task
+  // list and the task pickers (which carry this project's creative list).
+  // The dashboards have no other refresh path — see qk.dashboards().
+  const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
+    queryClient.invalidateQueries({ queryKey: qk.dashboards() });
+  };
 
   const statusMutation = useMutation({
     mutationFn: (status: ProjectStatus) => updateProjectStatus(projectId, status),
