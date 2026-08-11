@@ -29,7 +29,15 @@ export function Button({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'destructive' ? theme.colors.danger : '#fff'} />
+        <ActivityIndicator
+          color={
+            variant === 'destructive'
+              ? theme.colors.danger
+              : variant === 'primary'
+                ? theme.colors.accentInk
+                : '#fff'
+          }
+        />
       ) : (
         <Text style={[styles.text, textStyles[variant]]}>{title}</Text>
       )}
@@ -52,7 +60,7 @@ const styles = StyleSheet.create({
 });
 
 const textStyles = StyleSheet.create({
-  primary: { color: '#fff' },
+  primary: { color: theme.colors.accentInk },
   ghost: { color: theme.colors.foreground },
   destructive: { color: theme.colors.danger },
 });

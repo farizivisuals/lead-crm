@@ -1,15 +1,15 @@
 # DESIGN.md — Lead CRM mobile (iOS)
 
-Committed 2026-08-11. User-approved direction: dark ops tool with real color, Linear/Vercel craft bar, applied to the Expo app. Scope: every screen except the calendar screen (`app/(employee)/calendar.tsx`, `app/(client)/calendar.tsx` untouched).
+Committed 2026-08-11; accent revised to black-and-silver 2026-08-12 (user direction). Dark ops tool with real color, Linear/Vercel craft bar, applied to the Expo app. Scope: every screen except the calendar screen (`app/(employee)/calendar.tsx`, `app/(client)/calendar.tsx` untouched).
 
 ## World
-A pocket instrument for agency operators. Near-black ground, quiet glass surfaces, one indigo accent marking "interactive / primary", and a strict semantic color code for state. Color is information, never decoration. Status is never bare gray text.
+A pocket instrument for agency operators, in black and silver. Near-black ground, quiet glass surfaces, one silver accent marking "interactive / primary", and a strict semantic color code for state. Color is information, never decoration. Status is never bare gray text.
 
 ## Tokens — single source `mobile/lib/theme.ts`
 - Ground `#08090d`; glass surfaces stay white-alpha (`glass` 4% / `glassMd` 6% / `glassStrong` 8%), borders white 8–12%.
-- **Accent (indigo):** `accent #818CF8` (text/icons on dark), `accentSolid #6366F1` (filled controls), tint bg = accent @15%, tint border = accent @30%.
+- **Accent (silver):** `accent #C9CDD6` (text/icons on dark), `accentSolid #E2E4E9` (filled controls, always with `accentInk #111318` text), `accentTintBg` / `accentTintBorder` for selected chips.
 - **Semantic:** success `#34D399`, warning `#FBBF24`, danger `#F87171`, info `#38BDF8`, review `#A78BFA`, neutral = white/60.
-- **Status maps live in theme.ts** (`PROJECT_STATUS_COLORS`, `PRIORITY_COLORS`, `DELIVERABLE_STATUS_COLORS`): planning=info, active=accent, on_hold=warning, completed=success, cancelled=danger; low=neutral, medium=info, high=warning, urgent=danger; draft=neutral, internal_review=review, client_review=warning, approved=success, revision_requested=danger. Department colors stay `DEPT_COLORS` from `@shared/rbac`.
+- **Status maps live in theme.ts** (`PROJECT_STATUS_COLORS`, `PRIORITY_COLORS`, `DELIVERABLE_STATUS_COLORS`): planning=info, active=accent (silver = bright/live), on_hold=warning, completed=success, cancelled=danger; low=neutral, medium=info, high=warning, urgent=danger; draft=neutral, internal_review=review, client_review=warning, approved=success, revision_requested=danger. Department colors stay `DEPT_COLORS` from `@shared/rbac`.
 - `withAlpha(hex, a)` derives tint backgrounds; never hand-write rgba duplicates of a token.
 
 ## Type
@@ -18,7 +18,7 @@ Text tiers: primary `#fff`, secondary white/60, tertiary white/40, faint white/2
 
 ## Components
 - **Badge:** `color` prop drives text, border @30%, bg @15% (neutral falls back to white-alpha). Status badges always pass a map color.
-- **Button:** primary = `accentSolid` fill, white text; ghost stays neutral outline. Destructive = danger @15% bg + danger text.
+- **Button:** primary = `accentSolid` (silver) fill with `accentInk` dark text; ghost stays neutral outline. Destructive = danger @15% bg + danger text.
 - **Tab bar:** active tint `accent`, inactive white/40, dark blur background.
 - **Screen:** ambient top gradient tinted indigo (`withAlpha(accentSolid, 0.07)`), not white.
 - **KPI tiles:** icon in tinted rounded square (role color @15%) + tabular number + label; tappable tiles navigate to their list.

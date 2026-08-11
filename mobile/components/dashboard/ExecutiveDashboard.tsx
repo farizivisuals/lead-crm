@@ -2,8 +2,9 @@
  * Direction contract (2026-08 redesign, user-approved).
  * THESIS: a pocket ops instrument — color is state information, never decoration;
  * refuses the all-gray glass look it replaces.
- * OWN-WORLD: near-black ground, quiet glass cards, indigo accent for everything
- * interactive, fixed semantic map (emerald/amber/red/sky/violet) for status.
+ * OWN-WORLD: black-and-silver — near-black ground, quiet glass cards, silver
+ * accent for everything interactive (dark ink on silver fills), fixed semantic
+ * map (emerald/amber/red/sky/violet) for status.
  * STORY: an exec opens the app, sees the agency's pulse in four tiles, and is
  * pulled straight to what's overdue or waiting on review.
  * FIRST VIEWPORT: title + dept filter chip, 2×2 KPI grid with tinted icons,

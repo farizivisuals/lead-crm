@@ -21,12 +21,14 @@ export const theme = {
     borderMd: 'rgba(255,255,255,0.10)',
     borderStrong: 'rgba(255,255,255,0.12)',
 
-    // Accent — indigo. `accent` for text/icons on dark, `accentSolid` for fills,
-    // tint pair for selected/active chip surfaces.
-    accent: '#818CF8',
-    accentSolid: '#6366F1',
-    accentTintBg: 'rgba(99,102,241,0.15)',
-    accentTintBorder: 'rgba(99,102,241,0.3)',
+    // Accent — silver. `accent` for text/icons on dark, `accentSolid` for
+    // filled controls (dark text on it), tint pair for selected/active chips.
+    accent: '#C9CDD6',
+    accentSolid: '#E2E4E9',
+    accentTintBg: 'rgba(226,228,233,0.12)',
+    accentTintBorder: 'rgba(226,228,233,0.28)',
+    // Dark ink for text sitting on accentSolid fills.
+    accentInk: '#111318',
 
     // Semantic state colors (400-tier for dark-ground legibility).
     success: '#34D399',
