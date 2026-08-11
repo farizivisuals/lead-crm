@@ -13,7 +13,9 @@ export const qk = {
 
   project: (projectId: string) => ['project', projectId] as const,
   projectTasks: (projectId: string) => ['project', projectId, 'tasks'] as const,
-  boardMeta: (deptIds: string[]) => ['board-meta', deptIds.join(',')] as const,
+  // Sorted so the same set of department ids in a different order shares one
+  // cache entry — `[...deptIds]` avoids mutating the caller's array in place.
+  boardMeta: (deptIds: string[]) => ['board-meta', [...deptIds].sort().join(',')] as const,
 
   task: (taskId: string) => ['task', taskId] as const,
   taskPickers: (projectId: string, deptId: string) =>

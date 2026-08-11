@@ -134,6 +134,15 @@ describe('relativeTime', () => {
     expect(relativeTime('2026-08-09T12:00:00Z', now)).toBe('2d ago');
     expect(relativeTime('2026-07-28T12:00:00Z', now)).toBe('2w ago');
   });
+  it('rolls the 60-minute boundary over to hours, not "60m ago"', () => {
+    expect(relativeTime('2026-08-11T11:00:00Z', now)).toBe('1h ago');
+  });
+  it('rolls the 24-hour boundary over to days, not "24h ago"', () => {
+    expect(relativeTime('2026-08-10T12:00:00Z', now)).toBe('1d ago');
+  });
+  it('rolls the 7-day boundary over to weeks, not "7d ago"', () => {
+    expect(relativeTime('2026-08-04T12:00:00Z', now)).toBe('1w ago');
+  });
 });
 
 describe('firstName', () => {
