@@ -46,6 +46,13 @@
         "projectId": "236199af-a74c-4b1c-b31b-e3b6e9d31350"
       }
     },
-    "owner": "farizi"
+    "owner": "farizi",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/236199af-a74c-4b1c-b31b-e3b6e9d31350"
+    },
+    "android": {}
   }
 }
