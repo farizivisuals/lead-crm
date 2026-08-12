@@ -54,7 +54,7 @@ export default function More() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: 20, gap: 16, paddingBottom: 100 },
+  scroll: { padding: 20, gap: 16, paddingBottom: 120 },
   heading: { color: '#fff', fontSize: 26, fontWeight: '700', letterSpacing: -0.5 },
   name: { color: '#fff', fontSize: 16, fontWeight: '600' },
   role: { color: theme.text.dim, fontSize: 13, marginTop: 2 },

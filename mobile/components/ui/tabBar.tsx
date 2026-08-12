@@ -20,20 +20,26 @@ export function usePillTabOptions(): TabsScreenOptions {
     tabBarInactiveTintColor: theme.text.dim,
     tabBarStyle: {
       position: 'absolute',
-      marginHorizontal: 32,
+      marginHorizontal: 16,
       marginBottom: Math.max(insets.bottom, 16),
-      height: 64,
-      borderRadius: 32,
+      height: 72,
+      borderRadius: 36,
       overflow: 'hidden',
       borderTopWidth: 0,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.borderStrong,
       backgroundColor: 'transparent',
     },
-    tabBarItemStyle: { paddingVertical: 6 },
-    tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
+    tabBarItemStyle: { paddingTop: 10, paddingBottom: 8 },
+    tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 2 },
     tabBarBackground: () => (
-      <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+      // The opaque-ish fill is what makes the bar readable: expo-blur is a
+      // no-op on Android, so blur alone leaves it fully transparent.
+      <BlurView
+        intensity={40}
+        tint="dark"
+        style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(8,9,13,0.82)' }]}
+      />
     ),
   };
 }
