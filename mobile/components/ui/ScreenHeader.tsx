@@ -36,17 +36,20 @@ export function ScreenHeader({
           </Text>
         ) : null}
       </View>
+      {right}
+      {/* Last, so it pins to the right edge and lands at the same spot on every
+          screen — the `right` slot's width varies too much to anchor against. */}
       {search && (
         <Pressable
           onPress={() => router.push('/settings/search')}
-          hitSlop={12}
+          hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Search"
+          style={({ pressed }) => [styles.search, pressed && styles.searchPressed]}
         >
-          <SymbolView name="magnifyingglass" tintColor={theme.colors.accent} size={19} />
+          <SymbolView name="magnifyingglass" tintColor={theme.colors.accent} size={17} />
         </Pressable>
       )}
-      {right}
     </View>
   );
 }
@@ -57,4 +60,16 @@ const styles = StyleSheet.create({
   titles: { flex: 1 },
   title: { color: '#fff', fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
   subtitle: { color: theme.text.dim, fontSize: 13, marginTop: 2 },
+  // Sized to sit level with the filter chips the dashboards put in `right`.
+  search: {
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.glassMd,
+    borderWidth: 1,
+    borderColor: theme.colors.borderMd,
+  },
+  searchPressed: { opacity: 0.6 },
 });
