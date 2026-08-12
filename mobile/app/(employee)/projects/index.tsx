@@ -29,6 +29,7 @@ export default function ProjectsScreen() {
         ListHeaderComponent={
           <ScreenHeader
             title="Projects"
+            search
             right={
               canManage ? (
                 <Pressable onPress={() => router.push('/projects/new')} hitSlop={10}>

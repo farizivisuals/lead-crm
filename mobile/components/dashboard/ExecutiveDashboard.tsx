@@ -57,6 +57,7 @@ export function ExecutiveDashboard() {
             month: 'long',
             day: 'numeric',
           })}
+          search
           right={
             <Pressable onPress={() => setPickerOpen(true)} hitSlop={10} style={styles.filterChip}>
               <Text style={styles.filterText} numberOfLines={1}>

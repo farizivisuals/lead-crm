@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SymbolView } from 'expo-symbols';
+import { useRouter } from 'expo-router';
 import { theme } from '../../lib/theme';
 
 export function ScreenHeader({
@@ -8,12 +9,16 @@ export function ScreenHeader({
   subtitle,
   onBack,
   right,
+  search,
 }: {
   title: string;
   subtitle?: string;
   onBack?: () => void;
   right?: ReactNode;
+  /** Show the magnifier that opens global search — the web's ⌘K palette. */
+  search?: boolean;
 }) {
+  const router = useRouter();
   return (
     <View style={styles.wrap}>
       {onBack && (
@@ -31,6 +36,16 @@ export function ScreenHeader({
           </Text>
         ) : null}
       </View>
+      {search && (
+        <Pressable
+          onPress={() => router.push('/settings/search')}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Search"
+        >
+          <SymbolView name="magnifyingglass" tintColor={theme.colors.accent} size={19} />
+        </Pressable>
+      )}
       {right}
     </View>
   );

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { qk } from './keys';
@@ -17,13 +18,22 @@ export type SearchResult = {
 /** The web requires two characters before searching; below that it shows nothing. */
 export const MIN_QUERY = 2;
 
+/** Same 220ms the web palette waits — without it every keystroke fires four queries. */
+const DEBOUNCE_MS = 220;
+
 export function useSearch(query: string) {
   const trimmed = query.trim();
-  return useQuery({
-    queryKey: qk.search(trimmed),
-    enabled: trimmed.length >= MIN_QUERY,
+  const [debounced, setDebounced] = useState(trimmed);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(trimmed), DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [trimmed]);
+
+  const result = useQuery({
+    queryKey: qk.search(debounced),
+    enabled: debounced.length >= MIN_QUERY,
     queryFn: async (): Promise<SearchResult[]> => {
-      const pat = `%${trimmed}%`;
+      const pat = `%${debounced}%`;
       const [clientsRes, projectsRes, tasksRes, deliverablesRes] = await Promise.all([
         supabase.from('clients').select('id, company_name').ilike('company_name', pat).limit(4),
         supabase.from('projects').select('id, name, clients(company_name)').ilike('name', pat).limit(4),
@@ -68,6 +78,10 @@ export function useSearch(query: string) {
       ];
     },
   });
+
+  // Count the debounce window as fetching, so callers show "Searching…" instead
+  // of flashing "no results" while the keystroke settles.
+  return { ...result, isFetching: result.isFetching || debounced !== trimmed };
 }
 
 export const TYPE_LABELS: Record<SearchResultType, string> = {

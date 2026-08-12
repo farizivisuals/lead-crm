@@ -41,6 +41,7 @@ export function EmployeeDashboard({ userId }: { userId: string }) {
             month: 'long',
             day: 'numeric',
           })}
+          search
         />
 
         {error && <Text style={styles.error}>{error.message}</Text>}

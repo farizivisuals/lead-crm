@@ -46,6 +46,7 @@ export default function TasksScreen() {
         ListHeaderComponent={
           <ScreenHeader
             title={canFilter ? 'All Tasks' : 'My Tasks'}
+            search
             right={
               showFilter ? (
                 <Pressable onPress={() => setPickerOpen(true)} hitSlop={10}>
