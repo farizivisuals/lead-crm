@@ -1,0 +1,69 @@
+# What EAS Build uploads. When this file exists EAS uses it INSTEAD of
+# .gitignore, which is the whole point: .gitignore lists `mobile/` (the Expo
+# client is deliberately untracked on `main`, its history lives on the
+# `feat/mobile-app` branch), and EAS honouring that rule shipped an archive with
+# no mobile/package.json in it — the build then died with
+# "package.json does not exist in /Users/expo/workingdir/build/mobile".
+#
+# So: everything below mirrors .gitignore EXCEPT the `mobile/` line, plus the
+# exclusions from mobile/.gitignore, since this file replaces those too.
+# Anything secret MUST stay listed here — this archive is uploaded to EAS.
+
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js — the web app is not part of the native build
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files — these hold SUPABASE_SERVICE_ROLE_KEY, never upload them
+.env*
+!.env.local.example
+!mobile/.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# --- from mobile/.gitignore (this file supersedes it) ---
+.expo/
+dist/
+web-build/
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+mobile/example
+# generated native folders — EAS runs prebuild itself
+/mobile/ios
+/mobile/android
