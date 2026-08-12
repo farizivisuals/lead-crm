@@ -33,15 +33,7 @@ export async function proxy(request: NextRequest) {
   // Public / auth-utility routes — always pass through.
   // /auth/callback must be reachable while logged out — magic-link tokens
   // are verified client-side on that page.
-  // /privacy and /support must stay reachable signed out *and* signed in: the
-  // App Store listing links to them, and Apple's reviewer opens them without
-  // an account. Unlike /login below, an authed visitor must not be bounced.
-  if (
-    pathname.startsWith("/api/auth/signout") ||
-    pathname.startsWith("/auth/callback") ||
-    pathname.startsWith("/privacy") ||
-    pathname.startsWith("/support")
-  ) {
+  if (pathname.startsWith("/api/auth/signout") || pathname.startsWith("/auth/callback")) {
     return supabaseResponse;
   }
 
