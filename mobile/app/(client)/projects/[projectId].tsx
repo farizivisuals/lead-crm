@@ -32,8 +32,14 @@ import {
   usePortalProject,
   submitRevision,
   type PortalDeliverable,
+  type PortalTask,
 } from '../../../lib/queries/portal';
-import { DELIVERABLE_STATUS_COLORS, PROJECT_STATUS_COLORS, theme } from '../../../lib/theme';
+import {
+  DELIVERABLE_STATUS_COLORS,
+  PROJECT_STATUS_COLORS,
+  theme,
+  withAlpha,
+} from '../../../lib/theme';
 
 export default function ClientProjectDetail() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -59,7 +65,17 @@ export default function ClientProjectDetail() {
     );
   }
 
-  const { project, deliverables } = data;
+  const { project, tasks, deliverables } = data;
+
+  // Grouped by department, like the web portal. Tasks arrive ordered by due
+  // date, so each group keeps that order for free.
+  const byDepartment = new Map<string, PortalTask[]>();
+  for (const task of tasks) {
+    const name = one(task.departments)?.name ?? 'General';
+    const list = byDepartment.get(name);
+    if (list) list.push(task);
+    else byDepartment.set(name, [task]);
+  }
 
   return (
     <Screen>
@@ -71,11 +87,28 @@ export default function ClientProjectDetail() {
             <Text style={styles.label}>STATUS</Text>
             <Badge label={PROJECT_STATUS_LABELS[project.status]} color={PROJECT_STATUS_COLORS[project.status]} />
           </View>
+          {project.description ? (
+            <Text style={styles.description}>{project.description}</Text>
+          ) : null}
           <Text style={styles.meta}>
             {project.start_date ? `Start ${shortDate(project.start_date)}` : 'No start date'}
             {project.target_end_date ? `   Due ${shortDate(project.target_end_date)}` : ''}
           </Text>
         </GlassCard>
+
+        {tasks.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Tasks</Text>
+            {[...byDepartment].map(([department, deptTasks]) => (
+              <GlassCard key={department}>
+                <Text style={styles.deptName}>{department.toUpperCase()}</Text>
+                {deptTasks.map((task) => (
+                  <TaskRow key={task.id} task={task} />
+                ))}
+              </GlassCard>
+            ))}
+          </>
+        )}
 
         <Text style={styles.sectionTitle}>Deliverables</Text>
         {deliverables.length === 0 ? (
@@ -89,6 +122,31 @@ export default function ClientProjectDetail() {
         )}
       </ScrollView>
     </Screen>
+  );
+}
+
+/** Read-only. Clients can see their projects' tasks but never act on them. */
+function TaskRow({ task }: { task: PortalTask }) {
+  const stage = one(task.department_stages);
+  const done = stage?.is_terminal ?? false;
+  const color = stage?.color ?? theme.colors.mutedForeground;
+  return (
+    <View style={styles.taskRow}>
+      <Text style={[styles.taskTitle, done && styles.taskTitleDone]} numberOfLines={2}>
+        {done ? '✓ ' : ''}
+        {task.title}
+      </Text>
+      <View style={styles.taskMeta}>
+        {stage ? (
+          <View style={[styles.stagePill, { backgroundColor: withAlpha(color, 0.16) }]}>
+            <Text style={[styles.stagePillText, { color }]} numberOfLines={1}>
+              {stage.name}
+            </Text>
+          </View>
+        ) : null}
+        {task.due_date ? <Text style={styles.meta}>{shortDate(task.due_date)}</Text> : null}
+      </View>
+    </View>
   );
 }
 
@@ -276,4 +334,22 @@ const styles = StyleSheet.create({
   formTitle: { color: '#fff', fontSize: 14, fontWeight: '600' },
   muted: { color: theme.text.dim, fontSize: 13 },
   error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center' },
+  description: { color: theme.text.label, fontSize: 13, marginTop: 8, lineHeight: 19 },
+  deptName: {
+    color: theme.text.dimmer,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  taskRow: {
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.border,
+  },
+  taskTitle: { color: theme.colors.foreground, fontSize: 14, fontWeight: '500' },
+  taskTitleDone: { color: theme.text.dimmer, textDecorationLine: 'line-through' },
+  taskMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  stagePill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  stagePillText: { fontSize: 11, fontWeight: '600' },
 });

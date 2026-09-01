@@ -56,8 +56,13 @@ export default function ClientProjects() {
                   <Pressable
                     key={project.id}
                     onPress={() =>
+                      // Group-qualified on purpose. The bare `/projects/[projectId]`
+                      // is ambiguous — (employee) declares it too — and expo-router
+                      // resolves it to the (employee) copy, whose root screen is
+                      // guarded out for a client, so useLinking drops the
+                      // navigation and the tap does nothing at all.
                       router.push({
-                        pathname: '/projects/[projectId]',
+                        pathname: '/(client)/projects/[projectId]',
                         params: { projectId: project.id },
                       })
                     }

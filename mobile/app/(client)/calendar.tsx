@@ -48,8 +48,10 @@ export default function ClientCalendar() {
                   <Pressable
                     key={event.id}
                     onPress={() =>
+                      // Group-qualified: the bare path resolves into (employee),
+                      // which is guarded out for a client. See (client)/index.tsx.
                       router.push({
-                        pathname: '/projects/[projectId]',
+                        pathname: '/(client)/projects/[projectId]',
                         params: { projectId: event.projectId },
                       })
                     }

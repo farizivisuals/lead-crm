@@ -18,9 +18,10 @@ export function SessionGate() {
 
   // Computed unconditionally (not after the loading early-return below) so the
   // navigation effect can depend on it without breaking the rules of hooks.
+  const userType = profile?.user_type ?? null;
   const target = resolveRoute({
     hasSession: !!session,
-    userType: profile?.user_type ?? null,
+    userType,
     recovering,
   });
 
@@ -58,11 +59,13 @@ export function SessionGate() {
         entity_type?: string;
         entity_id?: string;
       };
-      const route = routeForNotification(data?.entity_type, data?.entity_id);
+      const route = routeForNotification(data?.entity_type, data?.entity_id, userType);
       if (route) router.push(route as never);
     });
     return () => sub.remove();
-  }, [!!session, router]);
+    // `userType` decides which route group the deep link targets, so the
+    // listener has to be rebuilt when it resolves.
+  }, [!!session, userType, router]);
 
   // `target` can't be *used* until useAuth() resolves — keep the loading
   // early-return so we never render Stack.Protected guards with a stale target.

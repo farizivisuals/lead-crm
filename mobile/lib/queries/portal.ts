@@ -100,8 +100,28 @@ export type PortalDeliverable = {
   deliverable_revisions: PortalRevision[] | null;
 };
 
+export type PortalTask = {
+  id: string;
+  title: string;
+  priority: string;
+  due_date: string | null;
+  department_stages:
+    | { name: string; color: string | null; is_terminal: boolean }
+    | { name: string; color: string | null; is_terminal: boolean }[]
+    | null;
+  departments: { name: string } | { name: string }[] | null;
+};
+
 export type PortalProjectDetail = {
-  project: { id: string; name: string; status: ProjectStatus; start_date: string | null; target_end_date: string | null };
+  project: {
+    id: string;
+    name: string;
+    status: ProjectStatus;
+    description: string | null;
+    start_date: string | null;
+    target_end_date: string | null;
+  };
+  tasks: PortalTask[];
   deliverables: PortalDeliverable[];
 };
 
@@ -109,12 +129,26 @@ export function usePortalProject(projectId: string) {
   return useQuery({
     queryKey: qk.portalProject(projectId),
     queryFn: async (): Promise<PortalProjectDetail> => {
-      const [projectRes, deliverablesRes] = await Promise.all([
+      const [projectRes, tasksRes, deliverablesRes] = await Promise.all([
         supabase
           .from('projects')
-          .select('id, name, status, start_date, target_end_date')
+          .select('id, name, status, description, start_date, target_end_date')
           .eq('id', projectId)
           .single(),
+        // Clients can read the tasks of their own projects (migration 0015
+        // restored that after 0008 blocked it); the portal shows them as a
+        // read-only progress list, matching the web.
+        // `department_stages!current_stage_id` names the FK because `tasks`
+        // reaches department_stages more than one way.
+        supabase
+          .from('tasks')
+          .select(
+            'id, title, priority, due_date, department_stages!current_stage_id(name, color, is_terminal), departments(name)'
+          )
+          .eq('project_id', projectId)
+          .order('due_date', { ascending: true }),
+        // No status filter: deliverables_select (0008) already limits a client
+        // to client_review / approved / revision_requested.
         supabase
           .from('deliverables')
           .select(
@@ -125,9 +159,11 @@ export function usePortalProject(projectId: string) {
       ]);
       if (projectRes.error) throw projectRes.error;
       if (!projectRes.data) throw new Error('Project not found');
+      if (tasksRes.error) throw tasksRes.error;
       if (deliverablesRes.error) throw deliverablesRes.error;
       return {
         project: projectRes.data as unknown as PortalProjectDetail['project'],
+        tasks: (tasksRes.data ?? []) as unknown as PortalTask[],
         deliverables: (deliverablesRes.data ?? []) as unknown as PortalDeliverable[],
       };
     },

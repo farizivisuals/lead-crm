@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { supabase } from './supabase';
+import type { UserType } from './routing';
 
 /**
  * Push registration and teardown.
@@ -85,20 +86,33 @@ export async function unregisterPushToken(userId: string): Promise<void> {
   }
 }
 
-/** Where a tapped notification should land, from the trigger's entity fields. */
+/**
+ * Where a tapped notification should land, from the trigger's entity fields.
+ *
+ * Needs the user type because (client) and (employee) both declare
+ * `/projects/[projectId]`: the bare path resolves to the (employee) copy, and
+ * a client's root Stack has no (employee) screen, so expo-router silently
+ * drops the navigation. Group-qualified hrefs keep each side on its own copy.
+ */
 export function routeForNotification(
   entityType: string | null | undefined,
-  entityId: string | null | undefined
+  entityId: string | null | undefined,
+  userType: UserType | null | undefined
 ): { pathname: string; params: Record<string, string> } | null {
-  if (!entityId) return null;
+  if (!entityId || !userType) return null;
+  const group = userType === 'client' ? '/(client)' : '/(employee)';
   switch (entityType) {
     case 'project':
-      return { pathname: '/projects/[projectId]', params: { projectId: entityId } };
+      return {
+        pathname: `${group}/projects/[projectId]`,
+        params: { projectId: entityId },
+      };
     case 'task':
       // The notification carries the TASK id, and the task screen is nested
       // under its project — which we would need a round trip to discover. My
-      // Tasks lists it without one, so it is the honest destination.
-      return { pathname: '/tasks', params: {} };
+      // Tasks lists it without one, so it is the honest destination. Clients
+      // have no such screen, so they just get the app opened.
+      return userType === 'employee' ? { pathname: '/(employee)/tasks', params: {} } : null;
     case 'deliverable':
       // Same problem, no equivalent list screen: the deliverables list is
       // per-project. Opening the app with no navigation beats guessing wrong.
