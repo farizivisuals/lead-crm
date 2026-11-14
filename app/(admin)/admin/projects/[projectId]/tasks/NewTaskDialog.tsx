@@ -48,6 +48,21 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
   const [blocks, setBlocks] = useState<EditBlock[]>([emptyBlock()]);
   const [videoInputs, setVideoInputs] = useState<string[]>([""]);
 
+  function resetEditBlocks() {
+    setBlocks([emptyBlock()]);
+    setVideoInputs([""]);
+  }
+
+  /** After a save, so reopening the dialog can't resubmit the same booking. */
+  function resetAll() {
+    setForm({ title: "", description: "", priority: "medium", start_date: "", due_date: "", assigned_to: "" });
+    setSelectedCreatives([]);
+    setDeliverables([]);
+    setDeliverableInput("");
+    setPlanEdit(false);
+    resetEditBlocks();
+  }
+
   const deptStages = stages.filter((s) => s.department_id === selectedDeptId);
   const firstStage = deptStages[0];
   const canPlanEdit = !!editStageAfterShoot(deptStages);
@@ -133,6 +148,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
       }
       setLoading(false);
       setOpen(false);
+      resetAll();
       router.refresh();
       return;
     }
@@ -170,6 +186,8 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     }
 
     setOpen(false);
+    setLoading(false);
+    resetAll();
     router.refresh();
   }
 
@@ -193,14 +211,20 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
           Add Task
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Task</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Department *</Label>
-            <Select value={selectedDeptId} onValueChange={setSelectedDeptId}>
+            <Select
+              value={selectedDeptId}
+              onValueChange={(v) => {
+                setSelectedDeptId(v);
+                resetEditBlocks(); // editors are per department
+              }}
+            >
               <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
               <SelectContent>
                 {departments.map((d) => (

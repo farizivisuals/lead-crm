@@ -61,6 +61,9 @@ BEGIN
 END;
 $$;
 
+-- Same lockdown as 0018: trigger functions are never called directly.
+REVOKE EXECUTE ON FUNCTION handoff_shoot_to_edit() FROM PUBLIC, anon, authenticated;
+
 CREATE TRIGGER on_shoot_handoff
   BEFORE UPDATE OF current_stage_id ON tasks
   FOR EACH ROW EXECUTE FUNCTION handoff_shoot_to_edit();

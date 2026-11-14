@@ -105,7 +105,20 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
     const target = ordered.find((s) => s.position === minPos);
     if (!target || target.id === task.current_stage_id) return;
     patchTask(task.id, { current_stage_id: target.id });
-    await supabase.from("tasks").update({ current_stage_id: target.id }).eq("id", task.id);
+    await saveTaskStage(task.id, target.id);
+  }
+
+  /** Write a task's stage and adopt whatever the database kept — the
+   *  shoot → edit handoff trigger can jump a shoot task straight to done. */
+  async function saveTaskStage(taskId: string, stageId: string) {
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ current_stage_id: stageId })
+      .eq("id", taskId)
+      .select("current_stage_id");
+    const saved = (data as { current_stage_id: string }[] | null)?.[0]?.current_stage_id;
+    if (!error && saved && saved !== stageId) patchTask(taskId, { current_stage_id: saved });
+    return { error };
   }
 
   async function moveDeliverable(task: Task, d: TaskDeliverable, dir: 1 | -1) {
@@ -137,10 +150,7 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
     const target = ordered[idx + dir];
     if (idx === -1 || !target) return;
     patchTask(task.id, { current_stage_id: target.id });
-    const { error } = await supabase
-      .from("tasks")
-      .update({ current_stage_id: target.id })
-      .eq("id", task.id);
+    const { error } = await saveTaskStage(task.id, target.id);
     if (error) patchTask(task.id, { current_stage_id: task.current_stage_id });
   }
 

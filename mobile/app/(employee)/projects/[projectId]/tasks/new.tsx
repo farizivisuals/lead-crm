@@ -477,8 +477,10 @@ export default function NewTaskScreen() {
         onSelect={(v) => {
           setDeptId(v);
           // The stage and employee lists are department-scoped, so a department
-          // change invalidates the current assignee choice.
+          // change invalidates the current assignee and editor choices.
           setAssignedTo(null);
+          setBlocks([emptyBlock()]);
+          setVideoInputs(['']);
           setPicker(null);
         }}
         onClose={() => setPicker(null)}
