@@ -47,6 +47,34 @@ export function useTask(taskId: string) {
   });
 }
 
+export type LinkedTasks = {
+  shoot: { id: string; title: string } | null;
+  edits: { id: string; title: string }[];
+};
+
+/**
+ * Shoot → edit handoff links: an edit task's shoot task, or a shoot task's
+ * edit tasks (an edit task never has edits of its own).
+ */
+export async function fetchLinkedTasks(taskId: string, followsTaskId: string | null): Promise<LinkedTasks> {
+  if (followsTaskId) {
+    const { data, error } = await supabase.from('tasks').select('id, title').eq('id', followsTaskId);
+    if (error) throw error;
+    return { shoot: data?.[0] ?? null, edits: [] };
+  }
+  const { data, error } = await supabase.from('tasks').select('id, title').eq('follows_task_id', taskId);
+  if (error) throw error;
+  return { shoot: null, edits: data ?? [] };
+}
+
+export function useLinkedTasks(task: { id: string; follows_task_id: string | null } | undefined) {
+  return useQuery({
+    queryKey: [...qk.task(task?.id ?? ''), 'linked'],
+    enabled: !!task,
+    queryFn: () => fetchLinkedTasks(task!.id, task!.follows_task_id),
+  });
+}
+
 export type TaskPickers = {
   stages: { id: string; name: string; position: number; is_terminal: boolean; color: string | null }[];
   employees: { profile_id: string; full_name: string }[];

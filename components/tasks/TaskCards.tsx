@@ -247,10 +247,13 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
           const allDone = deliverables.length > 0
             ? deliverables.every((d) => deliverableStage(d, task)?.is_terminal)
             : taskStage?.is_terminal;
+          // Shoot → edit handoff: an edit task points at its shoot task.
+          const editTasks = localTasks.filter((t) => t.follows_task_id === task.id);
 
           return (
             <div
               key={task.id}
+              id={`task-${task.id}`}
               className={cn(
                 "rounded-xl border p-4 group transition-colors",
                 overdue
@@ -305,6 +308,27 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
 
               {/* Meta row */}
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                {task.follows_task_id && (
+                  <a
+                    href={`#task-${task.follows_task_id}`}
+                    className="text-[10px] font-medium text-sky-300/80 hover:text-sky-200"
+                  >
+                    ← Shoot task
+                  </a>
+                )}
+                {editTasks.length > 0 && (
+                  <span className="text-[10px] text-white/40">
+                    Edits:{" "}
+                    {editTasks.map((t, i) => (
+                      <span key={t.id}>
+                        {i > 0 && ", "}
+                        <a href={`#task-${t.id}`} className="font-medium text-sky-300/80 hover:text-sky-200">
+                          {t.employees?.profiles?.full_name?.split(" ")[0] ?? t.title}
+                        </a>
+                      </span>
+                    ))}
+                  </span>
+                )}
                 <span
                   className={cn(
                     "text-[10px] font-medium px-1.5 py-0.5 rounded-full border",

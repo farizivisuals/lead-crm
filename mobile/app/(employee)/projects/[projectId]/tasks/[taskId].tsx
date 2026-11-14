@@ -34,6 +34,7 @@ import {
 import { useAuth } from '../../../../../lib/auth';
 import {
   useTask,
+  useLinkedTasks,
   useTaskPickers,
   useAvailabilityConflicts,
   moveTaskStage,
@@ -55,6 +56,9 @@ export default function TaskDetailScreen() {
 
   const task = useTask(taskId);
   const pickers = useTaskPickers(projectId, task.data?.department_id);
+  const linked = useLinkedTasks(task.data);
+  const openTask = (id: string) =>
+    router.push({ pathname: '/projects/[projectId]/tasks/[taskId]', params: { projectId, taskId: id } });
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -358,6 +362,25 @@ export default function TaskDetailScreen() {
             subtitle={one(task.data.departments)?.name ?? undefined}
             onBack={() => router.back()}
           />
+
+          {linked.data?.shoot && (
+            <Pressable onPress={() => openTask(linked.data!.shoot!.id)}>
+              <GlassCard>
+                <Text style={styles.label}>SHOOT TASK</Text>
+                <Text style={styles.value}>← {linked.data.shoot.title}</Text>
+              </GlassCard>
+            </Pressable>
+          )}
+          {(linked.data?.edits.length ?? 0) > 0 && (
+            <GlassCard>
+              <Text style={styles.label}>EDIT TASKS</Text>
+              {linked.data!.edits.map((e) => (
+                <Pressable key={e.id} onPress={() => openTask(e.id)} hitSlop={6}>
+                  <Text style={styles.value}>{e.title} →</Text>
+                </Pressable>
+              ))}
+            </GlassCard>
+          )}
 
           {pickers.error && (
             <GlassCard>
