@@ -13,6 +13,9 @@ config.watchFolders = [sharedLibDir];
 config.resolver.extraNodeModules = {
   '@shared': sharedLibDir,
 };
+// Files in sharedLibDir sit outside the app, so packages they need after Babel
+// (e.g. @babel/runtime helpers) must resolve from the app's node_modules.
+config.resolver.nodeModulesPaths = [path.resolve(projectRoot, 'node_modules')];
 
 // lib/rbac.ts imports "@/lib/types" (a Next.js `@/*` -> repo-root alias). Resolve
 // that one literal specifier straight to the file inside sharedLibDir (which is
