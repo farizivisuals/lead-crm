@@ -27,6 +27,7 @@ export type ProjectDetail = {
   deliverableCount: number;
   assignedCreatives: { profile_id: string; full_name: string }[];
   availableCreatives: { profile_id: string; full_name: string }[];
+  allDepartments: { id: string; name: string; slug: string }[];
 };
 
 /**
@@ -46,7 +47,7 @@ export function useProjectDetail(projectId: string) {
   return useQuery({
     queryKey: qk.project(projectId),
     queryFn: async (): Promise<ProjectDetail> => {
-      const [projectRes, tasksRes, deliverablesRes, assignedRes, allCreatives] =
+      const [projectRes, tasksRes, deliverablesRes, assignedRes, allCreatives, departmentsRes] =
         await Promise.all([
           supabase
             .from('projects')
@@ -66,6 +67,7 @@ export function useProjectDetail(projectId: string) {
             .select('profile_id, employees(profiles(full_name))')
             .eq('project_id', projectId),
           creativeEmployees(),
+          supabase.from('departments').select('id, name, slug').order('name'),
         ]);
 
       if (projectRes.error) throw projectRes.error;
@@ -73,6 +75,7 @@ export function useProjectDetail(projectId: string) {
       if (tasksRes.error) throw tasksRes.error;
       if (deliverablesRes.error) throw deliverablesRes.error;
       if (assignedRes.error) throw assignedRes.error;
+      if (departmentsRes.error) throw departmentsRes.error;
 
       // The task rows carry no project_id (the query is already .eq'd to this
       // project), so key them under `projectId` to reuse the same reducer the
@@ -94,6 +97,7 @@ export function useProjectDetail(projectId: string) {
         deliverableCount: deliverablesRes.count ?? 0,
         assignedCreatives: assigned,
         availableCreatives: unassignedCreatives(allCreatives, assigned),
+        allDepartments: departmentsRes.data ?? [],
       };
     },
   });
@@ -134,4 +138,70 @@ export async function removeProjectCreative(projectId: string, profileId: string
     .eq('project_id', projectId)
     .eq('profile_id', profileId);
   if (error) throw error;
+}
+
+/** Web parity: updateProjectDetails server action (blank → null). */
+export async function updateProjectDetails(
+  projectId: string,
+  details: { name: string; description: string; start_date: string; target_end_date: string }
+) {
+  const name = details.name.trim();
+  if (!name) throw new Error('Project name is required');
+  const { error } = await supabase
+    .from('projects')
+    .update({
+      name,
+      description: details.description.trim() || null,
+      start_date: details.start_date.trim() || null,
+      target_end_date: details.target_end_date.trim() || null,
+    })
+    .eq('id', projectId);
+  if (error) throw error;
+}
+
+export type AssignedDepartment = { department_id: string; name: string; slug: string; is_primary: boolean };
+
+export async function addProjectDepartment(projectId: string, departmentId: string, isFirst: boolean) {
+  const { error } = await supabase
+    .from('project_departments')
+    .insert({ project_id: projectId, department_id: departmentId, is_primary: isFirst });
+  if (error) throw error;
+}
+
+/**
+ * Web parity: ProjectDepartments.tsx removeDepartment. Refuses the last
+ * department and any department that still has tasks (they'd vanish from the
+ * board), and hands "primary" to another department when needed.
+ */
+export async function removeProjectDepartment(
+  projectId: string,
+  dept: AssignedDepartment,
+  assigned: AssignedDepartment[]
+) {
+  if (assigned.length === 1) throw new Error('A project needs at least one department.');
+  const { count, error: countError } = await supabase
+    .from('tasks')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+    .eq('department_id', dept.department_id);
+  if (countError) throw countError;
+  if (count) {
+    throw new Error(
+      `${dept.name} still has ${count} task${count === 1 ? '' : 's'} on this project. Move or delete them first.`
+    );
+  }
+  const { error } = await supabase
+    .from('project_departments')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('department_id', dept.department_id);
+  if (error) throw error;
+  if (dept.is_primary) {
+    const next = assigned.find((a) => a.department_id !== dept.department_id)!;
+    await supabase
+      .from('project_departments')
+      .update({ is_primary: true })
+      .eq('project_id', projectId)
+      .eq('department_id', next.department_id);
+  }
 }

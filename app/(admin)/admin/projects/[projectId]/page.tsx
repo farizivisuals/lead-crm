@@ -6,6 +6,8 @@ import { ArrowLeft, CheckSquare, Package, Calendar, Activity, ArrowUpRight } fro
 import { formatDate } from "@/lib/utils";
 import ProjectStatusSelect from "./ProjectStatusSelect";
 import ProjectCreatives from "./ProjectCreatives";
+import ProjectDepartments from "./ProjectDepartments";
+import EditProjectDialog from "./EditProjectDialog";
 import MoodboardEditor from "./MoodboardEditor";
 import type { ProjectStatus } from "@/lib/types";
 import { requireEmployee, isCreativeEmployee } from "@/lib/auth/guards";
@@ -20,7 +22,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const canEditMoodboard = canManage || isCreativeEmployee(employee);
 
-  const [{ data: project }, { data: taskRows }, { count: deliverableCount }, { data: creativeRows }, { data: allCreativeRows }] = await Promise.all([
+  const [{ data: project }, { data: taskRows }, { count: deliverableCount }, { data: creativeRows }, { data: allCreativeRows }, { data: allDepartments }] = await Promise.all([
     supabase
       .from("projects")
       .select("*, clients(company_name), project_departments(*, departments(name, slug))")
@@ -39,6 +41,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .from("employees")
       .select("profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))")
       .eq("employee_departments.departments.slug", "creatives"),
+    supabase.from("departments").select("id, name, slug").order("name"),
   ]);
 
   if (!project) notFound();
@@ -59,7 +62,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     return stage?.is_terminal === true;
   }).length;
 
-  const depts = (project.project_departments as { departments?: { name: string; slug: string } }[]) ?? [];
+  const depts = (project.project_departments as { department_id: string; is_primary: boolean; departments?: { name: string; slug: string } }[]) ?? [];
+  const assignedDepartments = depts
+    .map((pd) => ({
+      department_id: pd.department_id,
+      is_primary: pd.is_primary,
+      name: pd.departments?.name ?? "Unknown",
+      slug: pd.departments?.slug ?? "",
+    }))
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
 
   const navItems = [
     {
@@ -126,7 +137,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   {PROJECT_STATUS_LABELS[project.status as keyof typeof PROJECT_STATUS_LABELS]}
                 </span>
               )}
-              {depts.map((pd) => (
+              {!canManage && depts.map((pd) => (
                 <span
                   key={pd.departments?.slug}
                   className="text-xs bg-white/[0.07] text-zinc-300 border border-white/[0.12] px-2.5 py-0.5 rounded-full font-medium"
@@ -137,6 +148,17 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
           <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-2 text-xs text-white/40 flex-shrink-0">
+            {canManage && (
+              <EditProjectDialog
+                projectId={projectId}
+                initial={{
+                  name: project.name,
+                  description: project.description,
+                  start_date: project.start_date,
+                  target_end_date: project.target_end_date,
+                }}
+              />
+            )}
             {project.start_date && (
               <span className="flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 text-white/30" />
@@ -151,6 +173,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             )}
           </div>
         </div>
+        {canManage && (
+          <ProjectDepartments
+            projectId={projectId}
+            assigned={assignedDepartments}
+            allDepartments={allDepartments ?? []}
+          />
+        )}
         {canManage && (
           <ProjectCreatives
             projectId={projectId}

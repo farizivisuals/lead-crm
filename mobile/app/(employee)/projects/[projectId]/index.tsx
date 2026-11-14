@@ -20,6 +20,10 @@ import {
   updateMoodboardUrl,
   addProjectCreative,
   removeProjectCreative,
+  addProjectDepartment,
+  removeProjectDepartment,
+  updateProjectDetails,
+  type AssignedDepartment,
 } from '../../../../lib/queries/project-detail';
 import { PROJECT_STATUS_COLORS, theme, withAlpha } from '../../../../lib/theme';
 
@@ -40,6 +44,14 @@ export default function ProjectDetailScreen() {
   const [pendingStatus, setPendingStatus] = useState<ProjectStatus | null>(null);
   const [statusPickerOpen, setStatusPickerOpen] = useState(false);
   const [creativePickerOpen, setCreativePickerOpen] = useState(false);
+  const [deptPickerOpen, setDeptPickerOpen] = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [detailsDraft, setDetailsDraft] = useState({
+    name: '',
+    description: '',
+    start_date: '',
+    target_end_date: '',
+  });
   const [editingMoodboard, setEditingMoodboard] = useState(false);
   const [moodboardDraft, setMoodboardDraft] = useState('');
   // Local mirror of the just-saved moodboard URL, shown immediately after a
@@ -91,6 +103,35 @@ export default function ProjectDetailScreen() {
     onError: (e: Error) => Alert.alert('Could not remove creative', e.message),
   });
 
+  // Name and departments show on the projects list too.
+  const invalidateWithList = () => {
+    invalidate();
+    queryClient.invalidateQueries({ queryKey: qk.projects() });
+  };
+
+  const detailsMutation = useMutation({
+    mutationFn: () => updateProjectDetails(projectId, detailsDraft),
+    onSuccess: () => {
+      setEditingDetails(false);
+      invalidateWithList();
+    },
+    onError: (e: Error) => Alert.alert('Could not save project', e.message),
+  });
+
+  const addDeptMutation = useMutation({
+    mutationFn: ({ id, isFirst }: { id: string; isFirst: boolean }) =>
+      addProjectDepartment(projectId, id, isFirst),
+    onSuccess: invalidateWithList,
+    onError: (e: Error) => Alert.alert('Could not add department', e.message),
+  });
+
+  const removeDeptMutation = useMutation({
+    mutationFn: ({ dept, assigned }: { dept: AssignedDepartment; assigned: AssignedDepartment[] }) =>
+      removeProjectDepartment(projectId, dept, assigned),
+    onSuccess: invalidateWithList,
+    onError: (e: Error) => Alert.alert('Could not remove department', e.message),
+  });
+
   if (isLoading) {
     return (
       <Screen>
@@ -111,7 +152,29 @@ export default function ProjectDetailScreen() {
     );
   }
 
-  const { project, progress, deliverableCount, assignedCreatives, availableCreatives } = data;
+  const { project, progress, deliverableCount, assignedCreatives, availableCreatives, allDepartments } = data;
+  const assignedDepts: AssignedDepartment[] = (project.project_departments ?? [])
+    .map((pd) => ({
+      department_id: pd.department_id,
+      is_primary: pd.is_primary,
+      name: one(pd.departments)?.name ?? 'Unknown',
+      slug: one(pd.departments)?.slug ?? '',
+    }))
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
+  const availableDepts = allDepartments.filter(
+    (d) => !assignedDepts.some((a) => a.department_id === d.id)
+  );
+  const deptSaving = addDeptMutation.isPending || removeDeptMutation.isPending;
+
+  function startEditing() {
+    setDetailsDraft({
+      name: project.name,
+      description: project.description ?? '',
+      start_date: project.start_date ?? '',
+      target_end_date: project.target_end_date ?? '',
+    });
+    setEditingDetails(true);
+  }
   const clientName = one(project.clients)?.company_name ?? '—';
   const status = pendingStatus ?? project.status;
   const moodboardUrl = savedMoodboardUrl !== undefined ? savedMoodboardUrl : project.moodboard_url;
@@ -141,7 +204,54 @@ export default function ProjectDetailScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <ScreenHeader title={project.name} subtitle={clientName} onBack={() => router.back()} />
+        <ScreenHeader
+          title={project.name}
+          subtitle={clientName}
+          onBack={() => router.back()}
+          right={
+            canManage && !editingDetails ? (
+              <Pressable onPress={startEditing} hitSlop={10}>
+                <Text style={styles.editText}>Edit</Text>
+              </Pressable>
+            ) : undefined
+          }
+        />
+
+        {editingDetails && (
+          <GlassCard>
+            <View style={styles.moodboardForm}>
+              <Input
+                label="Name"
+                value={detailsDraft.name}
+                onChangeText={(name) => setDetailsDraft((d) => ({ ...d, name }))}
+              />
+              <Input
+                label="Description"
+                value={detailsDraft.description}
+                onChangeText={(description) => setDetailsDraft((d) => ({ ...d, description }))}
+                placeholder="Optional"
+              />
+              <Input
+                label="Start date"
+                value={detailsDraft.start_date}
+                onChangeText={(start_date) => setDetailsDraft((d) => ({ ...d, start_date }))}
+                placeholder="YYYY-MM-DD"
+              />
+              <Input
+                label="Target end date"
+                value={detailsDraft.target_end_date}
+                onChangeText={(target_end_date) => setDetailsDraft((d) => ({ ...d, target_end_date }))}
+                placeholder="YYYY-MM-DD"
+              />
+              <Button
+                title="Save changes"
+                loading={detailsMutation.isPending}
+                onPress={() => detailsMutation.mutate()}
+              />
+              <Button title="Cancel" variant="ghost" onPress={() => setEditingDetails(false)} />
+            </View>
+          </GlassCard>
+        )}
 
         <GlassCard>
           {project.description ? (
@@ -162,15 +272,44 @@ export default function ProjectDetailScreen() {
             ) : (
               <Badge label={PROJECT_STATUS_LABELS[status]} color={PROJECT_STATUS_COLORS[status]} />
             )}
-            {depts.map((d) => (
-              <Badge key={d.slug} label={d.name} color={DEPT_COLORS[d.slug]} />
-            ))}
+            {!canManage &&
+              depts.map((d) => <Badge key={d.slug} label={d.name} color={DEPT_COLORS[d.slug]} />)}
           </View>
 
           <View style={styles.dates}>
             <Text style={styles.meta}>Start {shortDate(project.start_date)}</Text>
             <Text style={styles.meta}>Due {shortDate(project.target_end_date)}</Text>
           </View>
+
+          {canManage && (
+            <View style={styles.creatives}>
+              <Text style={styles.label}>DEPARTMENTS</Text>
+              <View style={styles.chipRow}>
+                {assignedDepts.map((d) => (
+                  <Pressable
+                    key={d.department_id}
+                    disabled={deptSaving}
+                    onPress={() => removeDeptMutation.mutate({ dept: d, assigned: assignedDepts })}
+                    style={[styles.chip, { borderColor: DEPT_COLORS[d.slug] ?? theme.colors.border }]}
+                  >
+                    <Text style={styles.chipText}>
+                      {d.is_primary ? `${d.name} · primary  ×` : `${d.name}  ×`}
+                    </Text>
+                  </Pressable>
+                ))}
+                {availableDepts.length > 0 && (
+                  <Pressable
+                    disabled={deptSaving}
+                    onPress={() => setDeptPickerOpen(true)}
+                    style={[styles.chip, styles.chipAdd]}
+                  >
+                    <Text style={styles.chipAddText}>+ Add</Text>
+                  </Pressable>
+                )}
+              </View>
+              {deptSaving && <Text style={styles.muted}>Saving…</Text>}
+            </View>
+          )}
 
           {canManage && (
             <View style={styles.creatives}>
@@ -295,6 +434,16 @@ export default function ProjectDetailScreen() {
           addCreativeMutation.mutate(profileId);
         }}
         onClose={() => setCreativePickerOpen(false)}
+      />
+      <PickerSheet
+        visible={deptPickerOpen}
+        title="Add department"
+        options={availableDepts.map((d) => ({ value: d.id, label: d.name }))}
+        onSelect={(id) => {
+          setDeptPickerOpen(false);
+          addDeptMutation.mutate({ id, isFirst: assignedDepts.length === 0 });
+        }}
+        onClose={() => setDeptPickerOpen(false)}
       />
     </Screen>
   );
