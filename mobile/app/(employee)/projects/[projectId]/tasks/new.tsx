@@ -30,7 +30,17 @@ import {
   isShootStage,
   shootDueDate,
 } from '../../../../../lib/queries/task';
+import { supabase } from '../../../../../lib/supabase';
 import { theme } from '../../../../../lib/theme';
+import {
+  createShootWithEdits,
+  editStageAfterShoot,
+  shootEditErrors,
+  type EditBlock,
+  type ShootWithEditsInput,
+} from '@shared/shoot-edit';
+
+const emptyBlock = (): EditBlock => ({ editorId: '', editorName: '', startDate: '', dueDate: '', videos: [] });
 
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 
@@ -55,7 +65,25 @@ export default function NewTaskScreen() {
 
   const pickers = useTaskPickers(projectId, deptId ?? undefined);
   const firstStage = pickers.data?.stages[0] ?? null;
-  const shoot = isShootStage(firstStage?.name);
+
+  // Shoot → edit handoff (web parity: NewTaskDialog "Plan the edit").
+  const [planEdit, setPlanEdit] = useState(false);
+  const [blocks, setBlocks] = useState<EditBlock[]>([emptyBlock()]);
+  const [videoInputs, setVideoInputs] = useState<string[]>(['']);
+  const [editorPickerFor, setEditorPickerFor] = useState<number | null>(null);
+  const canPlanEdit = !!editStageAfterShoot(pickers.data?.stages ?? []);
+  const editing = planEdit && canPlanEdit;
+  const shoot = isShootStage(firstStage?.name) || editing;
+
+  function updateBlock(i: number, patch: Partial<EditBlock>) {
+    setBlocks((bs) => bs.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  }
+  function addVideo(i: number) {
+    const t = videoInputs[i]?.trim();
+    if (!t) return;
+    updateBlock(i, { videos: [...blocks[i]!.videos, t] });
+    setVideoInputs((vs) => vs.map((v, j) => (j === i ? '' : v)));
+  }
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -85,16 +113,24 @@ export default function NewTaskScreen() {
   });
   const conflicting = conflicts.data ?? [];
 
+  function onCreated() {
+    queryClient.invalidateQueries({ queryKey: qk.projectTasks(projectId) });
+    queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
+    queryClient.invalidateQueries({ queryKey: qk.projects() });
+    queryClient.invalidateQueries({ queryKey: qk.allTasks() });
+    queryClient.invalidateQueries({ queryKey: qk.dashboards() });
+    router.back();
+  }
+
+  const editMutation = useMutation({
+    mutationFn: (input: ShootWithEditsInput) => createShootWithEdits(supabase, input),
+    onSuccess: onCreated,
+    onError: (e: Error) => Alert.alert('Could not create tasks', e.message),
+  });
+
   const mutation = useMutation({
     mutationFn: createTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: qk.projectTasks(projectId) });
-      queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
-      queryClient.invalidateQueries({ queryKey: qk.projects() });
-      queryClient.invalidateQueries({ queryKey: qk.allTasks() });
-      queryClient.invalidateQueries({ queryKey: qk.dashboards() });
-      router.back();
-    },
+    onSuccess: onCreated,
     onError: (e: Error) => {
       // createTask can commit the task and fail only on its deliverables, so
       // refresh regardless — otherwise the list hides a task that now exists
@@ -106,6 +142,7 @@ export default function NewTaskScreen() {
 
   const canSubmit =
     !mutation.isPending &&
+    !editMutation.isPending &&
     !!deptId &&
     !!firstStage &&
     !!session?.user.id &&
@@ -122,6 +159,28 @@ export default function NewTaskScreen() {
 
   function submit() {
     if (!canSubmit) return;
+    if (editing) {
+      const input: ShootWithEditsInput = {
+        projectId,
+        departmentId: deptId!,
+        stages: pickers.data!.stages,
+        title: title.trim(),
+        description,
+        priority,
+        shootDate: startDate,
+        shooterId: assignedTo,
+        creativeIds,
+        edits: blocks,
+        userId: session!.user.id,
+      };
+      const problem = shootEditErrors(input);
+      if (problem) {
+        Alert.alert('Check the edit plan', problem);
+        return;
+      }
+      editMutation.mutate(input);
+      return;
+    }
     mutation.mutate({
       project_id: projectId,
       department_id: deptId!,
@@ -192,7 +251,7 @@ export default function NewTaskScreen() {
               </Pressable>
 
               <Pressable onPress={() => setPicker('assignee')}>
-                <Text style={styles.label}>ASSIGNEE</Text>
+                <Text style={styles.label}>{editing ? 'SHOOTER' : 'ASSIGNEE'}</Text>
                 <Text style={styles.value}>{assigneeName}</Text>
               </Pressable>
 
@@ -222,7 +281,96 @@ export default function NewTaskScreen() {
             </View>
           </GlassCard>
 
-          <GlassCard>
+          {canPlanEdit && (
+            <Pressable
+              onPress={() => setPlanEdit((v) => !v)}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: planEdit }}
+            >
+              <GlassCard>
+                <Text style={styles.value}>{planEdit ? '☑' : '☐'}  Plan the edit</Text>
+                <Text style={styles.muted}>Creates one edit task per editor, linked to this shoot.</Text>
+              </GlassCard>
+            </Pressable>
+          )}
+
+          {editing &&
+            blocks.map((b, i) => (
+              <GlassCard key={i}>
+                <View style={styles.blockHeader}>
+                  <Text style={styles.label}>EDIT {i + 1}</Text>
+                  {blocks.length > 1 && (
+                    <Pressable
+                      hitSlop={10}
+                      onPress={() => {
+                        setBlocks((bs) => bs.filter((_, j) => j !== i));
+                        setVideoInputs((vs) => vs.filter((_, j) => j !== i));
+                      }}
+                    >
+                      <Text style={styles.addButtonText}>Remove</Text>
+                    </Pressable>
+                  )}
+                </View>
+                <View style={styles.form}>
+                  <Pressable onPress={() => setEditorPickerFor(i)}>
+                    <Text style={styles.label}>EDITOR</Text>
+                    <Text style={styles.value}>{b.editorName || 'Select an editor'}</Text>
+                  </Pressable>
+                  <Input
+                    label="Edit start"
+                    value={b.startDate}
+                    onChangeText={(v) => updateBlock(i, { startDate: v })}
+                    placeholder="YYYY-MM-DD"
+                  />
+                  <Input
+                    label="Edit due"
+                    value={b.dueDate}
+                    onChangeText={(v) => updateBlock(i, { dueDate: v })}
+                    placeholder="YYYY-MM-DD"
+                  />
+                </View>
+                <View style={styles.addRow}>
+                  <TextInput
+                    value={videoInputs[i] ?? ''}
+                    onChangeText={(v) => setVideoInputs((vs) => vs.map((x, j) => (j === i ? v : x)))}
+                    onSubmitEditing={() => addVideo(i)}
+                    placeholder="Video 1"
+                    placeholderTextColor={theme.text.dimmer}
+                    returnKeyType="done"
+                    style={styles.addInput}
+                  />
+                  <Pressable onPress={() => addVideo(i)} style={styles.addButton}>
+                    <Text style={styles.addButtonText}>Add</Text>
+                  </Pressable>
+                </View>
+                {b.videos.length > 0 && (
+                  <View style={styles.chipRow}>
+                    {b.videos.map((v, k) => (
+                      <Pressable
+                        key={`${v}-${k}`}
+                        onPress={() => updateBlock(i, { videos: b.videos.filter((_, j) => j !== k) })}
+                        style={[styles.chip, styles.chipOn]}
+                      >
+                        <Text style={styles.chipTextOn}>{v} ✕</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+              </GlassCard>
+            ))}
+
+          {editing && (
+            <Button
+              title="+ Add editor"
+              variant="ghost"
+              onPress={() => {
+                setBlocks((bs) => [...bs, emptyBlock()]);
+                setVideoInputs((vs) => [...vs, '']);
+              }}
+            />
+          )}
+
+          {!editing && <GlassCard>
             <Text style={styles.label}>DELIVERABLES</Text>
             <Text style={styles.muted}>
               Each one is tracked and assigned separately once the task exists.
@@ -265,7 +413,7 @@ export default function NewTaskScreen() {
                 ))}
               </View>
             )}
-          </GlassCard>
+          </GlassCard>}
 
           <GlassCard>
             <Text style={styles.label}>CREATIVES</Text>
@@ -316,7 +464,7 @@ export default function NewTaskScreen() {
             title="Create task"
             onPress={submit}
             disabled={!canSubmit}
-            loading={mutation.isPending}
+            loading={mutation.isPending || editMutation.isPending}
           />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -363,6 +511,18 @@ export default function NewTaskScreen() {
         }}
         onClose={() => setPicker(null)}
       />
+      <PickerSheet
+        visible={editorPickerFor !== null}
+        title="Editor"
+        selected={editorPickerFor !== null ? blocks[editorPickerFor]?.editorId ?? '' : ''}
+        options={(pickers.data?.employees ?? []).map((e) => ({ value: e.profile_id, label: e.full_name }))}
+        onSelect={(v) => {
+          const name = pickers.data?.employees.find((e) => e.profile_id === v)?.full_name ?? '';
+          if (editorPickerFor !== null) updateBlock(editorPickerFor, { editorId: v, editorName: name });
+          setEditorPickerFor(null);
+        }}
+        onClose={() => setEditorPickerFor(null)}
+      />
     </Screen>
   );
 }
@@ -380,6 +540,7 @@ const styles = StyleSheet.create({
   },
   value: { color: '#fff', fontSize: 15, marginTop: 6 },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  blockHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   addInput: {
     flex: 1,
     height: 40,
