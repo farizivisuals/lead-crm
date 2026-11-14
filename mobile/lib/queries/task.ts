@@ -16,6 +16,7 @@ export type TaskDetail = {
   start_date: string | null;
   due_date: string | null;
   assigned_to: string | null;
+  follows_task_id: string | null;
   department_stages:
     | { id: string; name: string; is_terminal: boolean; color: string | null }
     | { id: string; name: string; is_terminal: boolean; color: string | null }[]

@@ -163,6 +163,8 @@ export interface Task {
   start_date: string | null;
   due_date: string | null;
   assigned_to: string | null;
+  /** Edit task → the shoot task it follows (see 0025_shoot_edit_handoff). */
+  follows_task_id: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
