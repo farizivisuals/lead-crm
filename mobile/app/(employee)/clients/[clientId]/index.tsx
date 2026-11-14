@@ -65,14 +65,22 @@ export default function ClientDetailScreen() {
           subtitle={contact ?? undefined}
           onBack={() => router.back()}
           right={
-            <Pressable
-              onPress={() =>
-                router.push({ pathname: '/clients/[clientId]/quotes/new', params: { clientId } })
-              }
-              hitSlop={10}
-            >
-              <Text style={styles.newButton}>New quote</Text>
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: '/clients/[clientId]/quotes/new', params: { clientId } })
+                }
+                hitSlop={10}
+              >
+                <Text style={styles.newButton}>New quote</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push({ pathname: '/projects/new', params: { clientId } })}
+                hitSlop={10}
+              >
+                <Text style={styles.newButton}>New project</Text>
+              </Pressable>
+            </View>
           }
         />
 
@@ -156,6 +164,7 @@ export default function ClientDetailScreen() {
 const styles = StyleSheet.create({
   scroll: { padding: 20, gap: 12, paddingBottom: 140 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  headerActions: { flexDirection: 'row', gap: 14 },
   newButton: { color: theme.colors.accent, fontSize: 15, fontWeight: '600' },
   sectionTitle: { color: '#fff', fontSize: 15, fontWeight: '600', marginTop: 12 },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },

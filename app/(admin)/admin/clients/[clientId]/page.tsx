@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, ArrowUpRight, Building2, Calendar,
-  FolderOpen, Phone, FileText, Plus, User, Receipt, Download,
+  FolderOpen, Phone, FileText, User, Receipt, Download,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import NewProjectDialog from "../../projects/NewProjectDialog";
 import QuoteDialog from "./QuoteDialog";
 import EditQuoteDialog from "./EditQuoteDialog";
 import DeleteQuoteButton from "./DeleteQuoteButton";
@@ -30,11 +31,24 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
 
-  const { data: quotes } = await supabase
-    .from("quotes")
-    .select("*, quote_line_items(description, quantity, unit_price, position)")
-    .eq("client_id", clientId)
-    .order("created_at", { ascending: false });
+  const [{ data: quotes }, { data: departments }, { data: creativeRows }] = await Promise.all([
+    supabase
+      .from("quotes")
+      .select("*, quote_line_items(description, quantity, unit_price, position)")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false }),
+    supabase.from("departments").select("*").order("name"),
+    // Same creatives query as the All Projects page.
+    supabase
+      .from("employees")
+      .select("profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))")
+      .eq("employee_departments.departments.slug", "creatives"),
+  ]);
+
+  const creatives = (creativeRows ?? []).map((c) => ({
+    profile_id: c.profile_id as string,
+    full_name: (c.profiles as unknown as { full_name: string } | null)?.full_name ?? "Unknown",
+  }));
 
   const statusColors: Record<string, "default" | "secondary" | "success" | "warning" | "destructive"> = {
     planning: "secondary",
@@ -168,12 +182,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
           </div>
           <p className="text-white/40 text-sm">{projects?.length ?? 0} projects</p>
         </div>
-        <Link href="/admin/projects">
-          <Button size="sm">
-            <Plus className="h-4 w-4" />
-            New Project
-          </Button>
-        </Link>
+        <NewProjectDialog
+          clients={[{ id: client.id, company_name: client.company_name }]}
+          departments={departments ?? []}
+          creatives={creatives}
+          defaultClientId={client.id}
+        />
       </div>
 
       {/* Projects list */}

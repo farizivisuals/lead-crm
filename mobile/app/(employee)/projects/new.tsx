@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ProjectStatus } from '@shared/types';
 import { PROJECT_STATUS_LABELS, DEPT_COLORS } from '@shared/rbac';
@@ -35,7 +35,9 @@ export default function NewProjectScreen() {
   const { session } = useAuth();
   const { data: options, isLoading } = useProjectFormOptions();
 
-  const [clientId, setClientId] = useState('');
+  // Opened from a client's screen → client is preset and locked.
+  const { clientId: presetClientId } = useLocalSearchParams<{ clientId?: string }>();
+  const [clientId, setClientId] = useState(presetClientId ?? '');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<ProjectStatus>('planning');
@@ -96,7 +98,7 @@ export default function NewProjectScreen() {
 
           <GlassCard>
             <View style={styles.form}>
-              <Pressable onPress={() => setPicker('client')}>
+              <Pressable onPress={() => setPicker('client')} disabled={!!presetClientId}>
                 <Text style={styles.label}>CLIENT</Text>
                 <Text style={clientId ? styles.value : styles.placeholder}>{clientName}</Text>
               </Pressable>
