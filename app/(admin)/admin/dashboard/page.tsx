@@ -146,8 +146,6 @@ export default async function DashboardPage({ searchParams }: Props) {
         </div>
       </div>
 
-      <RecentNotifications userId={user.id} />
-
       {/* Stats grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {stats.map(({ label, value, icon: Icon, href, description }, i) => (
@@ -179,6 +177,8 @@ export default async function DashboardPage({ searchParams }: Props) {
           </Link>
         ))}
       </div>
+
+      <RecentNotifications userId={user.id} />
 
       {/* Lower panels */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

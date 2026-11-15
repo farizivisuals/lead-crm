@@ -71,8 +71,6 @@ export function ExecutiveDashboard({ userId }: { userId: string }) {
 
         {error && <Text style={styles.error}>{error.message}</Text>}
 
-        <RecentNotifications userId={userId} />
-
         <View style={styles.tiles}>
           <Tile
             icon="building.2"
@@ -135,6 +133,8 @@ export function ExecutiveDashboard({ userId }: { userId: string }) {
             </GlassCard>
           </>
         )}
+
+        <RecentNotifications userId={userId} />
 
         {inReview.length > 0 && (
           <>
