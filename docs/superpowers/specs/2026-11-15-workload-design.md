@@ -39,6 +39,11 @@ they can spread work and spot who is overloaded or free.
 - Everyone with role employee or manager is listed; executives only if they
   have work.
 
+## Tabs
+Three tabs, one page each: **Production** (Creatives, Video, Photo),
+**Graphic Design**, **PR**. Someone in several departments appears on each tab
+that covers one of them (once per tab); people with no department are on none.
+
 ## Where
 - Website: new **Workload** page in the sidebar, executives only (managers
   included). Clicking a name opens the calendar filtered to that person.

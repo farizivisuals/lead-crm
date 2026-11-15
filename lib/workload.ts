@@ -8,7 +8,8 @@ import type { EmployeeRole } from "./types";
 type Db = { from(table: string): any };
 
 export type WorkloadInput = {
-  employees: { id: string; name: string; role: EmployeeRole }[];
+  /** `departments` are department slugs (creatives, video, photo, graphics, pr). */
+  employees: { id: string; name: string; role: EmployeeRole; departments: string[] }[];
   tasks: { id: string; assigned_to: string | null; start_date: string | null; due_date: string | null; client_id: string | null; open: boolean }[];
   creatives: { task_id: string; profile_id: string }[];
   /** Video phases: `current` = the video is at this phase now; `open` = its task isn't finished. */
@@ -19,6 +20,7 @@ export type WorkloadRow = {
   id: string;
   name: string;
   role: EmployeeRole;
+  departments: string[];
   /** Tasks + video phases on each working day of the month (0 = free). */
   perDay: number[];
   /** Days with at least one thing on. */
@@ -31,6 +33,18 @@ export type WorkloadRow = {
   clients: number;
   overdue: number;
 };
+
+/** Workload tabs: which departments each one shows. */
+export const WORKLOAD_TEAMS = [
+  { key: "production", label: "Production", slugs: ["creatives", "video", "photo"] },
+  { key: "graphics", label: "Graphic Design", slugs: ["graphics"] },
+  { key: "pr", label: "PR", slugs: ["pr"] },
+] as const;
+export type WorkloadTeam = (typeof WORKLOAD_TEAMS)[number];
+
+/** People in any of the team's departments (each once), in the computed order. */
+export const rowsForTeam = (rows: WorkloadRow[], team: WorkloadTeam) =>
+  rows.filter((r) => r.departments.some((d) => (team.slugs as readonly string[]).includes(d)));
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -82,6 +96,7 @@ export function computeWorkload(input: WorkloadInput, days: string[], today: str
       id: e.id,
       name: e.name,
       role: e.role,
+      departments: e.departments,
       perDay,
       bookedCount: perDay.filter((n) => n > 0).length,
       tasks: open.length + openCreative.length,
@@ -105,7 +120,7 @@ const one = <T>(v: Rel<T>): T | null => (Array.isArray(v) ? v[0] ?? null : v);
  */
 export async function loadWorkload(db: Db, year: number, month: number): Promise<{ rows: WorkloadRow[]; days: string[] }> {
   const [emps, tasks, creatives, phases] = await Promise.all([
-    db.from("employees").select("profile_id, role, profiles(full_name)"),
+    db.from("employees").select("profile_id, role, profiles(full_name), employee_departments(departments(slug))"),
     db.from("tasks").select("id, assigned_to, start_date, due_date, projects(client_id), department_stages!current_stage_id(is_terminal)"),
     db.from("task_creatives").select("task_id, profile_id"),
     db
@@ -119,6 +134,9 @@ export async function loadWorkload(db: Db, year: number, month: number): Promise
       id: e.profile_id,
       name: one<{ full_name: string }>(e.profiles)?.full_name?.trim() || "Unknown",
       role: e.role,
+      departments: (e.employee_departments ?? [])
+        .map((ed: any) => one<{ slug: string }>(ed.departments)?.slug)
+        .filter(Boolean),
     })),
     tasks: (tasks.data ?? []).map((t: any) => ({
       id: t.id,

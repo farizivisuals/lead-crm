@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireExecutive } from "@/lib/auth/guards";
 import { ROLE_LABELS } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
-import { kuwaitToday, loadLevel, loadWorkload } from "@/lib/workload";
+import { kuwaitToday, loadLevel, loadWorkload, rowsForTeam, WORKLOAD_TEAMS } from "@/lib/workload";
 
 const LEVEL = {
   low: { bar: "bg-emerald-400", text: "text-emerald-300" },
@@ -24,12 +24,16 @@ const monthParam = (y: number, m: number) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 };
 
-export default async function WorkloadPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
+export default async function WorkloadPage({ searchParams }: { searchParams: Promise<{ month?: string; team?: string }> }) {
   await requireExecutive();
-  const { month } = await searchParams;
+  const { month, team: teamParam } = await searchParams;
   const [year, mon] = parseMonth(month);
+  const team = WORKLOAD_TEAMS.find((t) => t.key === teamParam) ?? WORKLOAD_TEAMS[0];
   const supabase = await createClient();
-  const { rows, days } = await loadWorkload(supabase, year, mon);
+  const { rows: everyone, days } = await loadWorkload(supabase, year, mon);
+  const rows = rowsForTeam(everyone, team);
+  const href = (m: string, t: string) => `/admin/workload?month=${m}&team=${t}`;
+  const thisMonth = monthParam(year, mon);
   const today = kuwaitToday();
   const title = new Date(Date.UTC(year, mon, 1)).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -47,18 +51,37 @@ export default async function WorkloadPage({ searchParams }: { searchParams: Pro
           </p>
         </div>
         <div className="flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.04] p-1">
-          <Link href={`/admin/workload?month=${monthParam(year, mon - 1)}`} className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.08]" aria-label="Previous month">
+          <Link href={href(monthParam(year, mon - 1), team.key)} className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.08]" aria-label="Previous month">
             <ChevronLeft className="h-4 w-4" />
           </Link>
           <span className="px-2 text-sm font-medium text-white/80 min-w-[120px] text-center">{title}</span>
-          <Link href={`/admin/workload?month=${monthParam(year, mon + 1)}`} className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.08]" aria-label="Next month">
+          <Link href={href(monthParam(year, mon + 1), team.key)} className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.08]" aria-label="Next month">
             <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
       </div>
 
+      <div className="flex gap-1 rounded-xl border border-white/[0.08] bg-white/[0.04] p-1 w-fit max-w-full overflow-x-auto">
+        {WORKLOAD_TEAMS.map((t) => (
+          <Link
+            key={t.key}
+            href={href(thisMonth, t.key)}
+            className={cn(
+              "px-3.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
+              t.key === team.key ? "bg-white text-zinc-900" : "text-white/55 hover:text-white hover:bg-white/[0.08]"
+            )}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </div>
+
       <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] divide-y divide-white/[0.06]">
-        {rows.length === 0 && <p className="px-5 py-8 text-sm text-white/40">No employees yet.</p>}
+        {rows.length === 0 && (
+          <p className="px-5 py-8 text-sm text-white/40">
+            {`No one is in ${team.label} yet. Add people to it on the Team page.`}
+          </p>
+        )}
         {rows.map((r) => {
           const level = LEVEL[loadLevel(r.bookedCount, days.length)];
           const pct = days.length ? Math.round((r.bookedCount / days.length) * 100) : 0;

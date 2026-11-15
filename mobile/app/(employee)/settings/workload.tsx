@@ -3,7 +3,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ROLE_LABELS } from '@shared/rbac';
-import { kuwaitToday, loadLevel, loadWorkload, type WorkloadRow } from '@shared/workload';
+import { kuwaitToday, loadLevel, loadWorkload, rowsForTeam, WORKLOAD_TEAMS, type WorkloadRow } from '@shared/workload';
 import { Screen } from '../../../components/ui/Screen';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { ScreenHeader } from '../../../components/ui/ScreenHeader';
@@ -18,6 +18,7 @@ export default function WorkloadScreen() {
   const router = useRouter();
   const [y0, m0] = kuwaitToday().split('-').map(Number);
   const [{ year, month }, setYm] = useState({ year: y0!, month: m0! - 1 });
+  const [team, setTeam] = useState<(typeof WORKLOAD_TEAMS)[number]>(WORKLOAD_TEAMS[0]);
   const { data, isLoading, error } = useQuery({
     queryKey: qk.workload(year, month),
     queryFn: () => loadWorkload(supabase, year, month),
@@ -37,7 +38,7 @@ export default function WorkloadScreen() {
     <Screen>
       <FlatList
         contentContainerStyle={styles.list}
-        data={data?.rows ?? []}
+        data={data ? rowsForTeam(data.rows, team) : []}
         keyExtractor={(r) => r.id}
         ListHeaderComponent={
           <View style={styles.headerWrap}>
@@ -51,11 +52,24 @@ export default function WorkloadScreen() {
                 <Text style={styles.arrow}>›</Text>
               </Pressable>
             </View>
+            <View style={styles.tabs}>
+              {WORKLOAD_TEAMS.map((t) => (
+                <Pressable
+                  key={t.key}
+                  onPress={() => setTeam(t)}
+                  style={[styles.tab, t.key === team.key && styles.tabOn]}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: t.key === team.key }}
+                >
+                  <Text style={[styles.tabText, t.key === team.key && styles.tabTextOn]}>{t.label}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         }
         ListEmptyComponent={
           <Text style={error ? styles.error : styles.muted}>
-            {isLoading ? 'Loading…' : error ? error.message : 'No employees yet'}
+            {isLoading ? 'Loading…' : error ? error.message : `No one is in ${team.label} yet. Add people to it from the web app.`}
           </Text>
         }
         renderItem={({ item }) => <WorkloadCard row={item} days={data!.days} />}
@@ -124,6 +138,11 @@ const styles = StyleSheet.create({
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 4 },
   arrow: { color: '#fff', fontSize: 26, fontWeight: '300', paddingHorizontal: 8 },
   month: { color: '#fff', fontSize: 15, fontWeight: '600', minWidth: 130, textAlign: 'center' },
+  tabs: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', marginBottom: 4 },
+  tab: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: 'center' },
+  tabOn: { backgroundColor: theme.colors.accentSolid },
+  tabText: { color: theme.text.dim, fontSize: 13, fontWeight: '600' },
+  tabTextOn: { color: theme.colors.accentInk },
   top: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   flex: { flex: 1 },
   name: { color: '#fff', fontSize: 15, fontWeight: '600' },

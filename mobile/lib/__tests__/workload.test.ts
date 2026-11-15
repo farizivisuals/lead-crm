@@ -1,4 +1,4 @@
-import { computeWorkload, loadLevel, workingDays, type WorkloadInput } from '@shared/workload';
+import { computeWorkload, loadLevel, rowsForTeam, workingDays, WORKLOAD_TEAMS, type WorkloadInput } from '@shared/workload';
 
 describe('workingDays', () => {
   it('lists the Sunday–Thursday dates of a month', () => {
@@ -13,9 +13,9 @@ describe('workingDays', () => {
 
 const base: WorkloadInput = {
   employees: [
-    { id: 'dawood', name: 'Dawood', role: 'employee' },
-    { id: 'quintin', name: 'Quintin', role: 'employee' },
-    { id: 'ceo', name: 'Boss', role: 'ceo' },
+    { id: 'dawood', name: 'Dawood', role: 'employee', departments: ['video', 'photo'] },
+    { id: 'quintin', name: 'Quintin', role: 'employee', departments: ['video'] },
+    { id: 'ceo', name: 'Boss', role: 'ceo', departments: [] },
   ],
   tasks: [],
   creatives: [],
@@ -113,5 +113,32 @@ describe('loadLevel', () => {
     expect(loadLevel(11, 21)).toBe('mid');
     expect(loadLevel(17, 21)).toBe('high');
     expect(loadLevel(0, 0)).toBe('low');
+  });
+});
+
+describe('rowsForTeam', () => {
+  const input: WorkloadInput = {
+    ...base,
+    employees: [
+      { id: 'ayah', name: 'Ayah', role: 'employee', departments: ['creatives'] },
+      { id: 'maryam', name: 'Maryam', role: 'manager', departments: ['creatives', 'photo', 'video'] },
+      { id: 'mos', name: 'Mosabbir', role: 'employee', departments: ['pr'] },
+      { id: 'boss', name: 'Boss', role: 'ceo', departments: [] },
+    ],
+    tasks: [{ id: 't', assigned_to: 'boss', start_date: '2026-11-02', due_date: null, client_id: 'a', open: true }],
+  };
+  const rows = computeWorkload(input, days, today);
+  const team = (key: string) => WORKLOAD_TEAMS.find((t) => t.key === key)!;
+  const ids = (key: string) => rowsForTeam(rows, team(key)).map((r) => r.id).sort();
+
+  it('puts Creatives, Video and Photo together, once each', () => {
+    expect(ids('production')).toEqual(['ayah', 'maryam']);
+  });
+  it('keeps PR and Graphic Design on their own', () => {
+    expect(ids('pr')).toEqual(['mos']);
+    expect(ids('graphics')).toEqual([]);
+  });
+  it('leaves out people with no department', () => {
+    expect(WORKLOAD_TEAMS.some((t) => rowsForTeam(rows, t).some((r) => r.id === 'boss'))).toBe(false);
   });
 });
