@@ -168,6 +168,7 @@ export type EmployeeDashboardData = {
     title: string;
     priority: TaskPriority;
     due_date: string | null;
+    tier: 'basic' | 'premium' | null;
     project_id: string;
     projects: { name: string } | { name: string }[] | null;
     department_stages:
@@ -197,7 +198,7 @@ export function useEmployeeDashboard(userId: string) {
         // client-side, matching the web component.
         supabase
           .from('tasks')
-          .select('id, title, priority, due_date, project_id, projects(name), department_stages!current_stage_id(name, is_terminal)')
+          .select('id, title, priority, due_date, tier, project_id, projects(name), department_stages!current_stage_id(name, is_terminal)')
           .or(mine)
           .order('due_date', { ascending: true, nullsFirst: false }),
         supabase

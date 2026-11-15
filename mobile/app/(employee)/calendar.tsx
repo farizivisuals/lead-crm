@@ -126,7 +126,9 @@ export default function CalendarScreen() {
 
   return (
     <Screen>
-      <View style={styles.root}>
+      {/* The whole screen scrolls: in busy weeks (Projects view especially)
+          the grid grows tall, and the day list must still be reachable. */}
+      <ScrollView style={styles.root} contentContainerStyle={styles.rootContent}>
         <ScreenHeader
           title="Calendar"
           right={
@@ -286,7 +288,7 @@ export default function CalendarScreen() {
             <Text style={styles.panelTitle}>{formatDay(selected)}</Text>
             {selected === todayKey ? <Text style={styles.today}>Today</Text> : null}
           </View>
-          <ScrollView contentContainerStyle={styles.panelScroll}>
+          <View style={styles.panelScroll}>
             {isLoading ? (
               <Text style={styles.muted}>Loading…</Text>
             ) : selectedEvents.length === 0 ? (
@@ -316,9 +318,9 @@ export default function CalendarScreen() {
                 </Pressable>
               ))
             )}
-          </ScrollView>
+          </View>
         </View>
-      </View>
+      </ScrollView>
 
       <PickerSheet
         visible={pickerOpen}
@@ -357,7 +359,8 @@ function formatShort(day: string): string {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, paddingHorizontal: 12 },
+  root: { flex: 1 },
+  rootContent: { paddingHorizontal: 12, paddingBottom: 120 },
   today: { color: theme.text.label, fontSize: 13, fontWeight: '600' },
   monthBar: {
     flexDirection: 'row',
@@ -424,7 +427,6 @@ const styles = StyleSheet.create({
   barText: { color: '#fff', fontSize: 9, fontWeight: '500' },
   overflow: { position: 'absolute', color: theme.text.dim, fontSize: 9, paddingLeft: 4 },
   panel: {
-    flex: 1,
     marginTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.colors.border,
@@ -437,7 +439,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   panelTitle: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  panelScroll: { paddingBottom: 120, gap: 2 },
+  panelScroll: { gap: 2 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 4 },
   dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2 },
   flex: { flex: 1 },

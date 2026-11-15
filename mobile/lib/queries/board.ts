@@ -16,6 +16,7 @@ export type BoardTask = {
   priority: TaskPriority;
   start_date: string | null;
   due_date: string | null;
+  tier: 'basic' | 'premium' | null;
   assigned_to: string | null;
   department_stages:
     | { id: string; name: string; is_terminal: boolean; color: string | null }

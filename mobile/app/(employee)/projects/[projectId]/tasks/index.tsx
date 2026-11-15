@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { isExecutive, PRIORITY_LABELS } from '@shared/rbac';
+import { isExecutive } from '@shared/rbac';
 import { Screen } from '../../../../../components/ui/Screen';
 import { GlassCard } from '../../../../../components/ui/GlassCard';
-import { Badge } from '../../../../../components/ui/Badge';
+import { TaskBadges } from '../../../../../components/ui/TaskBadges';
 import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
 import { useAuth } from '../../../../../lib/auth';
 import { one, isTaskOverdue, shortDate, firstName } from '../../../../../lib/data';
@@ -15,7 +15,7 @@ import {
   stageRow,
   assigneeName,
 } from '../../../../../lib/queries/task-deliverables';
-import { PRIORITY_COLORS, theme, withAlpha } from '../../../../../lib/theme';
+import { theme, withAlpha } from '../../../../../lib/theme';
 
 
 export default function BoardScreen() {
@@ -153,7 +153,7 @@ function TaskCard({
             {allDone ? '✓ ' : ''}
             {task.title}
           </Text>
-          <Badge label={PRIORITY_LABELS[task.priority]} color={PRIORITY_COLORS[task.priority]} />
+          <TaskBadges priority={task.priority} tier={task.tier} />
         </View>
 
         <View style={styles.cardMeta}>

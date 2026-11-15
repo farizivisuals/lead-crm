@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { isExecutive, PRIORITY_LABELS } from '@shared/rbac';
+import { isExecutive } from '@shared/rbac';
 import { Screen } from '../../components/ui/Screen';
 import { GlassCard } from '../../components/ui/GlassCard';
-import { Badge } from '../../components/ui/Badge';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { PickerSheet } from '../../components/ui/PickerSheet';
 import { useAuth } from '../../lib/auth';
 import { isTaskOverdue, one, shortDate, firstName, distinctAssignees } from '../../lib/data';
 import { useAllTasks, type AllTasksRow } from '../../lib/queries/all-tasks';
-import { PRIORITY_COLORS, theme } from '../../lib/theme';
+import { theme } from '../../lib/theme';
+import { TaskBadges } from '../../components/ui/TaskBadges';
 
 export default function TasksScreen() {
   const router = useRouter();
@@ -121,7 +121,7 @@ function TaskRow({ task, onPress }: { task: AllTasksRow; onPress: () => void }) 
           <Text style={[styles.title, done && styles.titleDone]} numberOfLines={2}>
             {task.title}
           </Text>
-          <Badge label={PRIORITY_LABELS[task.priority]} color={PRIORITY_COLORS[task.priority]} />
+          <TaskBadges priority={task.priority} tier={task.tier} />
         </View>
         <Text style={styles.subtitle} numberOfLines={1}>
           {subtitle}

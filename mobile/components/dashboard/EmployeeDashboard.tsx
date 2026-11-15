@@ -1,16 +1,16 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { DELIVERABLE_STATUS_LABELS, PRIORITY_LABELS } from '@shared/rbac';
+import { DELIVERABLE_STATUS_LABELS } from '@shared/rbac';
 import { Screen } from '../ui/Screen';
 import { GlassCard } from '../ui/GlassCard';
 import { Badge } from '../ui/Badge';
+import { TaskBadges } from '../ui/TaskBadges';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { isTaskOverdue, one, shortDate } from '../../lib/data';
 import { useEmployeeDashboard } from '../../lib/queries/dashboard';
 import {
   DELIVERABLE_STATUS_COLORS,
-  PRIORITY_COLORS,
   theme,
   withAlpha,
 } from '../../lib/theme';
@@ -102,10 +102,7 @@ export function EmployeeDashboard({ userId }: { userId: string }) {
                     <Text style={styles.rowTitle} numberOfLines={2}>
                       {task.title}
                     </Text>
-                    <Badge
-                      label={PRIORITY_LABELS[task.priority]}
-                      color={PRIORITY_COLORS[task.priority]}
-                    />
+                    <TaskBadges priority={task.priority} tier={task.tier} />
                   </View>
                   <Text style={styles.subtitle} numberOfLines={1}>
                     {[one(task.projects)?.name, one(task.department_stages)?.name]

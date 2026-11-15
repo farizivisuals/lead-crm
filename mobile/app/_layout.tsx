@@ -10,6 +10,7 @@ import { routeForNotification } from '../lib/push';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { resolveRoute } from '../lib/routing';
 import { theme } from '../lib/theme';
+import { useAppUpdates } from '../lib/app-updates';
 
 export function SessionGate() {
   const { session, profile, loading, recoveryChecked, recovering } = useAuth();
@@ -101,6 +102,7 @@ export function SessionGate() {
 }
 
 export default function RootLayout() {
+  useAppUpdates();
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>

@@ -8,6 +8,7 @@ export type AllTasksRow = {
   title: string;
   priority: TaskPriority;
   due_date: string | null;
+  tier: 'basic' | 'premium' | null;
   project_id: string;
   assigned_to: string | null;
   projects: { name: string } | { name: string }[] | null;
@@ -27,7 +28,7 @@ export function useAllTasks() {
       // the result set; the same query text serves every role.
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, title, priority, due_date, project_id, assigned_to, projects(name), departments(name), department_stages(name, is_terminal), employees!assigned_to(profiles(full_name))')
+        .select('id, title, priority, due_date, tier, project_id, assigned_to, projects(name), departments(name), department_stages(name, is_terminal), employees!assigned_to(profiles(full_name))')
         .order('due_date', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as unknown as AllTasksRow[];
