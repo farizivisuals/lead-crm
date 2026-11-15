@@ -16,9 +16,11 @@ interface Props {
   clients: { id: string; company_name: string }[];
   departments: Department[];
   creatives: { profile_id: string; full_name: string }[];
+  /** Locks the dialog to one client (used on the client detail page). */
+  defaultClientId?: string;
 }
 
-export default function NewProjectDialog({ clients, departments, creatives }: Props) {
+export default function NewProjectDialog({ clients, departments, creatives, defaultClientId }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,7 +32,7 @@ export default function NewProjectDialog({ clients, departments, creatives }: Pr
   const clientSearchRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
-    client_id: "",
+    client_id: defaultClientId ?? "",
     name: "",
     description: "",
     status: "planning",
@@ -119,10 +121,12 @@ export default function NewProjectDialog({ clients, departments, creatives }: Pr
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>New Project</DialogTitle>
+          <DialogTitle>
+            New Project{defaultClientId && ` for ${clients.find((c) => c.id === defaultClientId)?.company_name ?? "client"}`}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
+          {!defaultClientId && <div className="space-y-2">
             <Label>Client *</Label>
             <Popover.Root open={clientOpen} onOpenChange={(o) => { setClientOpen(o); if (o) setClientQuery(""); }}>
               <Popover.Trigger asChild>
@@ -192,7 +196,7 @@ export default function NewProjectDialog({ clients, departments, creatives }: Pr
                 </Popover.Content>
               </Popover.Portal>
             </Popover.Root>
-          </div>
+          </div>}
 
           <div className="space-y-2">
             <Label>Project name *</Label>

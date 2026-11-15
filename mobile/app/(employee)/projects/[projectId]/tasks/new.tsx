@@ -1,0 +1,590 @@
+import { useEffect, useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { TaskPriority } from '@shared/types';
+import { PRIORITY_LABELS } from '@shared/rbac';
+import { Screen } from '../../../../../components/ui/Screen';
+import { GlassCard } from '../../../../../components/ui/GlassCard';
+import { Button } from '../../../../../components/ui/Button';
+import { Input } from '../../../../../components/ui/Input';
+import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
+import { PickerSheet } from '../../../../../components/ui/PickerSheet';
+import { useAuth } from '../../../../../lib/auth';
+import { qk } from '../../../../../lib/queries/keys';
+import { useBoard } from '../../../../../lib/queries/board';
+import {
+  createTask,
+  useTaskPickers,
+  useAvailabilityConflicts,
+  isShootStage,
+  shootDueDate,
+} from '../../../../../lib/queries/task';
+import { supabase } from '../../../../../lib/supabase';
+import { theme } from '../../../../../lib/theme';
+import {
+  createShootWithEdits,
+  editStageAfterShoot,
+  shootEditErrors,
+  type EditBlock,
+  type ShootWithEditsInput,
+} from '@shared/shoot-edit';
+
+const emptyBlock = (): EditBlock => ({ editorId: '', editorName: '', startDate: '', dueDate: '', videos: [] });
+
+const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
+
+export default function NewTaskScreen() {
+  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { session } = useAuth();
+
+  const board = useBoard(projectId);
+  const departments = board.data?.departments ?? [];
+
+  const [deptId, setDeptId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Default to the project's first department once they load. Keyed on the
+    // joined id list rather than the array reference, which is new on every
+    // refetch; and it only ever sets state while `deptId` is still null, so a
+    // user's explicit choice is never overwritten.
+    if (!deptId && departments.length > 0) setDeptId(departments[0].id);
+  }, [departments.map((d) => d.id).join(','), deptId]);
+
+  const pickers = useTaskPickers(projectId, deptId ?? undefined);
+  const firstStage = pickers.data?.stages[0] ?? null;
+
+  // Shoot → edit handoff (web parity: NewTaskDialog "Plan the edit").
+  const [planEdit, setPlanEdit] = useState(false);
+  const [blocks, setBlocks] = useState<EditBlock[]>([emptyBlock()]);
+  const [videoInputs, setVideoInputs] = useState<string[]>(['']);
+  const [editorPickerFor, setEditorPickerFor] = useState<number | null>(null);
+  const canPlanEdit = !!editStageAfterShoot(pickers.data?.stages ?? []);
+  const editing = planEdit && canPlanEdit;
+  const shoot = isShootStage(firstStage?.name) || editing;
+
+  function updateBlock(i: number, patch: Partial<EditBlock>) {
+    setBlocks((bs) => bs.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  }
+  function addVideo(i: number) {
+    const t = videoInputs[i]?.trim();
+    if (!t) return;
+    updateBlock(i, { videos: [...blocks[i]!.videos, t] });
+    setVideoInputs((vs) => vs.map((v, j) => (j === i ? '' : v)));
+  }
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [assignedTo, setAssignedTo] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [creativeIds, setCreativeIds] = useState<string[]>([]);
+  // The project's creatives are on every new task by default — they should get
+  // the shoot and the edits. Seeded once, so unticking someone sticks.
+  const [creativesSeeded, setCreativesSeeded] = useState(false);
+  const projectCreativeIds = (pickers.data?.projectCreatives ?? []).map((c) => c.profile_id);
+  useEffect(() => {
+    if (creativesSeeded || !pickers.data) return;
+    setCreativeIds(projectCreativeIds);
+    setCreativesSeeded(true);
+  }, [projectCreativeIds.join(','), creativesSeeded, !!pickers.data]);
+  const [picker, setPicker] = useState<'dept' | 'priority' | 'assignee' | null>(null);
+  // Deliverables ("Video 1", "Video 2") — each becomes its own trackable item,
+  // starting in the department's first stage alongside the task.
+  const [deliverables, setDeliverables] = useState<string[]>([]);
+  const [deliverableInput, setDeliverableInput] = useState('');
+
+  function addDeliverable() {
+    const title = deliverableInput.trim();
+    if (!title) return;
+    setDeliverables((ds) => [...ds, title]);
+    setDeliverableInput('');
+  }
+
+  const conflicts = useAvailabilityConflicts({
+    assignedTo,
+    startDate,
+    dueDate: shootDueDate(shoot, startDate, dueDate),
+    excludeTaskId: null,
+  });
+  const conflicting = conflicts.data ?? [];
+
+  function onCreated() {
+    queryClient.invalidateQueries({ queryKey: qk.projectTasks(projectId) });
+    queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
+    queryClient.invalidateQueries({ queryKey: qk.projects() });
+    queryClient.invalidateQueries({ queryKey: qk.allTasks() });
+    queryClient.invalidateQueries({ queryKey: qk.dashboards() });
+    router.back();
+  }
+
+  const editMutation = useMutation({
+    mutationFn: (input: ShootWithEditsInput) => createShootWithEdits(supabase, input),
+    onSuccess: onCreated,
+    onError: (e: Error) => Alert.alert('Could not create tasks', e.message),
+  });
+
+  const mutation = useMutation({
+    mutationFn: createTask,
+    onSuccess: onCreated,
+    onError: (e: Error) => {
+      // createTask can commit the task and fail only on its deliverables, so
+      // refresh regardless — otherwise the list hides a task that now exists
+      // and the user creates a duplicate.
+      queryClient.invalidateQueries({ queryKey: qk.projectTasks(projectId) });
+      Alert.alert('Could not create task', e.message);
+    },
+  });
+
+  const canSubmit =
+    !mutation.isPending &&
+    !editMutation.isPending &&
+    !!deptId &&
+    !!firstStage &&
+    !!session?.user.id &&
+    title.trim().length > 0 &&
+    startDate.length > 0 &&
+    (shoot || dueDate.length > 0) &&
+    conflicting.length === 0 &&
+    // `conflicting` is `[]` while the query is still fetching (every
+    // assignee/date edit changes its key) and on error — neither means "no
+    // conflicts". The brief calls this a hard block; failing open on a
+    // pending or errored check would silently bypass it.
+    !conflicts.isFetching &&
+    !conflicts.error;
+
+  function submit() {
+    if (!canSubmit) return;
+    if (editing) {
+      const input: ShootWithEditsInput = {
+        projectId,
+        departmentId: deptId!,
+        stages: pickers.data!.stages,
+        title: title.trim(),
+        description,
+        priority,
+        shootDate: startDate,
+        shooterId: assignedTo,
+        creativeIds,
+        edits: blocks,
+        userId: session!.user.id,
+      };
+      const problem = shootEditErrors(input);
+      if (problem) {
+        Alert.alert('Check the edit plan', problem);
+        return;
+      }
+      editMutation.mutate(input);
+      return;
+    }
+    mutation.mutate({
+      project_id: projectId,
+      department_id: deptId!,
+      current_stage_id: firstStage!.id,
+      title: title.trim(),
+      description,
+      priority,
+      start_date: startDate,
+      due_date: dueDate,
+      isShoot: shoot,
+      assigned_to: assignedTo,
+      creativeProfileIds: creativeIds,
+      deliverableTitles: deliverables,
+      userId: session!.user.id,
+    });
+  }
+
+  const deptName = departments.find((d) => d.id === deptId)?.name ?? 'Select a department';
+  const assigneeName =
+    pickers.data?.employees.find((e) => e.profile_id === assignedTo)?.full_name ?? 'Unassigned';
+
+  return (
+    <Screen>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}
+      >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <ScreenHeader title="New task" onBack={() => router.back()} />
+
+          {board.error && (
+            <GlassCard>
+              <Text style={styles.error}>{board.error.message}</Text>
+            </GlassCard>
+          )}
+          {pickers.error && (
+            <GlassCard>
+              <Text style={styles.error}>{pickers.error.message}</Text>
+            </GlassCard>
+          )}
+
+          <GlassCard>
+            <View style={styles.form}>
+              <Pressable onPress={() => setPicker('dept')}>
+                <Text style={styles.label}>DEPARTMENT</Text>
+                <Text style={styles.value}>{deptName}</Text>
+              </Pressable>
+
+              <View>
+                <Text style={styles.label}>STARTING STAGE</Text>
+                <Text style={styles.value}>{firstStage?.name ?? '—'}</Text>
+                <Text style={styles.muted}>
+                  New tasks always start in the department's first stage.
+                </Text>
+              </View>
+
+              <Input label="Title" value={title} onChangeText={setTitle} placeholder="Task title" />
+              <Input
+                label="Description"
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Optional"
+              />
+
+              <Pressable onPress={() => setPicker('priority')}>
+                <Text style={styles.label}>PRIORITY</Text>
+                <Text style={styles.value}>{PRIORITY_LABELS[priority]}</Text>
+              </Pressable>
+
+              <Pressable onPress={() => setPicker('assignee')}>
+                <Text style={styles.label}>{editing ? 'SHOOTER' : 'ASSIGNEE'}</Text>
+                <Text style={styles.value}>{assigneeName}</Text>
+              </Pressable>
+
+              {shoot ? (
+                <Input
+                  label="Shoot date"
+                  value={startDate}
+                  onChangeText={setStartDate}
+                  placeholder="YYYY-MM-DD"
+                />
+              ) : (
+                <>
+                  <Input
+                    label="Start date"
+                    value={startDate}
+                    onChangeText={setStartDate}
+                    placeholder="YYYY-MM-DD"
+                  />
+                  <Input
+                    label="Due date"
+                    value={dueDate}
+                    onChangeText={setDueDate}
+                    placeholder="YYYY-MM-DD"
+                  />
+                </>
+              )}
+            </View>
+          </GlassCard>
+
+          {canPlanEdit && (
+            <Pressable
+              onPress={() => setPlanEdit((v) => !v)}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: planEdit }}
+            >
+              <GlassCard>
+                <Text style={styles.value}>{planEdit ? '☑' : '☐'}  Plan the edit</Text>
+                <Text style={styles.muted}>Creates one edit task per editor, linked to this shoot.</Text>
+              </GlassCard>
+            </Pressable>
+          )}
+
+          {editing &&
+            blocks.map((b, i) => (
+              <GlassCard key={i}>
+                <View style={styles.blockHeader}>
+                  <Text style={styles.label}>EDIT {i + 1}</Text>
+                  {blocks.length > 1 && (
+                    <Pressable
+                      hitSlop={10}
+                      onPress={() => {
+                        setBlocks((bs) => bs.filter((_, j) => j !== i));
+                        setVideoInputs((vs) => vs.filter((_, j) => j !== i));
+                      }}
+                    >
+                      <Text style={styles.addButtonText}>Remove</Text>
+                    </Pressable>
+                  )}
+                </View>
+                <View style={styles.form}>
+                  <Pressable onPress={() => setEditorPickerFor(i)}>
+                    <Text style={styles.label}>EDITOR</Text>
+                    <Text style={styles.value}>{b.editorName || 'Select an editor'}</Text>
+                  </Pressable>
+                  <Input
+                    label="Edit start"
+                    value={b.startDate}
+                    onChangeText={(v) => updateBlock(i, { startDate: v })}
+                    placeholder="YYYY-MM-DD"
+                  />
+                  <Input
+                    label="Edit due"
+                    value={b.dueDate}
+                    onChangeText={(v) => updateBlock(i, { dueDate: v })}
+                    placeholder="YYYY-MM-DD"
+                  />
+                </View>
+                <View style={styles.addRow}>
+                  <TextInput
+                    value={videoInputs[i] ?? ''}
+                    onChangeText={(v) => setVideoInputs((vs) => vs.map((x, j) => (j === i ? v : x)))}
+                    onSubmitEditing={() => addVideo(i)}
+                    placeholder="Video 1"
+                    placeholderTextColor={theme.text.dimmer}
+                    returnKeyType="done"
+                    style={styles.addInput}
+                  />
+                  <Pressable onPress={() => addVideo(i)} style={styles.addButton}>
+                    <Text style={styles.addButtonText}>Add</Text>
+                  </Pressable>
+                </View>
+                {b.videos.length > 0 && (
+                  <View style={styles.chipRow}>
+                    {b.videos.map((v, k) => (
+                      <Pressable
+                        key={`${v}-${k}`}
+                        onPress={() => updateBlock(i, { videos: b.videos.filter((_, j) => j !== k) })}
+                        style={[styles.chip, styles.chipOn]}
+                      >
+                        <Text style={styles.chipTextOn}>{v} ✕</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+              </GlassCard>
+            ))}
+
+          {editing && (
+            <Button
+              title="+ Add editor"
+              variant="ghost"
+              onPress={() => {
+                setBlocks((bs) => [...bs, emptyBlock()]);
+                setVideoInputs((vs) => [...vs, '']);
+              }}
+            />
+          )}
+
+          {!editing && <GlassCard>
+            <Text style={styles.label}>DELIVERABLES</Text>
+            <Text style={styles.muted}>
+              Each one is tracked and assigned separately once the task exists.
+            </Text>
+            <View style={styles.addRow}>
+              <TextInput
+                value={deliverableInput}
+                onChangeText={setDeliverableInput}
+                onSubmitEditing={addDeliverable}
+                placeholder="Video 1"
+                placeholderTextColor={theme.text.dimmer}
+                returnKeyType="done"
+                style={styles.addInput}
+              />
+              <Pressable
+                onPress={addDeliverable}
+                disabled={deliverableInput.trim().length === 0}
+                style={styles.addButton}
+              >
+                <Text
+                  style={[
+                    styles.addButtonText,
+                    deliverableInput.trim().length === 0 && styles.addButtonTextOff,
+                  ]}
+                >
+                  Add
+                </Text>
+              </Pressable>
+            </View>
+            {deliverables.length > 0 && (
+              <View style={styles.chipRow}>
+                {deliverables.map((title, i) => (
+                  <Pressable
+                    key={`${title}-${i}`}
+                    onPress={() => setDeliverables((ds) => ds.filter((_, j) => j !== i))}
+                    style={[styles.chip, styles.chipOn]}
+                  >
+                    <Text style={styles.chipTextOn}>{title} ✕</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </GlassCard>}
+
+          <GlassCard>
+            <Text style={styles.label}>CREATIVES</Text>
+            <View style={styles.chipRow}>
+              {(pickers.data?.projectCreatives ?? []).map((c) => {
+                const on = creativeIds.includes(c.profile_id);
+                return (
+                  <Pressable
+                    key={c.profile_id}
+                    onPress={() =>
+                      setCreativeIds((ids) =>
+                        ids.includes(c.profile_id)
+                          ? ids.filter((x) => x !== c.profile_id)
+                          : [...ids, c.profile_id]
+                      )
+                    }
+                    style={[styles.chip, on && styles.chipOn]}
+                  >
+                    <Text style={[styles.chipText, on && styles.chipTextOn]}>{c.full_name}</Text>
+                  </Pressable>
+                );
+              })}
+              {(pickers.data?.projectCreatives.length ?? 0) === 0 && (
+                <Text style={styles.muted}>No creatives on this project.</Text>
+              )}
+            </View>
+          </GlassCard>
+
+          {conflicting.length > 0 && (
+            <GlassCard>
+              <Text style={styles.conflictTitle}>Assignee is booked</Text>
+              {conflicting.map((c) => (
+                <Text key={c.id} style={styles.conflictRow}>
+                  · {c.title}
+                </Text>
+              ))}
+              <Text style={styles.muted}>Change the assignee or the dates before saving.</Text>
+            </GlassCard>
+          )}
+
+          {conflicts.error && (
+            <GlassCard>
+              <Text style={styles.error}>{conflicts.error.message}</Text>
+            </GlassCard>
+          )}
+
+          <Button
+            title="Create task"
+            onPress={submit}
+            disabled={!canSubmit}
+            loading={mutation.isPending || editMutation.isPending}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <PickerSheet
+        visible={picker === 'dept'}
+        title="Department"
+        selected={deptId}
+        options={departments.map((d) => ({ value: d.id, label: d.name }))}
+        onSelect={(v) => {
+          setDeptId(v);
+          // The stage and employee lists are department-scoped, so a department
+          // change invalidates the current assignee and editor choices.
+          setAssignedTo(null);
+          setBlocks([emptyBlock()]);
+          setVideoInputs(['']);
+          setPicker(null);
+        }}
+        onClose={() => setPicker(null)}
+      />
+      <PickerSheet
+        visible={picker === 'priority'}
+        title="Priority"
+        selected={priority}
+        options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_LABELS[p] }))}
+        onSelect={(v) => {
+          setPriority(v as TaskPriority);
+          setPicker(null);
+        }}
+        onClose={() => setPicker(null)}
+      />
+      <PickerSheet
+        visible={picker === 'assignee'}
+        title="Assignee"
+        selected={assignedTo ?? 'unassigned'}
+        options={[
+          { value: 'unassigned', label: 'Unassigned' },
+          ...(pickers.data?.employees ?? []).map((e) => ({
+            value: e.profile_id,
+            label: e.full_name,
+          })),
+        ]}
+        onSelect={(v) => {
+          setAssignedTo(v === 'unassigned' ? null : v);
+          setPicker(null);
+        }}
+        onClose={() => setPicker(null)}
+      />
+      <PickerSheet
+        visible={editorPickerFor !== null}
+        title="Editor"
+        selected={editorPickerFor !== null ? blocks[editorPickerFor]?.editorId ?? '' : ''}
+        options={(pickers.data?.employees ?? []).map((e) => ({ value: e.profile_id, label: e.full_name }))}
+        onSelect={(v) => {
+          const name = pickers.data?.employees.find((e) => e.profile_id === v)?.full_name ?? '';
+          if (editorPickerFor !== null) updateBlock(editorPickerFor, { editorId: v, editorName: name });
+          setEditorPickerFor(null);
+        }}
+        onClose={() => setEditorPickerFor(null)}
+      />
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  scroll: { padding: 20, gap: 16, paddingBottom: 160 },
+  form: { gap: 16 },
+  label: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: theme.text.label,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  value: { color: '#fff', fontSize: 15, marginTop: 6 },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  blockHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  addInput: {
+    flex: 1,
+    height: 40,
+    borderRadius: theme.radius,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: '#fff',
+  },
+  addButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  addButtonText: { color: theme.colors.accent, fontSize: 13, fontWeight: '600' },
+  addButtonTextOff: { color: theme.text.dimmer },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  chip: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  chipOn: { borderColor: theme.colors.accentTintBorder, backgroundColor: theme.colors.accentTintBg },
+  chipText: { color: theme.text.dim, fontSize: 13 },
+  chipTextOn: { color: '#fff', fontWeight: '600' },
+  conflictTitle: { color: theme.colors.warning, fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  conflictRow: { color: theme.colors.foreground, fontSize: 13 },
+  muted: { color: theme.text.dim, fontSize: 12, marginTop: 6 },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center' },
+});

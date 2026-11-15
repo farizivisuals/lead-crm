@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "Lead CRM",
+    "slug": "lead-crm",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "leadcrm",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "bundleIdentifier": "com.farizivisuals.leadcrm",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#06060a",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 180
+        }
+      ],
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "mode": "production"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "236199af-a74c-4b1c-b31b-e3b6e9d31350"
+      }
+    },
+    "owner": "farizi",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/236199af-a74c-4b1c-b31b-e3b6e9d31350"
+    },
+    "android": {}
+  }
+}

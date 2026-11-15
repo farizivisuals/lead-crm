@@ -10,6 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Loader2, AlertTriangle, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import type { DepartmentStage } from "@/lib/types";
+import { createShootWithEdits, editStageAfterShoot, shootEditErrors, type EditBlock } from "@/lib/shoot-edit";
+
+const emptyBlock = (): EditBlock => ({ editorId: "", editorName: "", startDate: "", dueDate: "", videos: [] });
 
 interface Props {
   projectId: string;
@@ -26,7 +29,10 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState("");
-  const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
+  // The project's creatives are on every new task by default — they should
+  // get the shoot and the edits. Untick to leave someone off.
+  const allCreativeIds = creatives.map((c) => c.profile_id);
+  const [selectedCreatives, setSelectedCreatives] = useState<string[]>(allCreativeIds);
   const [deliverables, setDeliverables] = useState<string[]>([]);
   const [deliverableInput, setDeliverableInput] = useState("");
   const [conflicting, setConflicting] = useState<{ id: string; title: string }[]>([]);
@@ -40,13 +46,48 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     assigned_to: "",
   });
 
+  // Shoot → edit handoff: book the shoot and plan one edit task per editor.
+  const [planEdit, setPlanEdit] = useState(false);
+  const [blocks, setBlocks] = useState<EditBlock[]>([emptyBlock()]);
+  const [videoInputs, setVideoInputs] = useState<string[]>([""]);
+
+  function resetEditBlocks() {
+    setBlocks([emptyBlock()]);
+    setVideoInputs([""]);
+  }
+
+  /** After a save, so reopening the dialog can't resubmit the same booking. */
+  function resetAll() {
+    setForm({ title: "", description: "", priority: "medium", start_date: "", due_date: "", assigned_to: "" });
+    setSelectedCreatives(allCreativeIds);
+    setDeliverables([]);
+    setDeliverableInput("");
+    setPlanEdit(false);
+    resetEditBlocks();
+  }
+
   const deptStages = stages.filter((s) => s.department_id === selectedDeptId);
   const firstStage = deptStages[0];
-  const isShootStage = firstStage?.name.toLowerCase() === "shoot";
+  const canPlanEdit = !!editStageAfterShoot(deptStages);
+  const editing = planEdit && canPlanEdit;
+  // A planned-edit booking has one shoot date, like a task that starts in Shoot.
+  const isShootStage = firstStage?.name.toLowerCase() === "shoot" || editing;
 
   const deptEmployees = employees.filter(
     (e) => !selectedDeptId || e.department_ids.includes(selectedDeptId)
   );
+  const employeeName = (id: string) =>
+    (deptEmployees.find((e) => e.profile_id === id)?.profiles as { full_name: string } | null)?.full_name ?? "";
+
+  function updateBlock(i: number, patch: Partial<EditBlock>) {
+    setBlocks((bs) => bs.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  }
+  function addVideo(i: number) {
+    const title = videoInputs[i]?.trim();
+    if (!title) return;
+    updateBlock(i, { videos: [...blocks[i]!.videos, title] });
+    setVideoInputs((vs) => vs.map((v, j) => (j === i ? "" : v)));
+  }
 
   // Real-time availability check
   useEffect(() => {
@@ -85,6 +126,36 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
 
     const { data: { user } } = await supabase.auth.getUser();
 
+    if (editing) {
+      const input = {
+        projectId,
+        departmentId: selectedDeptId,
+        stages: deptStages,
+        title: form.title,
+        description: form.description,
+        priority: form.priority as "low" | "medium" | "high" | "urgent",
+        shootDate: form.start_date,
+        shooterId: form.assigned_to || null,
+        creativeIds: selectedCreatives,
+        edits: blocks,
+        userId: user?.id ?? "",
+      };
+      const problem = shootEditErrors(input);
+      if (problem) { setError(problem); setLoading(false); return; }
+      try {
+        await createShootWithEdits(supabase, input);
+      } catch (err) {
+        setError((err as Error).message);
+        setLoading(false);
+        return;
+      }
+      setLoading(false);
+      setOpen(false);
+      resetAll();
+      router.refresh();
+      return;
+    }
+
     const { data: task, error: tErr } = await supabase.from("tasks").insert({
       project_id: projectId,
       department_id: selectedDeptId,
@@ -118,6 +189,8 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     }
 
     setOpen(false);
+    setLoading(false);
+    resetAll();
     router.refresh();
   }
 
@@ -141,14 +214,20 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
           Add Task
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Task</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Department *</Label>
-            <Select value={selectedDeptId} onValueChange={setSelectedDeptId}>
+            <Select
+              value={selectedDeptId}
+              onValueChange={(v) => {
+                setSelectedDeptId(v);
+                resetEditBlocks(); // editors are per department
+              }}
+            >
               <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
               <SelectContent>
                 {departments.map((d) => (
@@ -190,7 +269,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Assign to</Label>
+              <Label>{editing ? "Shooter" : "Assign to"}</Label>
               <Select value={form.assigned_to} onValueChange={(v) => setForm((f) => ({ ...f, assigned_to: v }))}>
                 <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
                 <SelectContent>
@@ -226,7 +305,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
             </div>
           )}
 
-          <div className="space-y-2">
+          {!editing && <div className="space-y-2">
             <Label>Deliverables</Label>
             <div className="flex gap-2">
               <Input
@@ -277,7 +356,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
                 ))}
               </div>
             )}
-          </div>
+          </div>}
 
           {/* Date fields: single shoot date vs start+due range */}
           {isShootStage ? (
@@ -310,6 +389,114 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
                   required
                 />
               </div>
+            </div>
+          )}
+
+          {canPlanEdit && (
+            <label className="flex items-center gap-2 text-sm text-white/80 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={planEdit}
+                onChange={(e) => setPlanEdit(e.target.checked)}
+                className="h-4 w-4 accent-white"
+              />
+              Plan the edit
+              <span className="text-white/30 text-xs">(one edit task per editor)</span>
+            </label>
+          )}
+
+          {editing && (
+            <div className="space-y-3">
+              {blocks.map((b, i) => (
+                <div key={i} className="rounded-xl border border-white/[0.1] bg-white/[0.03] p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Edit {i + 1}</Label>
+                    {blocks.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBlocks((bs) => bs.filter((_, j) => j !== i));
+                          setVideoInputs((vs) => vs.filter((_, j) => j !== i));
+                        }}
+                        className="text-white/30 hover:text-white/70"
+                        aria-label={`Remove edit ${i + 1}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <Select
+                    value={b.editorId}
+                    onValueChange={(v) => updateBlock(i, { editorId: v, editorName: employeeName(v) })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Editor" /></SelectTrigger>
+                    <SelectContent>
+                      {deptEmployees.map((emp) => (
+                        <SelectItem key={emp.profile_id} value={emp.profile_id}>
+                          {(emp.profiles as { full_name: string })?.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="date"
+                      aria-label={`Edit ${i + 1} start date`}
+                      value={b.startDate}
+                      onChange={(e) => updateBlock(i, { startDate: e.target.value })}
+                    />
+                    <Input
+                      type="date"
+                      aria-label={`Edit ${i + 1} due date`}
+                      value={b.dueDate}
+                      onChange={(e) => updateBlock(i, { dueDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={videoInputs[i] ?? ""}
+                      onChange={(e) => setVideoInputs((vs) => vs.map((v, j) => (j === i ? e.target.value : v)))}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addVideo(i); } }}
+                      placeholder="Video 1"
+                    />
+                    <Button type="button" variant="outline" onClick={() => addVideo(i)} aria-label="Add video">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {b.videos.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {b.videos.map((title, k) => (
+                        <span
+                          key={`${title}-${k}`}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-sm bg-white/[0.06] border border-white/[0.12] text-white/70"
+                        >
+                          {title}
+                          <button
+                            type="button"
+                            onClick={() => updateBlock(i, { videos: b.videos.filter((_, j) => j !== k) })}
+                            className="text-white/30 hover:text-white/70"
+                            aria-label={`Remove ${title}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setBlocks((bs) => [...bs, emptyBlock()]);
+                  setVideoInputs((vs) => [...vs, ""]);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Add editor
+              </Button>
             </div>
           )}
 

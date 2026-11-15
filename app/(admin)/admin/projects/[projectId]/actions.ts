@@ -20,6 +20,29 @@ export async function updateProjectStatus(projectId: string, status: ProjectStat
   return {};
 }
 
+export async function updateProjectDetails(
+  projectId: string,
+  details: { name: string; description: string; start_date: string; target_end_date: string }
+): Promise<{ error?: string }> {
+  const name = details.name.trim();
+  if (!name) return { error: "Project name is required" };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      name,
+      description: details.description.trim() || null,
+      start_date: details.start_date || null,
+      target_end_date: details.target_end_date || null,
+    })
+    .eq("id", projectId);
+  if (error) return { error: error.message };
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath("/admin/projects");
+  revalidatePath(`/portal/projects/${projectId}`);
+  return {};
+}
+
 export async function updateMoodboardUrl(projectId: string, url: string | null): Promise<{ error?: string }> {
   const supabase = await createClient();
   // Goes through a SECURITY DEFINER function so executives and assigned

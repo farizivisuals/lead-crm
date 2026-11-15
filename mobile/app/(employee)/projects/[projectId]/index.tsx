@@ -1,0 +1,500 @@
+import { useState } from 'react';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { ProjectStatus } from '@shared/types';
+import { isExecutive, PROJECT_STATUS_LABELS, DEPT_COLORS } from '@shared/rbac';
+import { Screen } from '../../../../components/ui/Screen';
+import { GlassCard } from '../../../../components/ui/GlassCard';
+import { Button } from '../../../../components/ui/Button';
+import { Input } from '../../../../components/ui/Input';
+import { Badge } from '../../../../components/ui/Badge';
+import { ScreenHeader } from '../../../../components/ui/ScreenHeader';
+import { PickerSheet } from '../../../../components/ui/PickerSheet';
+import { useAuth } from '../../../../lib/auth';
+import { one, shortDate, isCreativeEmployee } from '../../../../lib/data';
+import { qk } from '../../../../lib/queries/keys';
+import {
+  useProjectDetail,
+  updateProjectStatus,
+  updateMoodboardUrl,
+  addProjectCreative,
+  removeProjectCreative,
+  addProjectDepartment,
+  removeProjectDepartment,
+  updateProjectDetails,
+  type AssignedDepartment,
+} from '../../../../lib/queries/project-detail';
+import { PROJECT_STATUS_COLORS, theme, withAlpha } from '../../../../lib/theme';
+
+const STATUSES: ProjectStatus[] = ['planning', 'active', 'on_hold', 'completed', 'cancelled'];
+
+export default function ProjectDetailScreen() {
+  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { employee } = useAuth();
+
+  const canManage = isExecutive(employee?.role ?? 'employee');
+  const canEditMoodboard = canManage || isCreativeEmployee(employee);
+
+  const { data, isLoading, error } = useProjectDetail(projectId);
+
+  // Optimistic mirror of the persisted status; null means "show the server's".
+  const [pendingStatus, setPendingStatus] = useState<ProjectStatus | null>(null);
+  const [statusPickerOpen, setStatusPickerOpen] = useState(false);
+  const [creativePickerOpen, setCreativePickerOpen] = useState(false);
+  const [deptPickerOpen, setDeptPickerOpen] = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [detailsDraft, setDetailsDraft] = useState({
+    name: '',
+    description: '',
+    start_date: '',
+    target_end_date: '',
+  });
+  const [editingMoodboard, setEditingMoodboard] = useState(false);
+  const [moodboardDraft, setMoodboardDraft] = useState('');
+  // Local mirror of the just-saved moodboard URL, shown immediately after a
+  // successful save so there's no stale flash during the invalidate/refetch
+  // round-trip (web parity — MoodboardEditor.tsx's local `setUrl`).
+  // `undefined` means "no local override, trust the query result".
+  const [savedMoodboardUrl, setSavedMoodboardUrl] = useState<string | null | undefined>(undefined);
+
+  // `qk.project(projectId)` is a prefix, so this also clears the board's task
+  // list and the task pickers (which carry this project's creative list).
+  // The dashboards have no other refresh path — see qk.dashboards().
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: qk.project(projectId) });
+    queryClient.invalidateQueries({ queryKey: qk.dashboards() });
+  };
+
+  const statusMutation = useMutation({
+    mutationFn: (status: ProjectStatus) => updateProjectStatus(projectId, status),
+    onSuccess: () => {
+      setPendingStatus(null);
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: qk.projects() });
+    },
+    onError: (e: Error) => {
+      setPendingStatus(null); // targeted rollback: only this field reverts
+      Alert.alert('Could not update status', e.message);
+    },
+  });
+
+  const moodboardMutation = useMutation({
+    mutationFn: (url: string | null) => updateMoodboardUrl(projectId, url),
+    onSuccess: (_data, url) => {
+      setSavedMoodboardUrl(url);
+      setEditingMoodboard(false);
+      invalidate();
+    },
+    onError: (e: Error) => Alert.alert('Could not save moodboard', e.message),
+  });
+
+  const addCreativeMutation = useMutation({
+    mutationFn: (profileId: string) => addProjectCreative(projectId, profileId),
+    onSuccess: invalidate,
+    onError: (e: Error) => Alert.alert('Could not add creative', e.message),
+  });
+
+  const removeCreativeMutation = useMutation({
+    mutationFn: (profileId: string) => removeProjectCreative(projectId, profileId),
+    onSuccess: invalidate,
+    onError: (e: Error) => Alert.alert('Could not remove creative', e.message),
+  });
+
+  // Name and departments show on the projects list too.
+  const invalidateWithList = () => {
+    invalidate();
+    queryClient.invalidateQueries({ queryKey: qk.projects() });
+  };
+
+  const detailsMutation = useMutation({
+    mutationFn: () => updateProjectDetails(projectId, detailsDraft),
+    onSuccess: () => {
+      setEditingDetails(false);
+      invalidateWithList();
+    },
+    onError: (e: Error) => Alert.alert('Could not save project', e.message),
+  });
+
+  const addDeptMutation = useMutation({
+    mutationFn: ({ id, isFirst }: { id: string; isFirst: boolean }) =>
+      addProjectDepartment(projectId, id, isFirst),
+    onSuccess: invalidateWithList,
+    onError: (e: Error) => Alert.alert('Could not add department', e.message),
+  });
+
+  const removeDeptMutation = useMutation({
+    mutationFn: ({ dept, assigned }: { dept: AssignedDepartment; assigned: AssignedDepartment[] }) =>
+      removeProjectDepartment(projectId, dept, assigned),
+    onSuccess: invalidateWithList,
+    onError: (e: Error) => Alert.alert('Could not remove department', e.message),
+  });
+
+  if (isLoading) {
+    return (
+      <Screen>
+        <View style={styles.centered}>
+          <Text style={styles.muted}>Loading…</Text>
+        </View>
+      </Screen>
+    );
+  }
+  if (error || !data) {
+    return (
+      <Screen>
+        <View style={styles.centered}>
+          <Text style={styles.error}>{error?.message ?? 'Project not found'}</Text>
+          <Button title="Back to projects" variant="ghost" onPress={() => router.back()} />
+        </View>
+      </Screen>
+    );
+  }
+
+  const { project, progress, deliverableCount, assignedCreatives, availableCreatives, allDepartments } = data;
+  const assignedDepts: AssignedDepartment[] = (project.project_departments ?? [])
+    .map((pd) => ({
+      department_id: pd.department_id,
+      is_primary: pd.is_primary,
+      name: one(pd.departments)?.name ?? 'Unknown',
+      slug: one(pd.departments)?.slug ?? '',
+    }))
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
+  const availableDepts = allDepartments.filter(
+    (d) => !assignedDepts.some((a) => a.department_id === d.id)
+  );
+  const deptSaving = addDeptMutation.isPending || removeDeptMutation.isPending;
+
+  function startEditing() {
+    setDetailsDraft({
+      name: project.name,
+      description: project.description ?? '',
+      start_date: project.start_date ?? '',
+      target_end_date: project.target_end_date ?? '',
+    });
+    setEditingDetails(true);
+  }
+  const clientName = one(project.clients)?.company_name ?? '—';
+  const status = pendingStatus ?? project.status;
+  const moodboardUrl = savedMoodboardUrl !== undefined ? savedMoodboardUrl : project.moodboard_url;
+  const depts = (project.project_departments ?? [])
+    .map((pd) => one(pd.departments))
+    .filter((d): d is { name: string; slug: string } => !!d);
+
+  function chooseStatus(next: string) {
+    setStatusPickerOpen(false);
+    if (next === status) return; // web parity: skip the no-op write — compare against the effective (possibly in-flight) status, not the stale server value
+    setPendingStatus(next as ProjectStatus); // optimistic
+    statusMutation.mutate(next as ProjectStatus);
+  }
+
+  function openTasks() {
+    router.push({ pathname: '/projects/[projectId]/tasks', params: { projectId } });
+  }
+
+  function openDeliverables() {
+    router.push({ pathname: '/projects/[projectId]/deliverables', params: { projectId } });
+  }
+
+  function openActivity() {
+    router.push({ pathname: '/projects/[projectId]/activity', params: { projectId } });
+  }
+
+  return (
+    <Screen>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <ScreenHeader
+          title={project.name}
+          subtitle={clientName}
+          onBack={() => router.back()}
+          right={
+            canManage && !editingDetails ? (
+              <Pressable onPress={startEditing} hitSlop={10}>
+                <Text style={styles.editText}>Edit</Text>
+              </Pressable>
+            ) : undefined
+          }
+        />
+
+        {editingDetails && (
+          <GlassCard>
+            <View style={styles.moodboardForm}>
+              <Input
+                label="Name"
+                value={detailsDraft.name}
+                onChangeText={(name) => setDetailsDraft((d) => ({ ...d, name }))}
+              />
+              <Input
+                label="Description"
+                value={detailsDraft.description}
+                onChangeText={(description) => setDetailsDraft((d) => ({ ...d, description }))}
+                placeholder="Optional"
+              />
+              <Input
+                label="Start date"
+                value={detailsDraft.start_date}
+                onChangeText={(start_date) => setDetailsDraft((d) => ({ ...d, start_date }))}
+                placeholder="YYYY-MM-DD"
+              />
+              <Input
+                label="Target end date"
+                value={detailsDraft.target_end_date}
+                onChangeText={(target_end_date) => setDetailsDraft((d) => ({ ...d, target_end_date }))}
+                placeholder="YYYY-MM-DD"
+              />
+              <Button
+                title="Save changes"
+                loading={detailsMutation.isPending}
+                onPress={() => detailsMutation.mutate()}
+              />
+              <Button title="Cancel" variant="ghost" onPress={() => setEditingDetails(false)} />
+            </View>
+          </GlassCard>
+        )}
+
+        <GlassCard>
+          {project.description ? (
+            <Text style={styles.description}>{project.description}</Text>
+          ) : null}
+
+          <View style={styles.statusRow}>
+            {canManage ? (
+              <Pressable
+                onPress={() => setStatusPickerOpen(true)}
+                disabled={statusMutation.isPending}
+              >
+                <Badge
+                  label={`${PROJECT_STATUS_LABELS[status]}  ▾`}
+                  color={PROJECT_STATUS_COLORS[status]}
+                />
+              </Pressable>
+            ) : (
+              <Badge label={PROJECT_STATUS_LABELS[status]} color={PROJECT_STATUS_COLORS[status]} />
+            )}
+            {!canManage &&
+              depts.map((d) => <Badge key={d.slug} label={d.name} color={DEPT_COLORS[d.slug]} />)}
+          </View>
+
+          <View style={styles.dates}>
+            <Text style={styles.meta}>Start {shortDate(project.start_date)}</Text>
+            <Text style={styles.meta}>Due {shortDate(project.target_end_date)}</Text>
+          </View>
+
+          {canManage && (
+            <View style={styles.creatives}>
+              <Text style={styles.label}>DEPARTMENTS</Text>
+              <View style={styles.chipRow}>
+                {assignedDepts.map((d) => (
+                  <Pressable
+                    key={d.department_id}
+                    disabled={deptSaving}
+                    onPress={() => removeDeptMutation.mutate({ dept: d, assigned: assignedDepts })}
+                    style={[styles.chip, { borderColor: DEPT_COLORS[d.slug] ?? theme.colors.border }]}
+                  >
+                    <Text style={styles.chipText}>
+                      {d.is_primary ? `${d.name} · primary  ×` : `${d.name}  ×`}
+                    </Text>
+                  </Pressable>
+                ))}
+                {availableDepts.length > 0 && (
+                  <Pressable
+                    disabled={deptSaving}
+                    onPress={() => setDeptPickerOpen(true)}
+                    style={[styles.chip, styles.chipAdd]}
+                  >
+                    <Text style={styles.chipAddText}>+ Add</Text>
+                  </Pressable>
+                )}
+              </View>
+              {deptSaving && <Text style={styles.muted}>Saving…</Text>}
+            </View>
+          )}
+
+          {canManage && (
+            <View style={styles.creatives}>
+              <Text style={styles.label}>CREATIVES</Text>
+              <View style={styles.chipRow}>
+                {assignedCreatives.map((c) => (
+                  <Pressable
+                    key={c.profile_id}
+                    onPress={() => removeCreativeMutation.mutate(c.profile_id)}
+                    style={styles.chip}
+                  >
+                    <Text style={styles.chipText}>{c.full_name}  ×</Text>
+                  </Pressable>
+                ))}
+                {assignedCreatives.length === 0 && (
+                  <Text style={styles.muted}>No creatives assigned</Text>
+                )}
+                {availableCreatives.length > 0 && (
+                  <Pressable onPress={() => setCreativePickerOpen(true)} style={[styles.chip, styles.chipAdd]}>
+                    <Text style={styles.chipAddText}>+ Add</Text>
+                  </Pressable>
+                )}
+              </View>
+              {(addCreativeMutation.isPending || removeCreativeMutation.isPending) && (
+                <Text style={styles.muted}>Saving…</Text>
+              )}
+            </View>
+          )}
+        </GlassCard>
+
+        <GlassCard>
+          <Text style={styles.label}>MOODBOARD</Text>
+          {editingMoodboard ? (
+            <View style={styles.moodboardForm}>
+              <Input
+                label="Link"
+                value={moodboardDraft}
+                onChangeText={setMoodboardDraft}
+                placeholder="https://canva.com/…"
+              />
+              <Button
+                title="Save"
+                loading={moodboardMutation.isPending}
+                onPress={() => moodboardMutation.mutate(moodboardDraft.trim() || null)}
+              />
+              <Button title="Cancel" variant="ghost" onPress={() => setEditingMoodboard(false)} />
+            </View>
+          ) : moodboardUrl ? (
+            <View style={styles.moodboardRow}>
+              <Pressable
+                style={styles.flex}
+                onPress={() => Linking.openURL(moodboardUrl)}
+              >
+                <Text style={styles.link} numberOfLines={1}>
+                  {moodboardUrl}
+                </Text>
+              </Pressable>
+              {canEditMoodboard && (
+                <Pressable
+                  onPress={() => {
+                    setMoodboardDraft(moodboardUrl ?? '');
+                    setEditingMoodboard(true);
+                  }}
+                >
+                  <Text style={styles.editText}>Edit</Text>
+                </Pressable>
+              )}
+            </View>
+          ) : canEditMoodboard ? (
+            <Pressable
+              onPress={() => {
+                setMoodboardDraft('');
+                setEditingMoodboard(true);
+              }}
+            >
+              <Text style={styles.placeholderCard}>+ Link a moodboard</Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.muted}>No moodboard linked yet</Text>
+          )}
+        </GlassCard>
+
+        <Pressable onPress={openTasks}>
+          <GlassCard>
+            <Text style={styles.tileTitle}>Tasks</Text>
+            <Text style={styles.muted}>
+              {progress.total > 0
+                ? `${progress.done} / ${progress.total} done`
+                : 'No tasks yet'}
+            </Text>
+          </GlassCard>
+        </Pressable>
+
+        <Pressable onPress={openDeliverables}>
+          <GlassCard>
+            <Text style={styles.tileTitle}>Deliverables</Text>
+            <Text style={styles.muted}>{deliverableCount} total</Text>
+          </GlassCard>
+        </Pressable>
+
+        <Pressable onPress={openActivity}>
+          <GlassCard>
+            <Text style={styles.tileTitle}>Activity</Text>
+          </GlassCard>
+        </Pressable>
+      </ScrollView>
+
+      <PickerSheet
+        visible={statusPickerOpen}
+        title="Project status"
+        selected={status}
+        options={STATUSES.map((s) => ({ value: s, label: PROJECT_STATUS_LABELS[s] }))}
+        onSelect={chooseStatus}
+        onClose={() => setStatusPickerOpen(false)}
+      />
+      <PickerSheet
+        visible={creativePickerOpen}
+        title="Add creative"
+        options={availableCreatives.map((c) => ({ value: c.profile_id, label: c.full_name }))}
+        onSelect={(profileId) => {
+          setCreativePickerOpen(false);
+          addCreativeMutation.mutate(profileId);
+        }}
+        onClose={() => setCreativePickerOpen(false)}
+      />
+      <PickerSheet
+        visible={deptPickerOpen}
+        title="Add department"
+        options={availableDepts.map((d) => ({ value: d.id, label: d.name }))}
+        onSelect={(id) => {
+          setDeptPickerOpen(false);
+          addDeptMutation.mutate({ id, isFirst: assignedDepts.length === 0 });
+        }}
+        onClose={() => setDeptPickerOpen(false)}
+      />
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  scroll: { padding: 20, gap: 16, paddingBottom: 140 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
+  flex: { flex: 1 },
+  description: { color: theme.text.label, fontSize: 14, marginBottom: 12 },
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
+  dates: { flexDirection: 'row', gap: 16, marginTop: 12 },
+  meta: { color: theme.text.dim, fontSize: 12 },
+  creatives: { marginTop: 16, gap: 4 },
+  label: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: theme.text.label,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  chip: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  chipText: { color: theme.colors.foreground, fontSize: 13 },
+  chipAdd: {
+    borderColor: withAlpha(theme.colors.accentSolid, 0.3),
+    backgroundColor: withAlpha(theme.colors.accentSolid, 0.15),
+  },
+  chipAddText: { color: theme.colors.accent, fontSize: 13, fontWeight: '600' },
+  moodboardForm: { gap: 12, marginTop: 12 },
+  moodboardRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
+  link: { color: theme.colors.accent, fontSize: 13 },
+  editText: { color: theme.colors.accent, fontSize: 13, fontWeight: '600' },
+  placeholderCard: {
+    color: theme.text.dim,
+    fontSize: 13,
+    marginTop: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius,
+    paddingVertical: 18,
+    textAlign: 'center',
+  },
+  tileTitle: { color: '#fff', fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  muted: { color: theme.text.dim, fontSize: 13 },
+  error: { color: theme.colors.danger, fontSize: 13, textAlign: 'center' },
+});

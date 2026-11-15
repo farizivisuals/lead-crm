@@ -105,7 +105,20 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
     const target = ordered.find((s) => s.position === minPos);
     if (!target || target.id === task.current_stage_id) return;
     patchTask(task.id, { current_stage_id: target.id });
-    await supabase.from("tasks").update({ current_stage_id: target.id }).eq("id", task.id);
+    await saveTaskStage(task.id, target.id);
+  }
+
+  /** Write a task's stage and adopt whatever the database kept — the
+   *  shoot → edit handoff trigger can jump a shoot task straight to done. */
+  async function saveTaskStage(taskId: string, stageId: string) {
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ current_stage_id: stageId })
+      .eq("id", taskId)
+      .select("current_stage_id");
+    const saved = (data as { current_stage_id: string }[] | null)?.[0]?.current_stage_id;
+    if (!error && saved && saved !== stageId) patchTask(taskId, { current_stage_id: saved });
+    return { error };
   }
 
   async function moveDeliverable(task: Task, d: TaskDeliverable, dir: 1 | -1) {
@@ -137,10 +150,7 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
     const target = ordered[idx + dir];
     if (idx === -1 || !target) return;
     patchTask(task.id, { current_stage_id: target.id });
-    const { error } = await supabase
-      .from("tasks")
-      .update({ current_stage_id: target.id })
-      .eq("id", task.id);
+    const { error } = await saveTaskStage(task.id, target.id);
     if (error) patchTask(task.id, { current_stage_id: task.current_stage_id });
   }
 
@@ -247,10 +257,13 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
           const allDone = deliverables.length > 0
             ? deliverables.every((d) => deliverableStage(d, task)?.is_terminal)
             : taskStage?.is_terminal;
+          // Shoot → edit handoff: an edit task points at its shoot task.
+          const editTasks = localTasks.filter((t) => t.follows_task_id === task.id);
 
           return (
             <div
               key={task.id}
+              id={`task-${task.id}`}
               className={cn(
                 "rounded-xl border p-4 group transition-colors",
                 overdue
@@ -305,6 +318,27 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
 
               {/* Meta row */}
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                {task.follows_task_id && (
+                  <a
+                    href={`#task-${task.follows_task_id}`}
+                    className="text-[10px] font-medium text-sky-300/80 hover:text-sky-200"
+                  >
+                    ← Shoot task
+                  </a>
+                )}
+                {editTasks.length > 0 && (
+                  <span className="text-[10px] text-white/40">
+                    Edits:{" "}
+                    {editTasks.map((t, i) => (
+                      <span key={t.id}>
+                        {i > 0 && ", "}
+                        <a href={`#task-${t.id}`} className="font-medium text-sky-300/80 hover:text-sky-200">
+                          {t.employees?.profiles?.full_name?.split(" ")[0] ?? t.title}
+                        </a>
+                      </span>
+                    ))}
+                  </span>
+                )}
                 <span
                   className={cn(
                     "text-[10px] font-medium px-1.5 py-0.5 rounded-full border",

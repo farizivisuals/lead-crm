@@ -1,0 +1,49 @@
+{
+  "cli": {
+    "version": ">= 16.0.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://hlymjkqauershgkadtwk.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhseW1qa3FhdWVyc2hna2FkdHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MzE2MDIsImV4cCI6MjA5NDUwNzYwMn0.uwveppaWQDilunspWpSGpre_1zM09Y5eyOtx3_cvAr8"
+      },
+      "channel": "development"
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://hlymjkqauershgkadtwk.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhseW1qa3FhdWVyc2hna2FkdHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MzE2MDIsImV4cCI6MjA5NDUwNzYwMn0.uwveppaWQDilunspWpSGpre_1zM09Y5eyOtx3_cvAr8"
+      },
+      "channel": "preview"
+    },
+    "production": {
+      "autoIncrement": true,
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://hlymjkqauershgkadtwk.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhseW1qa3FhdWVyc2hna2FkdHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MzE2MDIsImV4cCI6MjA5NDUwNzYwMn0.uwveppaWQDilunspWpSGpre_1zM09Y5eyOtx3_cvAr8"
+      },
+      "channel": "production"
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6800221792"
+      }
+    }
+  }
+}
