@@ -12,6 +12,7 @@ import NewProjectDialog from "../../projects/NewProjectDialog";
 import QuoteDialog from "./QuoteDialog";
 import EditQuoteDialog from "./EditQuoteDialog";
 import DeleteQuoteButton from "./DeleteQuoteButton";
+import DeleteClientButton from "./DeleteClientButton";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
@@ -72,6 +73,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
         </Link>
         <span className="text-white/20">/</span>
         <span className="text-sm text-white/40 truncate max-w-[200px]">{client.company_name}</span>
+        <DeleteClientButton clientId={clientId} name={client.company_name} />
       </div>
 
       {/* Client info card */}
