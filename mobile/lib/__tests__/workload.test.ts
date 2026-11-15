@@ -131,8 +131,14 @@ describe('rowsForTeam', () => {
   const team = (key: string) => WORKLOAD_TEAMS.find((t) => t.key === key)!;
   const ids = (key: string) => rowsForTeam(rows, team(key)).map((r) => r.id).sort();
 
-  it('puts Creatives, Video and Photo together, once each', () => {
-    expect(ids('production')).toEqual(['ayah', 'maryam']);
+  it('puts Video and Photo together, once each', () => {
+    expect(ids('production')).toEqual(['maryam']);
+  });
+  it('gives Creatives their own tab', () => {
+    expect(ids('creatives')).toEqual(['ayah', 'maryam']);
+  });
+  it('orders the tabs Production, Creatives, Graphic Design, PR', () => {
+    expect(WORKLOAD_TEAMS.map((t) => t.label)).toEqual(['Production', 'Creatives', 'Graphic Design', 'PR']);
   });
   it('keeps PR and Graphic Design on their own', () => {
     expect(ids('pr')).toEqual(['mos']);

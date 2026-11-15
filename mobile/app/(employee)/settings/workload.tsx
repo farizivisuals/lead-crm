@@ -61,7 +61,14 @@ export default function WorkloadScreen() {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: t.key === team.key }}
                 >
-                  <Text style={[styles.tabText, t.key === team.key && styles.tabTextOn]}>{t.label}</Text>
+                  <Text
+                    style={[styles.tabText, t.key === team.key && styles.tabTextOn]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
+                    {t.label}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -139,7 +146,7 @@ const styles = StyleSheet.create({
   arrow: { color: '#fff', fontSize: 26, fontWeight: '300', paddingHorizontal: 8 },
   month: { color: '#fff', fontSize: 15, fontWeight: '600', minWidth: 130, textAlign: 'center' },
   tabs: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', marginBottom: 4 },
-  tab: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: 'center' },
+  tab: { flex: 1, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 9, alignItems: 'center' },
   tabOn: { backgroundColor: theme.colors.accentSolid },
   tabText: { color: theme.text.dim, fontSize: 13, fontWeight: '600' },
   tabTextOn: { color: theme.colors.accentInk },

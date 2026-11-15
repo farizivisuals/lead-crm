@@ -36,7 +36,8 @@ export type WorkloadRow = {
 
 /** Workload tabs: which departments each one shows. */
 export const WORKLOAD_TEAMS = [
-  { key: "production", label: "Production", slugs: ["creatives", "video", "photo"] },
+  { key: "production", label: "Production", slugs: ["video", "photo"] },
+  { key: "creatives", label: "Creatives", slugs: ["creatives"] },
   { key: "graphics", label: "Graphic Design", slugs: ["graphics"] },
   { key: "pr", label: "PR", slugs: ["pr"] },
 ] as const;

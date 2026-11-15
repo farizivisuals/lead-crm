@@ -40,7 +40,7 @@ they can spread work and spot who is overloaded or free.
   have work.
 
 ## Tabs
-Three tabs, one page each: **Production** (Creatives, Video, Photo),
+Four tabs, one page each: **Production** (Video, Photo), **Creatives**,
 **Graphic Design**, **PR**. Someone in several departments appears on each tab
 that covers one of them (once per tab); people with no department are on none.
 
