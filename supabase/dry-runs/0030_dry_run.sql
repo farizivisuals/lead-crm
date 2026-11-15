@@ -225,14 +225,14 @@ $m$;
   n := delete_employee(anwar, dina);
   r := r || E'\n1) Anwar -> Dina: tasks moved=' || n
     || ', left on Anwar=' || (SELECT count(*) FROM tasks WHERE assigned_to = anwar)
-    || ', login gone=' || NOT EXISTS (SELECT 1 FROM auth.users WHERE id = anwar)
+    || ', login gone=' || (NOT EXISTS (SELECT 1 FROM auth.users WHERE id = anwar))
     || ', new notifications=' || ((SELECT count(*) FROM notifications) - a);
 
   SELECT e.profile_id INTO sathya FROM employees e JOIN profiles p ON p.id = e.profile_id WHERE p.full_name ILIKE 'Sathya%';
   a := (SELECT count(*) FROM task_stage_history);
   n := delete_employee(sathya, root);
   r := r || E'\n2) Sathya -> root: tasks moved=' || n || ', history kept=' || ((SELECT count(*) FROM task_stage_history) = a)
-    || ', login gone=' || NOT EXISTS (SELECT 1 FROM auth.users WHERE id = sathya);
+    || ', login gone=' || (NOT EXISTS (SELECT 1 FROM auth.users WHERE id = sathya));
 
   SELECT e.profile_id INTO ceo2 FROM employees e JOIN profiles p ON p.id = e.profile_id WHERE e.role = 'ceo' AND p.full_name = 'Abdullah';
   PERFORM set_config('request.jwt.claims', json_build_object('sub', ceo2)::text, true);
@@ -247,13 +247,13 @@ $m$;
   a := (SELECT count(*) FROM notifications WHERE type = 'task_deleted');
   b := (SELECT count(*) FROM notifications WHERE type = 'project_deleted');
   DELETE FROM projects WHERE id = proj;
-  r := r || E'\n4) Project delete: gone=' || NOT EXISTS (SELECT 1 FROM projects WHERE id = proj)
+  r := r || E'\n4) Project delete: gone=' || (NOT EXISTS (SELECT 1 FROM projects WHERE id = proj))
     || ', per-task notices=' || ((SELECT count(*) FROM notifications WHERE type = 'task_deleted') - a)
     || ', project notices=' || ((SELECT count(*) FROM notifications WHERE type = 'project_deleted') - b);
 
   a := (SELECT count(*) FROM notifications WHERE type IN ('task_deleted', 'project_deleted'));
   PERFORM delete_client(oud);
-  r := r || E'\n5) Client delete: gone=' || NOT EXISTS (SELECT 1 FROM clients WHERE id = oud)
+  r := r || E'\n5) Client delete: gone=' || (NOT EXISTS (SELECT 1 FROM clients WHERE id = oud))
     || ', projects left=' || (SELECT count(*) FROM projects WHERE client_id = oud)
     || ', notices=' || ((SELECT count(*) FROM notifications WHERE type IN ('task_deleted', 'project_deleted')) - a);
 
