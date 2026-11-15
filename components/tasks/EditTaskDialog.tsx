@@ -22,6 +22,7 @@ import {
 import { Loader2, Trash2, Plus } from "lucide-react";
 import { bookingClashes, timeErrors, type Clash } from "@/lib/task-time";
 import { BusyWarning, TaskTimeFields } from "@/components/tasks/TaskTimeFields";
+import { GRAPHICS_SLUG, TIERS, tierHint, type Tier } from "@/lib/graphics";
 
 interface Employee {
   profile_id: string;
@@ -77,7 +78,9 @@ export default function EditTaskDialog({
     due_date: task.due_date?.slice(0, 10) ?? "",
     start_time: task.start_time?.slice(0, 5) ?? "",
     end_time: task.end_time?.slice(0, 5) ?? "",
+    tier: (task.tier ?? "") as Tier | "",
   });
+  const isGraphics = task.departments?.slug === GRAPHICS_SLUG;
 
   const currentStage = stages.find((s) => s.id === form.current_stage_id);
   const isShootStage = currentStage?.name.toLowerCase() === "shoot";
@@ -130,12 +133,16 @@ export default function EditTaskDialog({
       due_date: slot.due_date || null,
       start_time: slot.start_time,
       end_time: slot.end_time,
+      ...(isGraphics ? { tier: form.tier || null } : {}),
     };
 
-    const { error: err } = await supabase
+    // Read back the dates: the Graphic Design trigger may have set them.
+    const { data: savedRow, error: err } = await supabase
       .from("tasks")
       .update(patch)
-      .eq("id", task.id);
+      .eq("id", task.id)
+      .select("start_date, due_date")
+      .single();
 
     if (err) { setLoading(false); setError(err.message); return; }
 
@@ -238,6 +245,7 @@ export default function EditTaskDialog({
       : null;
     onSaved({
       ...patch,
+      ...(savedRow ?? {}),
       task_creatives,
       task_deliverables: finalDeliverables,
       employees: (assignee
@@ -264,8 +272,7 @@ export default function EditTaskDialog({
   const canSave =
     !loading &&
     !!form.title &&
-    !!form.start_date &&
-    (isShootStage || !!form.due_date);
+    (isGraphics ? !!form.tier : !!form.start_date && (isShootStage || !!form.due_date));
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -401,8 +408,31 @@ export default function EditTaskDialog({
             </Button>
           </div>
 
+          {isGraphics && (
+            <div className="space-y-2">
+              <Label>Type *</Label>
+              <div className="flex gap-2">
+                {TIERS.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => field("tier", t.value)}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
+                      form.tier === t.value
+                        ? "bg-white/[0.12] border-white/[0.3] text-white"
+                        : "bg-white/[0.04] border-white/[0.1] text-white/50 hover:text-white/80"
+                    }`}
+                  >
+                    {t.label} · {t.days} days
+                  </button>
+                ))}
+              </div>
+              {!form.start_date && <p className="text-xs text-white/40">{tierHint(form.tier)}</p>}
+            </div>
+          )}
+
           {/* Date fields: single shoot date vs start+due range */}
-          {isShootStage ? (
+          {isGraphics && !form.start_date ? null : isShootStage ? (
             <div className="space-y-2">
               <Label>Shoot date *</Label>
               <Input

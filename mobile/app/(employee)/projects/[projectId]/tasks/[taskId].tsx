@@ -19,6 +19,8 @@ import { GlassCard } from '../../../../../components/ui/GlassCard';
 import { Button } from '../../../../../components/ui/Button';
 import { Input } from '../../../../../components/ui/Input';
 import { TimeInputs } from '../../../../../components/ui/TimeInputs';
+import { TierPicker } from '../../../../../components/ui/TierPicker';
+import { GRAPHICS_SLUG, type Tier } from '@shared/graphics';
 import { readTimes } from '@shared/task-time';
 import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
 import { PickerSheet } from '../../../../../components/ui/PickerSheet';
@@ -71,6 +73,7 @@ export default function TaskDetailScreen() {
   // Optional slot, typed as "09:00". Blank = all day.
   const [startTimeText, setStartTimeText] = useState('');
   const [endTimeText, setEndTimeText] = useState('');
+  const [tier, setTier] = useState<Tier | null>(null);
   const [creativeIds, setCreativeIds] = useState<string[]>([]);
   const [originalCreativeIds, setOriginalCreativeIds] = useState<string[]>([]);
   // Optimistic stage while a move is in flight; null = show the persisted one.
@@ -102,6 +105,7 @@ export default function TaskDetailScreen() {
     setDueDate(row.due_date ?? '');
     setStartTimeText(row.start_time?.slice(0, 5) ?? '');
     setEndTimeText(row.end_time?.slice(0, 5) ?? '');
+    setTier(row.tier ?? null);
     const ids = (row.task_creatives ?? []).map((tc) => tc.profile_id);
     setCreativeIds(ids);
     setOriginalCreativeIds(ids);
@@ -329,10 +333,12 @@ export default function TaskDetailScreen() {
     ]);
   }
 
+  // Graphic Design: dates are set when it reaches Consultation, so until then
+  // only the type is required.
+  const isGraphics = one(task.data?.departments ?? null)?.slug === GRAPHICS_SLUG;
   const canSave =
     title.trim().length > 0 &&
-    startDate.length > 0 &&
-    (shoot || dueDate.length > 0);
+    (isGraphics ? !!tier : startDate.length > 0 && (shoot || dueDate.length > 0));
 
   function submit() {
     if (times.problem) {
@@ -352,6 +358,7 @@ export default function TaskDetailScreen() {
       isShoot: shoot,
       start_time: times.start_time,
       end_time: times.end_time,
+      ...(isGraphics ? { tier } : {}),
       creativesToAdd: toAdd,
       creativesToRemove: toRemove,
     });
@@ -451,7 +458,8 @@ export default function TaskDetailScreen() {
                 <Text style={styles.value}>{assigneeName}</Text>
               </Pressable>
 
-              {shoot ? (
+              {isGraphics && <TierPicker value={tier} onChange={setTier} showHint={!startDate} />}
+              {isGraphics && !startDate ? null : shoot ? (
                 <Input
                   label="Shoot date"
                   value={startDate}
@@ -474,12 +482,14 @@ export default function TaskDetailScreen() {
                   />
                 </>
               )}
-              <TimeInputs
-                start={startTimeText}
-                end={endTimeText}
-                onStart={setStartTimeText}
-                onEnd={setEndTimeText}
-              />
+              {!isGraphics && (
+                <TimeInputs
+                  start={startTimeText}
+                  end={endTimeText}
+                  onStart={setStartTimeText}
+                  onEnd={setEndTimeText}
+                />
+              )}
             </View>
           </GlassCard>
 

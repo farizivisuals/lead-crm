@@ -18,13 +18,14 @@ export type TaskDetail = {
   due_date: string | null;
   start_time: string | null;
   end_time: string | null;
+  tier: 'basic' | 'premium' | null;
   assigned_to: string | null;
   follows_task_id: string | null;
   department_stages:
     | { id: string; name: string; is_terminal: boolean; color: string | null }
     | { id: string; name: string; is_terminal: boolean; color: string | null }[]
     | null;
-  departments: { name: string } | { name: string }[] | null;
+  departments: { name: string; slug: string } | { name: string; slug: string }[] | null;
   employees: { profiles: { full_name: string } | null } | { profiles: { full_name: string } | null }[] | null;
   task_creatives: { profile_id: string }[] | null;
   task_deliverables: TaskDeliverable[] | null;
@@ -39,7 +40,7 @@ export function useTask(taskId: string) {
       const { data, error } = await supabase
         .from('tasks')
         .select(
-          `*, department_stages(*), departments(name), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name))), ${TASK_DELIVERABLES_SELECT}`
+          `*, department_stages(*), departments(name, slug), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees!task_creatives_profile_id_fkey(profiles(full_name))), ${TASK_DELIVERABLES_SELECT}`
         )
         .eq('id', taskId)
         .single();
@@ -221,6 +222,8 @@ export type SaveTaskInput = {
   /** "HH:MM", or null for an all-day task. Both or neither. */
   start_time: string | null;
   end_time: string | null;
+  /** Graphic Design only; leave undefined to keep it as it is. */
+  tier?: 'basic' | 'premium' | null;
   creativesToAdd: string[];
   creativesToRemove: string[];
 };
@@ -243,6 +246,7 @@ export async function saveTask(input: SaveTaskInput) {
       due_date: shootDueDate(input.isShoot, input.start_date, input.due_date) || null,
       start_time: input.start_time,
       end_time: input.end_time,
+      ...(input.tier !== undefined ? { tier: input.tier } : {}),
     })
     .eq('id', input.taskId);
   if (error) throw error;
@@ -283,6 +287,8 @@ export type CreateTaskInput = {
   start_time: string | null;
   end_time: string | null;
   assigned_to: string | null;
+  /** Graphic Design only. */
+  tier: 'basic' | 'premium' | null;
   creativeProfileIds: string[];
   /** Deliverable titles ("Video 1", "Video 2"), created in the starting stage. */
   deliverableTitles: string[];
@@ -306,10 +312,11 @@ export async function createTask(input: CreateTaskInput): Promise<string> {
       title: input.title,
       description: input.description || null,
       priority: input.priority,
-      start_date: input.start_date,
-      due_date: shootDueDate(input.isShoot, input.start_date, input.due_date),
+      start_date: input.start_date || null,
+      due_date: shootDueDate(input.isShoot, input.start_date, input.due_date) || null,
       start_time: input.start_time,
       end_time: input.end_time,
+      tier: input.tier,
       assigned_to: input.assigned_to || null,
       created_by: input.userId,
     })

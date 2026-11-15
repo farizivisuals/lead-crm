@@ -165,6 +165,8 @@ export interface Task {
   /** Optional slot, "HH:MM:SS" from Postgres. Both or neither. */
   start_time: string | null;
   end_time: string | null;
+  /** Graphic Design only. */
+  tier: "basic" | "premium" | null;
   assigned_to: string | null;
   /** Edit task → the shoot task it follows (see 0025_shoot_edit_handoff). */
   follows_task_id: string | null;

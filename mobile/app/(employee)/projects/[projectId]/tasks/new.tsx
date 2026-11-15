@@ -19,6 +19,8 @@ import { GlassCard } from '../../../../../components/ui/GlassCard';
 import { Button } from '../../../../../components/ui/Button';
 import { Input } from '../../../../../components/ui/Input';
 import { TimeInputs } from '../../../../../components/ui/TimeInputs';
+import { TierPicker } from '../../../../../components/ui/TierPicker';
+import { GRAPHICS_SLUG, type Tier } from '@shared/graphics';
 import { readTimes } from '@shared/task-time';
 import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
 import { PickerSheet } from '../../../../../components/ui/PickerSheet';
@@ -67,6 +69,9 @@ export default function NewTaskScreen() {
   }, [departments.map((d) => d.id).join(','), deptId]);
 
   const pickers = useTaskPickers(projectId, deptId ?? undefined);
+  // Graphic Design: pick Basic/Premium; dates are set when it reaches Consultation.
+  const isGraphics = departments.find((d) => d.id === deptId)?.slug === GRAPHICS_SLUG;
+  const [tier, setTier] = useState<Tier | null>(null);
   const firstStage = pickers.data?.stages[0] ?? null;
 
   // Shoot → edit handoff (web parity: NewTaskDialog "Plan the edit").
@@ -166,12 +171,11 @@ export default function NewTaskScreen() {
     !!firstStage &&
     !!session?.user.id &&
     title.trim().length > 0 &&
-    startDate.length > 0 &&
-    (shoot || dueDate.length > 0);
+    (isGraphics ? !!tier : startDate.length > 0 && (shoot || dueDate.length > 0));
 
   async function submit() {
     if (!canSubmit) return;
-    if (times.problem) {
+    if (!isGraphics && times.problem) {
       Alert.alert('Check the time', times.problem);
       return;
     }
@@ -219,11 +223,12 @@ export default function NewTaskScreen() {
       title: title.trim(),
       description,
       priority,
-      start_date: startDate,
-      due_date: dueDate,
+      start_date: isGraphics ? '' : startDate,
+      due_date: isGraphics ? '' : dueDate,
       isShoot: shoot,
-      start_time: times.start_time,
-      end_time: times.end_time,
+      start_time: isGraphics ? null : times.start_time,
+      end_time: isGraphics ? null : times.end_time,
+      tier: isGraphics ? tier : null,
       assigned_to: assignedTo,
       creativeProfileIds: creativeIds,
       deliverableTitles: deliverables,
@@ -288,7 +293,9 @@ export default function NewTaskScreen() {
                 <Text style={styles.value}>{assigneeName}</Text>
               </Pressable>
 
-              {shoot ? (
+              {isGraphics ? (
+                <TierPicker value={tier} onChange={setTier} />
+              ) : shoot ? (
                 <Input
                   label="Shoot date"
                   value={startDate}
@@ -311,12 +318,14 @@ export default function NewTaskScreen() {
                   />
                 </>
               )}
-              <TimeInputs
-                start={startTimeText}
-                end={endTimeText}
-                onStart={setStartTimeText}
-                onEnd={setEndTimeText}
-              />
+              {!isGraphics && (
+                <TimeInputs
+                  start={startTimeText}
+                  end={endTimeText}
+                  onStart={setStartTimeText}
+                  onEnd={setEndTimeText}
+                />
+              )}
             </View>
           </GlassCard>
 

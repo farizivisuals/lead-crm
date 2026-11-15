@@ -143,6 +143,7 @@ const taskInput = {
   isShoot: false,
   start_time: null,
   end_time: null,
+  tier: undefined,
   creativesToAdd: ['creative-new'],
   creativesToRemove: ['creative-old'],
 };
@@ -173,6 +174,16 @@ describe('saveTask', () => {
     recordInto();
     await saveTask(taskInput);
     expect(calls.find((c) => c.op === 'update')!.payload).toMatchObject({ start_time: null, end_time: null });
+  });
+
+  it('writes the Graphic Design type only when given', async () => {
+    recordInto();
+    await saveTask({ ...taskInput, tier: 'premium' });
+    expect(calls.find((c) => c.op === 'update')!.payload.tier).toBe('premium');
+
+    recordInto();
+    await saveTask(taskInput);
+    expect('tier' in calls.find((c) => c.op === 'update')!.payload).toBe(false);
   });
 
   it('collapses a shoot task onto its start date', async () => {

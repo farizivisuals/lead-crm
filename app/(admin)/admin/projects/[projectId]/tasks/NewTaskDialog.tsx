@@ -13,6 +13,7 @@ import type { DepartmentStage } from "@/lib/types";
 import { createShootWithEdits, editStageAfterShoot, shootEditClashes, shootEditErrors, type EditBlock } from "@/lib/shoot-edit";
 import { bookingClashes, timeErrors, type Clash } from "@/lib/task-time";
 import { BusyWarning, TaskTimeFields } from "@/components/tasks/TaskTimeFields";
+import { GRAPHICS_SLUG, TIERS, tierHint, type Tier } from "@/lib/graphics";
 
 const emptyBlock = (): EditBlock => ({ editorId: "", editorName: "", startDate: "", dueDate: "", videos: [] });
 
@@ -31,6 +32,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState("");
+  const [tier, setTier] = useState<Tier | "">("");
   // The project's creatives are on every new task by default — they should
   // get the shoot and the edits. Untick to leave someone off.
   const allCreativeIds = creatives.map((c) => c.profile_id);
@@ -67,12 +69,15 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     setDeliverables([]);
     setDeliverableInput("");
     setPlanEdit(false);
+    setTier("");
     resetEditBlocks();
   }
 
   const deptStages = stages.filter((s) => s.department_id === selectedDeptId);
   const firstStage = deptStages[0];
   const canPlanEdit = !!editStageAfterShoot(deptStages);
+  // Graphic Design: pick Basic/Premium; dates are set when it reaches Consultation.
+  const isGraphics = departments.find((d) => d.id === selectedDeptId)?.slug === GRAPHICS_SLUG;
   const editing = planEdit && canPlanEdit;
   // A planned-edit booking has one shoot date, like a task that starts in Shoot.
   const isShootStage = firstStage?.name.toLowerCase() === "shoot" || editing;
@@ -173,10 +178,11 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
       title: form.title,
       description: form.description || null,
       priority: form.priority,
-      start_date: slot.start_date,
-      due_date: slot.due_date,
-      start_time: slot.start_time,
-      end_time: slot.end_time,
+      start_date: isGraphics ? null : slot.start_date,
+      due_date: isGraphics ? null : slot.due_date,
+      start_time: isGraphics ? null : slot.start_time,
+      end_time: isGraphics ? null : slot.end_time,
+      tier: isGraphics ? tier : null,
       assigned_to: form.assigned_to || null,
       created_by: user?.id,
     }).select("id").single();
@@ -214,8 +220,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     !loading &&
     !!form.title &&
     !!selectedDeptId &&
-    !!form.start_date &&
-    (isShootStage || !!form.due_date);
+    (isGraphics ? !!tier : !!form.start_date && (isShootStage || !!form.due_date));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -369,8 +374,29 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
             )}
           </div>}
 
-          {/* Date fields: single shoot date vs start+due range */}
-          {isShootStage ? (
+          {/* Date fields: Graphic Design type, single shoot date, or start+due range */}
+          {isGraphics ? (
+            <div className="space-y-2">
+              <Label>Type *</Label>
+              <div className="flex gap-2">
+                {TIERS.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setTier(t.value)}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
+                      tier === t.value
+                        ? "bg-white/[0.12] border-white/[0.3] text-white"
+                        : "bg-white/[0.04] border-white/[0.1] text-white/50 hover:text-white/80"
+                    }`}
+                  >
+                    {t.label} · {t.days} days
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-white/40">{tierHint(tier)}</p>
+            </div>
+          ) : isShootStage ? (
             <div className="space-y-2">
               <Label>Shoot date *</Label>
               <Input
@@ -403,11 +429,13 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
             </div>
           )}
 
-          <TaskTimeFields
-            start={form.start_time}
-            end={form.end_time}
-            onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
-          />
+          {!isGraphics && (
+            <TaskTimeFields
+              start={form.start_time}
+              end={form.end_time}
+              onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+            />
+          )}
 
           {canPlanEdit && (
             <label className="flex items-center gap-2 text-sm text-white/80 cursor-pointer">

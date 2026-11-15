@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import { timeRange } from "@/lib/task-time";
+import { tierLabel } from "@/lib/graphics";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -116,9 +117,11 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
       .from("tasks")
       .update({ current_stage_id: stageId })
       .eq("id", taskId)
-      .select("current_stage_id");
-    const saved = (data as { current_stage_id: string }[] | null)?.[0]?.current_stage_id;
-    if (!error && saved && saved !== stageId) patchTask(taskId, { current_stage_id: saved });
+      .select("current_stage_id, start_date, due_date");
+    // Adopt the stage and dates the database kept: the Graphic Design trigger
+    // sets dates on reaching Consultation.
+    const saved = (data as { current_stage_id: string; start_date: string | null; due_date: string | null }[] | null)?.[0];
+    if (!error && saved) patchTask(taskId, saved);
     return { error };
   }
 
@@ -348,6 +351,11 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
                 >
                   {task.priority}
                 </span>
+                {tierLabel(task.tier) && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-orange-400/30 text-orange-300 bg-orange-400/10">
+                    {tierLabel(task.tier)}
+                  </span>
+                )}
                 {task.due_date && (
                   <span
                     className={cn(
