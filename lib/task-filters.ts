@@ -9,29 +9,20 @@ export type KindInput = {
   id: string;
   follows_task_id: string | null;
   department_id: string;
-  /** Position of the task's current stage. */
-  stage_position: number | null;
 };
 
 /**
- * Shoot or edit, for the calendar filter. A linked edit task is always an
- * edit and a shoot with linked edits is always a shoot (it jumps to Delivered
- * on handoff). Anything else in a department with a "Shoot" stage is a shoot
- * up to that stage and an edit after it. Departments with no Shoot stage
- * (Creatives, PR) are neither.
+ * Shoot or edit, for the calendar filter. A linked edit task is an edit. Any
+ * other task in a department with a "Shoot" stage (Video, Photo) is a shoot,
+ * whatever stage it has reached — its dates are the shoot booking.
+ * Departments with no Shoot stage (Creatives, PR) are neither.
  *
  * @param shootPositions department id → position of its "Shoot" stage
  */
 export function taskKinds(tasks: KindInput[], shootPositions: Record<string, number>): Map<string, TaskKind> {
-  const hasEdits = new Set(tasks.map((t) => t.follows_task_id).filter(Boolean));
   const kinds = new Map<string, TaskKind>();
   for (const t of tasks) {
-    const shootPos = shootPositions[t.department_id];
-    let kind: TaskKind = "other";
-    if (t.follows_task_id) kind = "edit";
-    else if (hasEdits.has(t.id)) kind = "shoot";
-    else if (shootPos != null && t.stage_position != null) kind = t.stage_position <= shootPos ? "shoot" : "edit";
-    kinds.set(t.id, kind);
+    kinds.set(t.id, t.follows_task_id ? "edit" : shootPositions[t.department_id] != null ? "shoot" : "other");
   }
   return kinds;
 }

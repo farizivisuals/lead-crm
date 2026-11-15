@@ -33,7 +33,7 @@ export default async function CalendarPage({ searchParams }: Props) {
 
   let tasksQuery = supabase
     .from("tasks")
-    .select("id, title, start_date, due_date, department_id, project_id, priority, assigned_to, follows_task_id, department_stages!current_stage_id(color, position), departments(name), projects(clients(company_name))")
+    .select("id, title, start_date, due_date, department_id, project_id, priority, assigned_to, follows_task_id, department_stages!current_stage_id(color), departments(name), projects(clients(company_name))")
     .order("created_at");
 
   // Someone's tasks include the ones they are a creative on.
@@ -83,7 +83,6 @@ export default async function CalendarPage({ searchParams }: Props) {
       id: t.id,
       follows_task_id: t.follows_task_id,
       department_id: t.department_id,
-      stage_position: (t.department_stages as unknown as { position: number } | null)?.position ?? null,
     })),
     shootPositions
   );

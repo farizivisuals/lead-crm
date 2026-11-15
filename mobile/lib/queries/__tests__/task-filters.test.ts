@@ -8,28 +8,18 @@ import { taskKinds, isMine, myTaskFilter, type KindInput } from '@shared/task-fi
 const SHOOT_POS = { video: 2 };
 
 function t(over: Partial<KindInput> & { id: string }): KindInput {
-  return { follows_task_id: null, department_id: 'video', stage_position: 1, ...over };
+  return { follows_task_id: null, department_id: 'video', ...over };
 }
 
 describe('taskKinds', () => {
-  it('a task before or at the Shoot stage is a shoot', () => {
-    const k = taskKinds([t({ id: 'a', stage_position: 1 }), t({ id: 'b', stage_position: 2 })], SHOOT_POS);
-    expect(k.get('a')).toBe('shoot');
-    expect(k.get('b')).toBe('shoot');
-  });
-
-  it('a task past the Shoot stage is an edit', () => {
-    expect(taskKinds([t({ id: 'a', stage_position: 3 })], SHOOT_POS).get('a')).toBe('edit');
+  it('a Video/Photo task is a shoot at any stage — its dates are the shoot booking', () => {
+    expect(taskKinds([t({ id: 'a' })], SHOOT_POS).get('a')).toBe('shoot');
   });
 
   it('a linked edit task is an edit wherever it sits', () => {
-    const k = taskKinds([t({ id: 's' }), t({ id: 'e', follows_task_id: 's', stage_position: 2 })], SHOOT_POS);
-    expect(k.get('e')).toBe('edit');
-  });
-
-  it('a shoot with linked edits stays a shoot after it closes', () => {
-    const k = taskKinds([t({ id: 's', stage_position: 4 }), t({ id: 'e', follows_task_id: 's', stage_position: 3 })], SHOOT_POS);
+    const k = taskKinds([t({ id: 's' }), t({ id: 'e', follows_task_id: 's' })], SHOOT_POS);
     expect(k.get('s')).toBe('shoot');
+    expect(k.get('e')).toBe('edit');
   });
 
   it('a department with no Shoot stage is neither', () => {

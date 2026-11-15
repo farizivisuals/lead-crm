@@ -31,10 +31,7 @@ export type CalendarTaskRow = {
   project_id: string;
   follows_task_id: string | null;
   department_id: string;
-  department_stages:
-    | { color: string | null; position?: number }
-    | { color: string | null; position?: number }[]
-    | null;
+  department_stages: { color: string | null } | { color: string | null }[] | null;
   employees: ProfileName | ProfileName[] | null;
   task_creatives: { profile_id: string; employees: ProfileName | ProfileName[] | null }[] | null;
 };
@@ -91,7 +88,7 @@ export function useCalendarTasks() {
         supabase
           .from('tasks')
           .select(
-            'id, title, start_date, due_date, assigned_to, project_id, follows_task_id, department_id, department_stages!current_stage_id(color, position), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees(profiles(full_name)))'
+            'id, title, start_date, due_date, assigned_to, project_id, follows_task_id, department_id, department_stages!current_stage_id(color), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees(profiles(full_name)))'
           )
           .or('start_date.not.is.null,due_date.not.is.null'),
         // Each department's "Shoot" stage, to tell shoots from edits.
@@ -104,14 +101,11 @@ export function useCalendarTasks() {
       for (const s of (shootRes.data ?? []) as { department_id: string; position: number }[]) {
         shootPositions[s.department_id] ??= s.position;
       }
-      // Classified across every row, so an edit task marks its shoot even when
-      // only one of the pair is dated.
       const kinds = taskKinds(
         rows.map((r) => ({
           id: r.id,
           follows_task_id: r.follows_task_id,
           department_id: r.department_id,
-          stage_position: one(r.department_stages)?.position ?? null,
         })),
         shootPositions
       );
