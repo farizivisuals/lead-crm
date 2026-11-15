@@ -19,10 +19,13 @@ export type WorkloadRow = {
   id: string;
   name: string;
   role: EmployeeRole;
-  /** One per working day of the month. */
-  booked: boolean[];
+  /** Tasks + video phases on each working day of the month (0 = free). */
+  perDay: number[];
+  /** Days with at least one thing on. */
   bookedCount: number;
+  /** Open tasks: assigned to them plus the ones they're a creative on. */
   tasks: number;
+  /** Of `tasks`, how many are as a creative. */
   creativeTasks: number;
   videos: number;
   clients: number;
@@ -52,41 +55,44 @@ export function loadLevel(booked: number, total: number): "low" | "mid" | "high"
 export function computeWorkload(input: WorkloadInput, days: string[], today: string): WorkloadRow[] {
   const taskById = new Map(input.tasks.map((t) => [t.id, t]));
   const rows = input.employees.map((e): WorkloadRow => {
-    const mine = input.tasks.filter((t) => t.assigned_to === e.id);
-    const open = mine.filter((t) => t.open);
-    const creative = input.creatives
+    const assigned = input.tasks.filter((t) => t.assigned_to === e.id);
+    // A creative's shoots are their work too (finished ones still book past days).
+    const asCreative = input.creatives
       .filter((c) => c.profile_id === e.id)
       .map((c) => taskById.get(c.task_id))
-      .filter((t): t is NonNullable<typeof t> => !!t && t.open && t.assigned_to !== e.id);
+      .filter((t): t is NonNullable<typeof t> => !!t && t.assigned_to !== e.id);
+    const all = [...assigned, ...asCreative];
+    const open = assigned.filter((t) => t.open);
+    const openCreative = asCreative.filter((t) => t.open);
     const phases = input.phases.filter((p) => p.assigned_to === e.id);
     const waiting = phases.filter((p) => p.current && p.open);
 
-    const booked = days.map(
+    const perDay = days.map(
       (day) =>
-        mine.some((t) => {
+        all.filter((t) => {
           const s = t.start_date ?? t.due_date;
           const end = t.due_date ?? t.start_date;
           return !!s && !!end && s <= day && day <= end;
-        }) || phases.some((p) => p.scheduled_date === day)
+        }).length + phases.filter((p) => p.scheduled_date === day).length
     );
     const clients = new Set(
-      [...open, ...creative, ...waiting].map((x) => x.client_id).filter((c): c is string => !!c)
+      [...open, ...openCreative, ...waiting].map((x) => x.client_id).filter((c): c is string => !!c)
     );
     return {
       id: e.id,
       name: e.name,
       role: e.role,
-      booked,
-      bookedCount: booked.filter(Boolean).length,
-      tasks: open.length,
-      creativeTasks: creative.length,
+      perDay,
+      bookedCount: perDay.filter((n) => n > 0).length,
+      tasks: open.length + openCreative.length,
+      creativeTasks: openCreative.length,
       videos: waiting.length,
       clients: clients.size,
       overdue: open.filter((t) => t.due_date && t.due_date < today).length,
     };
   });
   return rows
-    .filter((r) => r.role === "employee" || r.role === "manager" || r.bookedCount + r.tasks + r.creativeTasks + r.videos > 0)
+    .filter((r) => r.role === "employee" || r.role === "manager" || r.bookedCount + r.tasks + r.videos > 0)
     .sort((a, b) => b.bookedCount - a.bookedCount || b.tasks - a.tasks || a.name.localeCompare(b.name));
 }
 

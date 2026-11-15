@@ -60,7 +60,7 @@ export default function WorkloadScreen() {
         }
         renderItem={({ item }) => <WorkloadCard row={item} days={data!.days} />}
         ListFooterComponent={
-          data ? <Text style={styles.footer}>Tasks, videos and clients are what's open right now.</Text> : null
+          data ? <Text style={styles.footer}>Darker squares are days with 2+ tasks. Tasks, videos and clients are what's open right now.</Text> : null
         }
       />
     </Screen>
@@ -91,14 +91,15 @@ function WorkloadCard({ row, days }: { row: WorkloadRow; days: string[] }) {
             key={d}
             style={[
               styles.day,
-              { backgroundColor: row.booked[i] ? color : 'rgba(255,255,255,0.08)' },
+              { backgroundColor: row.perDay[i] ? color : 'rgba(255,255,255,0.08)' },
+              row.perDay[i] === 1 && styles.light,
               d === today && styles.today,
             ]}
           />
         ))}
       </View>
       <View style={styles.stats}>
-        <Stat value={row.tasks} label="Tasks" note={row.creativeTasks ? `+${row.creativeTasks} creative` : undefined} />
+        <Stat value={row.tasks} label="Tasks" note={row.creativeTasks ? `${row.creativeTasks} as creative` : undefined} />
         <Stat value={row.videos} label="Videos" />
         <Stat value={row.clients} label="Clients" />
         <Stat value={row.overdue} label="Overdue" alert={row.overdue > 0} />
@@ -133,6 +134,7 @@ const styles = StyleSheet.create({
   strip: { flexDirection: 'row', gap: 2, marginTop: 8 },
   day: { flex: 1, height: 8, borderRadius: 2 },
   today: { borderWidth: 1, borderColor: '#fff' },
+  light: { opacity: 0.5 },
   stats: { flexDirection: 'row', marginTop: 14 },
   stat: { flex: 1, alignItems: 'center' },
   statValue: { color: '#fff', fontSize: 18, fontWeight: '700' },

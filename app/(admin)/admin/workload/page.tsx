@@ -86,10 +86,11 @@ export default async function WorkloadPage({ searchParams }: { searchParams: Pro
                   {days.map((d, i) => (
                     <span
                       key={d}
-                      title={`${d}${r.booked[i] ? " · booked" : " · free"}`}
+                      title={`${d} · ${r.perDay[i] ? `${r.perDay[i]} task${r.perDay[i] > 1 ? "s" : ""}` : "free"}`}
                       className={cn(
                         "h-2.5 flex-1 rounded-[3px]",
-                        r.booked[i] ? level.bar : "bg-white/[0.07]",
+                        r.perDay[i] ? level.bar : "bg-white/[0.07]",
+                        r.perDay[i] === 1 && "opacity-50",
                         d === today && "ring-1 ring-white/70"
                       )}
                     />
@@ -98,7 +99,7 @@ export default async function WorkloadPage({ searchParams }: { searchParams: Pro
               </div>
 
               <div className="grid grid-cols-4 gap-4 lg:w-80 text-center">
-                <Stat value={r.tasks} label="Tasks" note={r.creativeTasks ? `+${r.creativeTasks} creative` : undefined} />
+                <Stat value={r.tasks} label="Tasks" note={r.creativeTasks ? `${r.creativeTasks} as creative` : undefined} />
                 <Stat value={r.videos} label="Videos" />
                 <Stat value={r.clients} label="Clients" />
                 <Stat value={r.overdue} label="Overdue" alert={r.overdue > 0} />
@@ -107,7 +108,7 @@ export default async function WorkloadPage({ searchParams }: { searchParams: Pro
           );
         })}
       </div>
-      <p className="text-xs text-white/30">Click someone to see their calendar. Today is outlined in the day strip.</p>
+      <p className="text-xs text-white/30">Click someone to see their calendar. Darker squares are days with 2+ tasks; today is outlined.</p>
     </div>
   );
 }

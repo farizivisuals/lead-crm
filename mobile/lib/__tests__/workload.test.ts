@@ -38,8 +38,27 @@ describe('computeWorkload', () => {
       days,
       today
     );
-    expect(row(rows, 'dawood').booked).toEqual([true, true, false, true]);
+    expect(row(rows, 'dawood').perDay).toEqual([1, 1, 0, 1]);
     expect(row(rows, 'dawood').bookedCount).toBe(3);
+  });
+
+  it("counts a creative's moodboard and the shoot they're on that day as two tasks", () => {
+    const rows = computeWorkload(
+      {
+        ...base,
+        tasks: [
+          { id: 'mood', assigned_to: 'dawood', start_date: '2026-11-02', due_date: null, client_id: 'a', open: true },
+          { id: 'shoot', assigned_to: 'quintin', start_date: '2026-11-02', due_date: '2026-11-03', client_id: 'b', open: true },
+        ],
+        creatives: [{ task_id: 'shoot', profile_id: 'dawood' }],
+      },
+      days,
+      today
+    );
+    const d = row(rows, 'dawood');
+    expect(d.perDay).toEqual([0, 2, 1, 0]);
+    expect(d.bookedCount).toBe(2);
+    expect(d.tasks).toBe(2);
   });
 
   it('books the day a video phase is scheduled', () => {
@@ -48,7 +67,7 @@ describe('computeWorkload', () => {
       days,
       today
     );
-    expect(row(rows, 'quintin').booked).toEqual([false, false, true, false]);
+    expect(row(rows, 'quintin').perDay).toEqual([0, 0, 1, 0]);
   });
 
   it('counts open tasks, creative roles, videos waiting, clients and overdue', () => {
@@ -71,7 +90,7 @@ describe('computeWorkload', () => {
       today
     );
     const d = row(rows, 'dawood');
-    expect(d.tasks).toBe(2); // t3 is finished
+    expect(d.tasks).toBe(3); // t1, t2 assigned + t4 as creative; t3 is finished
     expect(d.creativeTasks).toBe(1);
     expect(d.videos).toBe(1); // only the phase it's currently in
     expect(d.clients).toBe(3); // a, b (tasks), c (creative); z is finished, d isn't current
