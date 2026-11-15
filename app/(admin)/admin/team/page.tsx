@@ -20,6 +20,10 @@ export default async function TeamPage() {
     supabase.from("departments").select("*").order("name"),
   ]);
 
+  const people = (employees ?? [])
+    .map((e) => ({ id: e.profile_id as string, name: (e.profiles as { full_name: string } | null)?.full_name ?? "" }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   type EmpArr = NonNullable<typeof employees>;
   const byDept: Record<string, EmpArr> = {};
   const noDept: EmpArr = [];
@@ -66,6 +70,7 @@ export default async function TeamPage() {
               title: e.title,
             }}
             departments={departments ?? []}
+            people={people}
           />
           <LoginLinkButton getLink={getEmployeeLoginLink.bind(null, e.profile_id)} />
           <CredentialsPopover getCredentials={resetEmployeePassword.bind(null, e.profile_id)} />

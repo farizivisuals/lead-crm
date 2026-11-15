@@ -23,6 +23,7 @@ import {
   addProjectDepartment,
   removeProjectDepartment,
   updateProjectDetails,
+  deleteProject,
   type AssignedDepartment,
 } from '../../../../lib/queries/project-detail';
 import { PROJECT_STATUS_COLORS, theme, withAlpha } from '../../../../lib/theme';
@@ -39,6 +40,30 @@ export default function ProjectDetailScreen() {
   const canEditMoodboard = canManage || isCreativeEmployee(employee);
 
   const { data, isLoading, error } = useProjectDetail(projectId);
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteProject(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.projects() });
+      queryClient.invalidateQueries({ queryKey: qk.allTasks() });
+      queryClient.invalidateQueries({ queryKey: qk.dashboards() });
+      queryClient.invalidateQueries({ queryKey: qk.calendarTasks() });
+      queryClient.invalidateQueries({ queryKey: qk.calendarProjects() });
+      router.back();
+    },
+    onError: (e: Error) => Alert.alert('Could not delete project', e.message),
+  });
+
+  function confirmDeleteProject(name: string) {
+    Alert.alert(
+      'Delete project',
+      `Delete "${name}"? This permanently removes the project with all its tasks, videos and deliverables. It can't be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate() },
+      ]
+    );
+  }
 
   // Optimistic mirror of the persisted status; null means "show the server's".
   const [pendingStatus, setPendingStatus] = useState<ProjectStatus | null>(null);
@@ -415,6 +440,15 @@ export default function ProjectDetailScreen() {
             <Text style={styles.tileTitle}>Activity</Text>
           </GlassCard>
         </Pressable>
+
+        {canManage && (
+          <Button
+            title="Delete project"
+            variant="destructive"
+            onPress={() => confirmDeleteProject(project.name)}
+            loading={deleteMutation.isPending}
+          />
+        )}
       </ScrollView>
 
       <PickerSheet

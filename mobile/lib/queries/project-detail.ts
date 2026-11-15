@@ -205,3 +205,10 @@ export async function removeProjectDepartment(
       .eq('department_id', next.department_id);
   }
 }
+
+/** Executives only (RLS). Takes its tasks, videos and deliverables with it. */
+export async function deleteProject(projectId: string) {
+  const { data, error } = await supabase.from('projects').delete().eq('id', projectId).select('id');
+  if (error) throw error;
+  if (!data?.length) throw new Error('Only executives can delete projects');
+}

@@ -254,7 +254,7 @@ export default async function DashboardPage({ searchParams }: Props) {
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-white/55 leading-snug">
                         <span className="font-semibold text-white/80">
-                          {(log.profiles as { full_name: string })?.full_name}
+                          {(log.profiles as { full_name: string })?.full_name ?? "Deleted employee"}
                         </span>{" "}
                         moved{" "}
                         <span className="font-semibold text-white/80">

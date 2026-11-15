@@ -20,6 +20,16 @@ export async function updateProjectStatus(projectId: string, status: ProjectStat
   return {};
 }
 
+/** Executives only (RLS). Takes its tasks, videos and deliverables with it. */
+export async function deleteProject(projectId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("projects").delete().eq("id", projectId).select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "Only executives can delete projects" };
+  revalidatePath("/admin/projects");
+  return {};
+}
+
 export async function updateProjectDetails(
   projectId: string,
   details: { name: string; description: string; start_date: string; target_end_date: string }

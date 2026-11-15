@@ -105,18 +105,15 @@ async function syncDepartments(profileId: string, departmentIds: string[]) {
   return null;
 }
 
-export async function deleteEmployee(profileId: string) {
-  const { error, user, role } = await requireExec();
-  if (error || !user || !role) return { error: error ?? "Unauthorized" };
-  if (user.id === profileId) return { error: "You cannot delete your own account" };
-  const rankError = await requireOutranks(user.id, role, profileId);
-  if (rankError.error) return { error: rankError.error };
-  const admin = createAdminClient();
-
-  // Cascades auth.users → profiles → employees. Fails (FK restrict) if they
-  // still own projects/tasks/etc — surfaced to the caller rather than
-  // silently orphaning records.
-  const { error: delError } = await admin.auth.admin.deleteUser(profileId);
+// The database does it all (migration 0030): rank checks, handing their open
+// work to `handoverTo`, keeping their history, and removing the login.
+export async function deleteEmployee(profileId: string, handoverTo: string) {
+  const { error, supabase } = await requireExec();
+  if (error || !supabase) return { error: error ?? "Unauthorized" };
+  const { error: delError } = await supabase.rpc("delete_employee", {
+    p_profile_id: profileId,
+    p_handover: handoverTo,
+  });
   if (delError) return { error: delError.message };
 
   revalidatePath("/admin/team");

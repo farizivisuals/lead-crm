@@ -95,7 +95,7 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
                     <p className="font-semibold text-white/90 mt-2">{d.title}</p>
 
                     <div className="flex items-center gap-2 mt-1.5 text-xs text-white/35 flex-wrap">
-                      <span>By {(d.profiles as { full_name: string })?.full_name}</span>
+                      <span>By {(d.profiles as { full_name: string })?.full_name ?? "Deleted employee"}</span>
                       <span className="text-white/15">·</span>
                       <span>{formatDate(d.submitted_at)}</span>
                     </div>
@@ -110,7 +110,7 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
                           <p className="text-sm text-white/50 mt-1 leading-relaxed">{latestRevision.note}</p>
                         )}
                         <p className="text-xs text-white/25 mt-1.5">
-                          by {latestRevision.profiles?.full_name} · {formatDate(latestRevision.created_at)}
+                          by {latestRevision.profiles?.full_name ?? "Deleted employee"} · {formatDate(latestRevision.created_at)}
                         </p>
                       </div>
                     )}

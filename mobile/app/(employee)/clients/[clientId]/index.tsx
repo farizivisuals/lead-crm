@@ -1,14 +1,16 @@
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { PROJECT_STATUS_LABELS } from '@shared/rbac';
+import { isExecutive, PROJECT_STATUS_LABELS } from '@shared/rbac';
 import { Screen } from '../../../../components/ui/Screen';
+import { Button } from '../../../../components/ui/Button';
+import { useAuth } from '../../../../lib/auth';
 import { GlassCard } from '../../../../components/ui/GlassCard';
 import { Badge } from '../../../../components/ui/Badge';
 import { ScreenHeader } from '../../../../components/ui/ScreenHeader';
 import { one, shortDate } from '../../../../lib/data';
 import { qk } from '../../../../lib/queries/keys';
-import { useClientDetail, type QuoteRow } from '../../../../lib/queries/clients';
+import { deleteClient, useClientDetail, type QuoteRow } from '../../../../lib/queries/clients';
 import { deleteQuote, formatKD, quoteTotal } from '../../../../lib/queries/quotes';
 import { PROJECT_STATUS_COLORS, QUOTE_STATUS_COLORS, theme } from '../../../../lib/theme';
 
@@ -18,6 +20,31 @@ export default function ClientDetailScreen() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useClientDetail(clientId);
+  const { employee } = useAuth();
+  const canDelete = isExecutive(employee?.role ?? 'employee');
+
+  const removeClient = useMutation({
+    mutationFn: () => deleteClient(clientId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.clients() });
+      queryClient.invalidateQueries({ queryKey: qk.projects() });
+      queryClient.invalidateQueries({ queryKey: qk.allTasks() });
+      queryClient.invalidateQueries({ queryKey: qk.dashboards() });
+      router.back();
+    },
+    onError: (e: Error) => Alert.alert('Could not delete client', e.message),
+  });
+
+  function confirmDeleteClient(name: string) {
+    Alert.alert(
+      'Delete client',
+      `Delete ${name}? This permanently removes the client, their projects, tasks, quotes and portal login. It can't be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => removeClient.mutate() },
+      ]
+    );
+  }
 
   const removeQuote = useMutation({
     mutationFn: deleteQuote,
@@ -155,6 +182,15 @@ export default function ClientDetailScreen() {
               </GlassCard>
             </Pressable>
           ))
+        )}
+
+        {canDelete && (
+          <Button
+            title="Delete client"
+            variant="destructive"
+            onPress={() => confirmDeleteClient(client.company_name)}
+            loading={removeClient.isPending}
+          />
         )}
       </ScrollView>
     </Screen>

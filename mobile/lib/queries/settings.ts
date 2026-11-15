@@ -17,7 +17,7 @@ export type TeamData = {
   departments: { id: string; name: string }[];
 };
 
-/** Read-only on mobile — adding and editing employees needs service_role. */
+/** Adding and editing employees is web-only (needs service_role); deleting is deleteEmployee below. */
 export function useTeam() {
   return useQuery({
     queryKey: qk.team(),
@@ -111,5 +111,14 @@ export async function updateFullName(userId: string, fullName: string) {
  */
 export async function updateOwnPassword(password: string) {
   const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
+
+/** Hands their open work to `handoverTo`, keeps their history, removes the login (migration 0030). */
+export async function deleteEmployee(profileId: string, handoverTo: string) {
+  const { error } = await supabase.rpc('delete_employee', {
+    p_profile_id: profileId,
+    p_handover: handoverTo,
+  });
   if (error) throw error;
 }

@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Pencil } from "lucide-react";
-import { updateProjectDetails } from "./actions";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { deleteProject, updateProjectDetails } from "./actions";
 
 interface Props {
   projectId: string;
@@ -19,6 +19,7 @@ export default function EditProjectDialog({ projectId, initial }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState(toForm(initial));
 
   async function handleSubmit(e: React.FormEvent) {
@@ -30,6 +31,15 @@ export default function EditProjectDialog({ projectId, initial }: Props) {
     if (res.error) { setError(res.error); return; }
     setOpen(false);
     router.refresh();
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Delete "${initial.name}"? This permanently removes the project with all its tasks, videos and deliverables. It can't be undone.`)) return;
+    setDeleting(true);
+    setError(null);
+    const res = await deleteProject(projectId);
+    if (res.error) { setError(res.error); setDeleting(false); return; }
+    router.push("/admin/projects");
   }
 
   return (
@@ -92,6 +102,16 @@ export default function EditProjectDialog({ projectId, initial }: Props) {
               Save changes
             </Button>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDelete}
+              disabled={deleting || loading}
+              title="Delete project"
+              className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </Button>
           </div>
         </form>
       </DialogContent>

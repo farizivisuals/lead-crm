@@ -63,7 +63,7 @@ export default async function ActivityPage({ params }: { params: Promise<{ proje
                   <Clock className="h-4 w-4 text-gray-300 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-sm text-gray-700">
-                      <span className="font-medium">{(h.profiles as { full_name: string })?.full_name}</span>
+                      <span className="font-medium">{(h.profiles as { full_name: string })?.full_name ?? "Deleted employee"}</span>
                       {" moved "}
                       <span className="font-medium">{(h.tasks as { title: string })?.title}</span>
                       {h.from_stage && (
@@ -92,7 +92,7 @@ export default async function ActivityPage({ params }: { params: Promise<{ proje
                 <li key={c.id} className="px-6 py-3">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm font-medium text-gray-800">
-                      {(c.profiles as { full_name: string })?.full_name}
+                      {(c.profiles as { full_name: string })?.full_name ?? "Deleted employee"}
                     </span>
                     {!c.is_client_visible && (
                       <span className="text-xs bg-yellow-50 text-yellow-700 px-1.5 py-0.5 rounded">Internal</span>

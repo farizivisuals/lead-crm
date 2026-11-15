@@ -184,38 +184,15 @@ export async function updateClient(clientId: string, input: {
   return { success: true };
 }
 
+// The database removes the client, everything under it and their portal
+// logins in one go (migration 0030) — same path as the app.
 export async function deleteClient(clientId: string) {
   const supabase = await createClient();
-  const admin = createAdminClient();
   const { error: guardError } = await requireExec();
   if (guardError) return { error: guardError };
 
-  const { data: client } = await supabase
-    .from("clients")
-    .select("primary_contact_profile_id")
-    .eq("id", clientId)
-    .single();
-  if (!client) return { error: "Client not found" };
-
-  const { data: contacts } = await admin
-    .from("client_contacts")
-    .select("profile_id")
-    .eq("client_id", clientId);
-
-  // Client row first: it cascades projects/quotes/contacts (and everything
-  // hanging off them). The portal users have to go after — clients and
-  // revisions reference profiles without ON DELETE, so removing the auth
-  // users first would be blocked by those FKs.
-  const { error: delError } = await admin.from("clients").delete().eq("id", clientId);
+  const { error: delError } = await supabase.rpc("delete_client", { p_client_id: clientId });
   if (delError) return { error: delError.message };
-
-  const profileIds = new Set([
-    client.primary_contact_profile_id as string,
-    ...(contacts ?? []).map((c) => c.profile_id as string),
-  ]);
-  for (const profileId of profileIds) {
-    await admin.auth.admin.deleteUser(profileId);
-  }
 
   revalidatePath("/admin/clients");
   return { success: true };

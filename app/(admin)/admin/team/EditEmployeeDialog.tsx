@@ -21,9 +21,11 @@ interface Props {
     title: string | null;
   };
   departments: Department[];
+  /** Everyone else on the team: who can take over this person's work. */
+  people: { id: string; name: string }[];
 }
 
-export default function EditEmployeeDialog({ profileId, initialData, departments }: Props) {
+export default function EditEmployeeDialog({ profileId, initialData, departments, people }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,6 +33,8 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [handoverTo, setHandoverTo] = useState("");
   const [form, setForm] = useState({
     full_name: initialData.full_name,
     email: "",
@@ -50,6 +54,8 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
     if (!isOpen) {
       setError(null);
       setSaved(false);
+      setConfirmingDelete(false);
+      setHandoverTo("");
     }
   }
 
@@ -66,10 +72,10 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete ${form.full_name}? This permanently removes their account and access.`)) return;
+    if (!handoverTo) return;
     setDeleting(true);
     setError(null);
-    const result = await deleteEmployee(profileId);
+    const result = await deleteEmployee(profileId, handoverTo);
     if (result.error) { setError(result.error); setDeleting(false); return; }
     setDeleting(false);
     setOpen(false);
@@ -147,6 +153,38 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
             </div>
           )}
 
+          {confirmingDelete && (
+            <div className="space-y-3 rounded-lg border border-red-500/25 bg-red-500/[0.06] p-3">
+              <p className="text-sm text-white/80">
+                Delete {form.full_name}? Their login is removed for good. Their open tasks, videos and projects go
+                to the person you pick; finished work keeps its history.
+              </p>
+              <div className="space-y-2">
+                <Label>Hand their work to *</Label>
+                <Select value={handoverTo} onValueChange={setHandoverTo}>
+                  <SelectTrigger><SelectValue placeholder="Pick someone" /></SelectTrigger>
+                  <SelectContent>
+                    {people.filter((p) => p.id !== profileId).map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={!handoverTo || deleting}
+                  className="flex-1 bg-red-600 text-white hover:bg-red-500"
+                >
+                  {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Delete {form.full_name.split(" ")[0]}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setConfirmingDelete(false)}>Keep</Button>
+              </div>
+            </div>
+          )}
+
           {error && (
             <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">{error}</p>
           )}
@@ -165,8 +203,8 @@ export default function EditEmployeeDialog({ profileId, initialData, departments
             <Button
               type="button"
               variant="outline"
-              onClick={handleDelete}
-              disabled={deleting || loading}
+              onClick={() => setConfirmingDelete(true)}
+              disabled={deleting || loading || confirmingDelete}
               title="Delete employee"
               className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
             >

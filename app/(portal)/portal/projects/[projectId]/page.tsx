@@ -265,7 +265,7 @@ export default async function PortalProjectPage({ params }: { params: Promise<{ 
                 <div key={c.id} className="px-5 py-3">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium text-white/80">
-                      {(c.profiles as { full_name: string })?.full_name}
+                      {(c.profiles as { full_name: string })?.full_name ?? "Deleted employee"}
                     </span>
                     <span className="text-xs text-white/30">{formatRelative(c.created_at)}</span>
                   </div>

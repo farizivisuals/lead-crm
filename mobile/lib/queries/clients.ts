@@ -94,3 +94,9 @@ export function useClientDetail(clientId: string) {
     },
   });
 }
+
+/** The client, everything under it and their portal logins (migration 0030). */
+export async function deleteClient(clientId: string) {
+  const { error } = await supabase.rpc('delete_client', { p_client_id: clientId });
+  if (error) throw error;
+}
