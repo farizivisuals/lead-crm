@@ -109,7 +109,8 @@ Deno.serve(async (req: Request) => {
 
   // Email first: it shouldn't depend on the person having the app installed.
   let emailed: string | null = null;
-  const resendKey = Deno.env.get("RESEND_API_KEY");
+  // Forgive the usual paste slips in the dashboard: spaces, quotes, "Bearer ".
+  const resendKey = Deno.env.get("RESEND_API_KEY")?.trim().replace(/^["']|["']$/g, "").replace(/^Bearer\s+/i, "").trim();
   if (resendKey && EMAIL_TYPES.has(n.type)) {
     const { data: u } = await supabase.auth.admin.getUserById(n.recipient_profile_id);
     const { data: p } = await supabase.from("profiles").select("full_name").eq("id", n.recipient_profile_id).maybeSingle();
