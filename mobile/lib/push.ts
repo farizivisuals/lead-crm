@@ -97,7 +97,9 @@ export async function unregisterPushToken(userId: string): Promise<void> {
 export function routeForNotification(
   entityType: string | null | undefined,
   entityId: string | null | undefined,
-  userType: UserType | null | undefined
+  userType: UserType | null | undefined,
+  /** send-push adds the task's project, so the tap can open the task itself. */
+  projectId?: string | null
 ): { pathname: string; params: Record<string, string> } | null {
   if (!entityId || !userType) return null;
   const group = userType === 'client' ? '/(client)' : '/(employee)';
@@ -108,6 +110,12 @@ export function routeForNotification(
         params: { projectId: entityId },
       };
     case 'task':
+      if (userType === 'employee' && projectId) {
+        return {
+          pathname: '/(employee)/projects/[projectId]/tasks/[taskId]',
+          params: { projectId, taskId: entityId },
+        };
+      }
       // The notification carries the TASK id, and the task screen is nested
       // under its project — which we would need a round trip to discover. My
       // Tasks lists it without one, so it is the honest destination. Clients

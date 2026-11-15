@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 import type { Task, TaskDeliverable, DepartmentStage } from "@/lib/types";
 import {
@@ -16,6 +17,7 @@ import {
 import { formatDate, cn } from "@/lib/utils";
 import { timeRange } from "@/lib/task-time";
 import { tierLabel } from "@/lib/graphics";
+import { canMarkDone, markDoneAction } from "@/lib/task-steps";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -47,6 +49,9 @@ interface Props {
   employees: Employee[];
   creatives?: { profile_id: string; full_name: string }[];
   deptName: string;
+  /** Signed-in user and whether they're an executive — for "Mark done". */
+  userId?: string;
+  isExec?: boolean;
 }
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -58,7 +63,9 @@ const PRIORITY_STYLES: Record<string, string> = {
 
 const NONE = "_none";
 
-export default function TaskCards({ stages, tasks, employees, creatives = [], deptName }: Props) {
+export default function TaskCards({ stages, tasks, employees, creatives = [], deptName, userId, isExec = false }: Props) {
+  const router = useRouter();
+  const [marking, setMarking] = useState<string | null>(null);
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [supabase] = useState(() => createClient());
@@ -77,6 +84,15 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
 
   const deliverableStage = (d: TaskDeliverable, task: Task) =>
     stageById(d.current_stage_id ?? task.current_stage_id);
+
+  /** Finish the current step (videos move together) — the database notifies everyone. */
+  async function markDone(task: Task) {
+    setMarking(task.id);
+    const { error } = await supabase.rpc("complete_task_step", { p_task_id: task.id });
+    setMarking(null);
+    if (error) window.alert(error.message);
+    else router.refresh();
+  }
 
   function patchTask(taskId: string, patch: Partial<Task>) {
     setLocalTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...patch } : t)));
@@ -558,6 +574,24 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
                   </div>
                 )
               )}
+
+              {canMarkDone(task.assigned_to, userId, isExec) &&
+                (() => {
+                  const action = markDoneAction(ordered, task.current_stage_id);
+                  return (
+                    action && (
+                      <Button
+                        size="sm"
+                        onClick={() => markDone(task)}
+                        disabled={marking === task.id}
+                        className="mt-3 w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-500 text-white"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {marking === task.id ? "Saving…" : action.label}
+                      </Button>
+                    )
+                  );
+                })()}
             </div>
           );
         })}

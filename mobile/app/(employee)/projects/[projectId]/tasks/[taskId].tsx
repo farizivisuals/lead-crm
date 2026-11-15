@@ -13,7 +13,8 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { TaskPriority } from '@shared/types';
-import { PRIORITY_LABELS } from '@shared/rbac';
+import { isExecutive, PRIORITY_LABELS } from '@shared/rbac';
+import { canMarkDone, markDoneAction } from '@shared/task-steps';
 import { Screen } from '../../../../../components/ui/Screen';
 import { GlassCard } from '../../../../../components/ui/GlassCard';
 import { Button } from '../../../../../components/ui/Button';
@@ -42,6 +43,7 @@ import {
   useTaskPickers,
   useAvailabilityConflicts,
   moveTaskStage,
+  completeTaskStep,
   saveTask,
   deleteTask,
   isShootStage,
@@ -56,7 +58,7 @@ export default function TaskDetailScreen() {
   const { projectId, taskId } = useLocalSearchParams<{ projectId: string; taskId: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { session } = useAuth();
+  const { session, employee } = useAuth();
 
   const task = useTask(taskId);
   const pickers = useTaskPickers(projectId, task.data?.department_id);
@@ -154,6 +156,21 @@ export default function TaskDetailScreen() {
     excludeTaskId: taskId,
   });
   const conflicting = conflicts.data ?? [];
+
+  // "Mark done" for the assignee (or an executive): finish this step.
+  const doneAction = markDoneAction(stages, task.data?.current_stage_id ?? '');
+  const showDone =
+    !!doneAction &&
+    canMarkDone(task.data?.assigned_to ?? null, session?.user.id, isExecutive(employee?.role ?? 'employee'));
+  const doneMutation = useMutation({
+    mutationFn: () => completeTaskStep(taskId),
+    onSuccess: () => {
+      for (const key of [qk.task(taskId), qk.projectTasks(projectId), qk.project(projectId), qk.projects(), qk.allTasks(), qk.dashboards()]) {
+        queryClient.invalidateQueries({ queryKey: key });
+      }
+    },
+    onError: (e: Error) => Alert.alert('Could not mark it done', e.message),
+  });
 
   const moveMutation = useMutation({
     mutationFn: (nextStageId: string) => moveTaskStage(taskId, nextStageId),
@@ -435,6 +452,14 @@ export default function TaskDetailScreen() {
               )}
             </Pressable>
           </GlassCard>
+
+          {showDone && (
+            <Button
+              title={`✓  ${doneAction!.label}`}
+              onPress={() => doneMutation.mutate()}
+              loading={doneMutation.isPending}
+            />
+          )}
 
           <GlassCard>
             <View style={styles.form}>

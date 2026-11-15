@@ -6,6 +6,7 @@ import { Screen } from '../ui/Screen';
 import { GlassCard } from '../ui/GlassCard';
 import { Badge } from '../ui/Badge';
 import { TaskBadges } from '../ui/TaskBadges';
+import { RecentNotifications } from './RecentNotifications';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { isTaskOverdue, one, shortDate } from '../../lib/data';
 import { useEmployeeDashboard } from '../../lib/queries/dashboard';
@@ -66,6 +67,8 @@ export function EmployeeDashboard({ userId }: { userId: string }) {
             label="In review"
           />
         </View>
+
+        <RecentNotifications userId={userId} />
 
         <Text style={styles.sectionTitle}>My Tasks</Text>
 

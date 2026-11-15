@@ -59,8 +59,9 @@ export function SessionGate() {
       const data = response.notification.request.content.data as {
         entity_type?: string;
         entity_id?: string;
+        project_id?: string | null;
       };
-      const route = routeForNotification(data?.entity_type, data?.entity_id, userType);
+      const route = routeForNotification(data?.entity_type, data?.entity_id, userType, data?.project_id);
       if (route) router.push(route as never);
     });
     return () => sub.remove();

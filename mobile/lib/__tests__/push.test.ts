@@ -24,6 +24,13 @@ describe('routeForNotification', () => {
     });
   });
 
+  it('opens the task itself when the push carries its project', () => {
+    expect(routeForNotification('task', 't1', 'employee', 'p1')).toEqual({
+      pathname: '/(employee)/projects/[projectId]/tasks/[taskId]',
+      params: { projectId: 'p1', taskId: 't1' },
+    });
+  });
+
   it('sends an employee task notification to My Tasks', () => {
     // The payload carries the TASK id, but the task screen is nested under a
     // project we would need a round trip to discover. My Tasks lists it.

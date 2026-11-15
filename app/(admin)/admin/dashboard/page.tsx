@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import RecentNotifications from "@/components/notifications/RecentNotifications";
 import { myTaskFilter } from "@/lib/task-filters";
 import { requireEmployee } from "@/lib/auth/guards";
 import { Badge } from "@/components/ui/badge";
@@ -144,6 +145,8 @@ export default async function DashboardPage({ searchParams }: Props) {
           )}
         </div>
       </div>
+
+      <RecentNotifications userId={user.id} />
 
       {/* Stats grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -322,6 +325,8 @@ async function EmployeeDashboard({ userId }: { userId: string }) {
         <h1 className="text-2xl font-bold text-white tracking-tight">My Work</h1>
         <p className="text-white/35 text-sm mt-1">Your assigned tasks and client approval status.</p>
       </div>
+
+      <RecentNotifications userId={userId} />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* My Tasks */}

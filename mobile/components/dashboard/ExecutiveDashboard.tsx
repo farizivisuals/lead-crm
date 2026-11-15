@@ -20,6 +20,7 @@ import { Screen } from '../ui/Screen';
 import { GlassCard } from '../ui/GlassCard';
 import { Badge } from '../ui/Badge';
 import { ScreenHeader } from '../ui/ScreenHeader';
+import { RecentNotifications } from './RecentNotifications';
 import { PickerSheet } from '../ui/PickerSheet';
 import { one, relativeTime, shortDate } from '../../lib/data';
 import { useExecutiveDashboard } from '../../lib/queries/dashboard';
@@ -31,7 +32,7 @@ import {
   withAlpha,
 } from '../../lib/theme';
 
-export function ExecutiveDashboard() {
+export function ExecutiveDashboard({ userId }: { userId: string }) {
   const router = useRouter();
   // Local, per-screen, not persisted — web parity (see the task preamble).
   const [deptId, setDeptId] = useState<string | null>(null);
@@ -69,6 +70,8 @@ export function ExecutiveDashboard() {
         />
 
         {error && <Text style={styles.error}>{error.message}</Text>}
+
+        <RecentNotifications userId={userId} />
 
         <View style={styles.tiles}>
           <Tile

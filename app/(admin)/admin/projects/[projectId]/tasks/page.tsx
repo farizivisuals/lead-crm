@@ -10,7 +10,7 @@ import { isExecutive } from "@/lib/rbac";
 
 export default async function TasksPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const { employee } = await requireEmployee();
+  const { user, employee } = await requireEmployee();
   const canManage = isExecutive(employee?.role ?? "employee");
   const supabase = await createClient();
 
@@ -111,6 +111,8 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
                 employees={deptEmployees.filter((e) => e.department_ids.includes(dept.id))}
                 creatives={projectCreatives}
                 deptName={dept.name}
+                userId={user?.id}
+                isExec={canManage}
               />
             </div>
           );

@@ -201,6 +201,12 @@ export function diffCreatives(
 }
 
 /** The stage move. One column, one row — identical to the web board's drop write. */
+/** "Mark done": finish the current step (videos move together). The database notifies everyone. */
+export async function completeTaskStep(taskId: string) {
+  const { error } = await supabase.rpc('complete_task_step', { p_task_id: taskId });
+  if (error) throw error;
+}
+
 export async function moveTaskStage(taskId: string, stageId: string) {
   const { error } = await supabase
     .from('tasks')
