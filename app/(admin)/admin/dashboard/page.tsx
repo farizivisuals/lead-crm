@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { myTaskFilter } from "@/lib/task-filters";
 import { requireEmployee } from "@/lib/auth/guards";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -292,12 +293,14 @@ const approvalVariants: Record<string, "secondary" | "purple" | "warning" | "suc
 
 async function EmployeeDashboard({ userId }: { userId: string }) {
   const supabase = await createClient();
+  // Tasks assigned to them, plus tasks they are a creative on.
+  const mine = await myTaskFilter(supabase, userId);
 
   const [{ data: tasks }, { data: deliverables }] = await Promise.all([
     supabase
       .from("tasks")
       .select("id, title, priority, due_date, project_id, projects(name), department_stages!current_stage_id(name, is_terminal)")
-      .eq("assigned_to", userId)
+      .or(mine)
       .order("due_date", { ascending: true, nullsFirst: false }),
     // Approval status of deliverables this employee submitted.
     supabase

@@ -6,34 +6,44 @@ import MineToggle from "@/components/filters/MineToggle";
 import EmployeeFilter from "@/components/filters/EmployeeFilter";
 import { isExecutive } from "@/lib/rbac";
 import { requireEmployee } from "@/lib/auth/guards";
+import { myTaskFilter, taskKinds, type TaskKind } from "@/lib/task-filters";
+import Link from "next/link";
+
+const KINDS = [
+  { value: "tasks", label: "All" },
+  { value: "shoot", label: "Shoots" },
+  { value: "edit", label: "Edits" },
+  { value: "projects", label: "Projects" },
+] as const;
+type Kind = (typeof KINDS)[number]["value"];
 
 interface Props {
-  searchParams: Promise<{ mine?: string; emp?: string }>;
+  searchParams: Promise<{ mine?: string; emp?: string; kind?: string }>;
 }
 
 export default async function CalendarPage({ searchParams }: Props) {
-  const { mine, emp } = await searchParams;
+  const { mine, emp, kind: kindParam } = await searchParams;
   const isMine = mine === "1";
+  const kind: Kind = KINDS.some((k) => k.value === kindParam) ? (kindParam as Kind) : "tasks";
 
   const [{ user, employee }, supabase] = await Promise.all([requireEmployee(), createClient()]);
   const isExec = isExecutive(employee?.role ?? "employee");
+  // Whose calendar: an employee an executive picked, me, or everyone.
+  const target = isExec && emp ? emp : isMine && user ? user.id : null;
 
   let tasksQuery = supabase
     .from("tasks")
-    .select("id, title, start_date, due_date, department_id, project_id, priority, assigned_to, department_stages!current_stage_id(color), departments(name), projects(clients(company_name))")
+    .select("id, title, start_date, due_date, department_id, project_id, priority, assigned_to, follows_task_id, department_stages!current_stage_id(color, position), departments(name), projects(clients(company_name))")
     .order("created_at");
 
-  if (isExec && emp) {
-    tasksQuery = tasksQuery.eq("assigned_to", emp);
-  } else if (isMine && user) {
-    tasksQuery = tasksQuery.eq("assigned_to", user.id);
-  }
+  // Someone's tasks include the ones they are a creative on.
+  if (target) tasksQuery = tasksQuery.or(await myTaskFilter(supabase, target));
 
   // Scheduled deliverable phases (e.g. "Video 1 Shoot") with a date set.
   let delivQuery = supabase
     .from("task_deliverable_assignments")
     .select(
-      "deliverable_id, stage_id, scheduled_date, assigned_to, department_stages(name, color), task_deliverables!inner(title, tasks!inner(project_id, department_id, projects(clients(company_name))))"
+      "deliverable_id, stage_id, scheduled_date, assigned_to, department_stages(name, color, position), task_deliverables!inner(title, tasks!inner(project_id, department_id, projects(clients(company_name))))"
     )
     .not("scheduled_date", "is", null);
 
@@ -43,7 +53,7 @@ export default async function CalendarPage({ searchParams }: Props) {
     delivQuery = delivQuery.eq("assigned_to", user.id);
   }
 
-  const [{ data: tasks }, { data: delivRows }, { data: employees }, { data: stageRows }] =
+  const [{ data: tasks }, { data: delivRows }, { data: employees }, { data: stageRows }, { data: projectRows }] =
     await Promise.all([
       tasksQuery,
       delivQuery,
@@ -53,9 +63,31 @@ export default async function CalendarPage({ searchParams }: Props) {
         : Promise.resolve({ data: [] as { profile_id: string; profiles: unknown }[] }),
       supabase
         .from("department_stages")
-        .select("name, position, color, departments(name)")
+        .select("name, position, color, department_id, departments(name)")
         .order("position"),
+      kind === "projects"
+        ? supabase
+            .from("projects")
+            .select("id, name, start_date, target_end_date, project_creatives(profile_id), clients(company_name)")
+            .or("start_date.not.is.null,target_end_date.not.is.null")
+        : Promise.resolve({ data: [] as never[] }),
     ]);
+
+  // Each department's "Shoot" stage, to tell shoots from edits.
+  const shootPositions: Record<string, number> = {};
+  for (const s of stageRows ?? []) {
+    if (s.name.toLowerCase() === "shoot") shootPositions[s.department_id] ??= s.position;
+  }
+  const kinds = taskKinds(
+    (tasks ?? []).map((t) => ({
+      id: t.id,
+      follows_task_id: t.follows_task_id,
+      department_id: t.department_id,
+      stage_position: (t.department_stages as unknown as { position: number } | null)?.position ?? null,
+    })),
+    shootPositions
+  );
+  const keep = (k: TaskKind) => kind === "tasks" || kind === k;
 
   const empList = (employees ?? []).map((e) => ({
     id: e.profile_id,
@@ -63,7 +95,7 @@ export default async function CalendarPage({ searchParams }: Props) {
   }));
 
   const datedEvents: CalendarEvent[] = (tasks ?? [])
-    .filter((t) => t.start_date || t.due_date)
+    .filter((t) => (t.start_date || t.due_date) && keep(kinds.get(t.id) ?? "other"))
     .map((t) => {
       const clientName = (t.projects as unknown as { clients?: { company_name: string } } | null)?.clients?.company_name;
       return {
@@ -80,7 +112,15 @@ export default async function CalendarPage({ searchParams }: Props) {
       };
     });
 
-  const deliverableEvents: CalendarEvent[] = (delivRows ?? []).map((r) => {
+  const deliverableEvents: CalendarEvent[] = (delivRows ?? [])
+    .filter((r) => {
+      // A deliverable's phase is a shoot up to the Shoot stage, an edit after.
+      const pos = (r.department_stages as unknown as { position: number } | null)?.position;
+      const deptId = (r.task_deliverables as unknown as { tasks: { department_id: string } }).tasks.department_id;
+      const shootPos = shootPositions[deptId];
+      return keep(shootPos == null || pos == null ? "other" : pos <= shootPos ? "shoot" : "edit");
+    })
+    .map((r) => {
     const stage = r.department_stages as unknown as { name: string; color: string | null } | null;
     const td = r.task_deliverables as unknown as {
       title: string;
@@ -106,9 +146,45 @@ export default async function CalendarPage({ searchParams }: Props) {
     };
   });
 
-  const allEvents = [...datedEvents, ...deliverableEvents];
+  // Project timelines: a person's projects are the ones they are a creative on
+  // or hold a task in.
+  const targetProjects = new Set((tasks ?? []).map((t) => t.project_id));
+  const projectEvents: CalendarEvent[] = (projectRows ?? [])
+    .filter(
+      (p) =>
+        !target ||
+        targetProjects.has(p.id) ||
+        ((p.project_creatives ?? []) as { profile_id: string }[]).some((c) => c.profile_id === target)
+    )
+    .map((p) => {
+      const clientName = (p.clients as unknown as { company_name: string } | null)?.company_name;
+      return {
+        id: p.id,
+        entity_id: p.id,
+        entity_type: "project" as const,
+        title: clientName ? `${p.name} - ${clientName}` : p.name,
+        start: (p.start_date ?? p.target_end_date) as string,
+        end: p.target_end_date ?? null,
+        color: "#a1a1aa",
+        department_id: null,
+        client_id: null,
+        project_id: p.id,
+      };
+    });
 
-  const undatedTasks = (tasks ?? []).filter((t) => !t.start_date && !t.due_date);
+  const allEvents = kind === "projects" ? projectEvents : [...datedEvents, ...deliverableEvents];
+
+  const undatedTasks =
+    kind === "tasks" ? (tasks ?? []).filter((t) => !t.start_date && !t.due_date) : [];
+
+  const kindHref = (k: Kind) => {
+    const params = new URLSearchParams();
+    if (isMine) params.set("mine", "1");
+    if (emp) params.set("emp", emp);
+    if (k !== "tasks") params.set("kind", k);
+    const q = params.toString();
+    return q ? `?${q}` : "?";
+  };
 
   const PRIORITY_COLOR: Record<string, string> = {
     low: "bg-white/20",
@@ -145,9 +221,9 @@ export default async function CalendarPage({ searchParams }: Props) {
           </h1>
           <p className="text-white/40 text-sm mt-1">
             {emp
-              ? "Tasks assigned to this employee."
+              ? "Tasks for this employee, including ones they're a creative on."
               : isMine
-              ? "Tasks assigned to you."
+              ? "Your tasks, including ones you're a creative on."
               : "All tasks and deadlines across every client."}
           </p>
         </div>
@@ -159,6 +235,23 @@ export default async function CalendarPage({ searchParams }: Props) {
             <MineToggle isMine={isMine} />
           )}
         </div>
+      </div>
+
+      {/* All / Shoots / Edits / Projects */}
+      <div className="flex gap-2 flex-wrap">
+        {KINDS.map((k) => (
+          <Link
+            key={k.value}
+            href={kindHref(k.value)}
+            className={`h-8 px-3 inline-flex items-center rounded-xl border text-xs font-medium transition-all duration-150 ${
+              kind === k.value
+                ? "bg-white/[0.1] border-white/[0.2] text-zinc-200"
+                : "bg-white/[0.05] border-white/[0.09] text-white/50 hover:text-white/80 hover:bg-white/[0.08]"
+            }`}
+          >
+            {k.label}
+          </Link>
+        ))}
       </div>
 
       {/* Legend — one row per department, one swatch per stage */}

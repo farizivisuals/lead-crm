@@ -29,7 +29,10 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState("");
-  const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
+  // The project's creatives are on every new task by default — they should
+  // get the shoot and the edits. Untick to leave someone off.
+  const allCreativeIds = creatives.map((c) => c.profile_id);
+  const [selectedCreatives, setSelectedCreatives] = useState<string[]>(allCreativeIds);
   const [deliverables, setDeliverables] = useState<string[]>([]);
   const [deliverableInput, setDeliverableInput] = useState("");
   const [conflicting, setConflicting] = useState<{ id: string; title: string }[]>([]);
@@ -56,7 +59,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
   /** After a save, so reopening the dialog can't resubmit the same booking. */
   function resetAll() {
     setForm({ title: "", description: "", priority: "medium", start_date: "", due_date: "", assigned_to: "" });
-    setSelectedCreatives([]);
+    setSelectedCreatives(allCreativeIds);
     setDeliverables([]);
     setDeliverableInput("");
     setPlanEdit(false);

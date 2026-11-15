@@ -9,8 +9,11 @@ import {
   useCalendarTasks,
   filterByAssignee,
   calendarAssignees,
-  type CalendarTask,
+  filterByKind,
+  filterProjects,
+  useCalendarProjects,
   type CalendarScope,
+  type CalendarKind,
 } from '../../lib/queries/calendar';
 import {
   monthGrid,
@@ -32,6 +35,14 @@ const FIXED_SCOPES = [
   { value: 'all' as const, label: 'All tasks' },
   { value: 'mine' as const, label: 'My tasks' },
 ];
+const KINDS: { value: CalendarKind; label: string }[] = [
+  { value: 'tasks', label: 'All' },
+  { value: 'shoot', label: 'Shoots' },
+  { value: 'edit', label: 'Edits' },
+  { value: 'projects', label: 'Projects' },
+];
+/** What a bar or row opens: a task, or (in the Projects view) a project. */
+type CalEvent = { id: string; title: string; day: string; endDay: string; color: string | null; projectId: string; assignedTo?: string | null };
 /** Bars per cell before the rest collapse into "+N". Four rows fit the cell. */
 const MAX_LANES = 4;
 const LANE_HEIGHT = 15;
@@ -52,14 +63,22 @@ export default function CalendarScreen() {
   const [month, setMonth] = useState(() => new Date().getMonth());
   const [selected, setSelected] = useState(todayKey);
   const [scope, setScope] = useState<CalendarScope>('all');
+  const [kind, setKind] = useState<CalendarKind>('tasks');
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const { data, isLoading, error } = useCalendarTasks();
-  const allTasks = useMemo(() => data ?? [], [data]);
+  const tasksQuery = useCalendarTasks();
+  const projectsQuery = useCalendarProjects(kind === 'projects');
+  const showingProjects = kind === 'projects';
+  const isLoading = tasksQuery.isLoading || (showingProjects && projectsQuery.isLoading);
+  const error = tasksQuery.error ?? (showingProjects ? projectsQuery.error : null);
+  const allTasks = useMemo(() => tasksQuery.data ?? [], [tasksQuery.data]);
   // One fetch covers every month; paging and every filter switch are in-memory.
-  const events = useMemo(
-    () => filterByAssignee(allTasks, scope, userId),
-    [allTasks, scope, userId]
+  const events: CalEvent[] = useMemo(
+    () =>
+      showingProjects
+        ? filterProjects(projectsQuery.data ?? [], allTasks, scope, userId)
+        : filterByKind(filterByAssignee(allTasks, scope, userId), kind),
+    [showingProjects, projectsQuery.data, allTasks, scope, userId, kind]
   );
 
   // Derived from every task, not the filtered set, or picking one person would
@@ -87,12 +106,18 @@ export default function CalendarScreen() {
     }
   }
 
-  function open(task: CalendarTask) {
+  function open(event: CalEvent) {
+    if (showingProjects) {
+      router.push({ pathname: '/projects/[projectId]', params: { projectId: event.projectId } });
+      return;
+    }
     router.push({
       pathname: '/projects/[projectId]/tasks/[taskId]',
-      params: { projectId: task.projectId, taskId: task.id },
+      params: { projectId: event.projectId, taskId: event.id },
     });
   }
+
+  const what = showingProjects ? 'projects' : kind === 'shoot' ? 'shoots' : kind === 'edit' ? 'edits' : 'tasks';
 
   return (
     <Screen>
@@ -143,6 +168,21 @@ export default function CalendarScreen() {
               </Text>
             </Pressable>
           )}
+        </View>
+
+        <View style={styles.scopeRow}>
+          {KINDS.map((k) => {
+            const active = kind === k.value;
+            return (
+              <Pressable
+                key={k.value}
+                onPress={() => setKind(k.value)}
+                style={[styles.scopeChip, active && styles.scopeChipActive]}
+              >
+                <Text style={[styles.scopeText, active && styles.scopeTextActive]}>{k.label}</Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <View style={styles.weekdayRow}>
@@ -247,10 +287,10 @@ export default function CalendarScreen() {
             ) : selectedEvents.length === 0 ? (
               <Text style={styles.muted}>
                 {scope === 'mine'
-                  ? 'Nothing assigned to you on this day'
+                  ? `None of your ${what} on this day`
                   : viewing
-                    ? `Nothing assigned to ${viewing.name} on this day`
-                    : 'No tasks on this day'}
+                    ? `None of ${viewing.name}'s ${what} on this day`
+                    : `No ${what} on this day`}
               </Text>
             ) : (
               selectedEvents.map((task) => (
@@ -264,7 +304,7 @@ export default function CalendarScreen() {
                       {task.endDay !== task.day
                         ? `${formatShort(task.day)} – ${formatShort(task.endDay)}`
                         : formatShort(task.day)}
-                      {scope === 'all' && !task.assignedTo ? ' · Unassigned' : ''}
+                      {scope === 'all' && !showingProjects && !task.assignedTo ? ' · Unassigned' : ''}
                     </Text>
                   </View>
                 </Pressable>
@@ -276,7 +316,7 @@ export default function CalendarScreen() {
 
       <PickerSheet
         visible={pickerOpen}
-        title="View someone's tasks"
+        title="View someone's calendar"
         selected={viewing ? viewing.id : null}
         searchable={assignees.length > 8}
         options={assignees.map((a) => ({ value: a.id, label: a.name }))}

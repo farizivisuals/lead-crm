@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ProjectStatus, TaskPriority, DeliverableStatus } from '@shared/types';
 import { supabase } from '../supabase';
 import { qk } from './keys';
+import { myTaskFilter } from '@shared/task-filters';
 import { distinctClientCount } from '../data';
 import {
   STAGE_HISTORY_SELECT,
@@ -188,6 +189,8 @@ export function useEmployeeDashboard(userId: string) {
   return useQuery({
     queryKey: qk.dashboardEmployee(userId),
     queryFn: async (): Promise<EmployeeDashboardData> => {
+      // Tasks assigned to them, plus tasks they are a creative on.
+      const mine = await myTaskFilter(supabase, userId);
       const [tasksRes, deliverablesRes] = await Promise.all([
         // Note: unlike the executive open-task count, this query does NOT
         // filter terminal stages server-side. The screen filters them out
@@ -195,7 +198,7 @@ export function useEmployeeDashboard(userId: string) {
         supabase
           .from('tasks')
           .select('id, title, priority, due_date, project_id, projects(name), department_stages!current_stage_id(name, is_terminal)')
-          .eq('assigned_to', userId)
+          .or(mine)
           .order('due_date', { ascending: true, nullsFirst: false }),
         supabase
           .from('deliverables')

@@ -54,6 +54,7 @@ export const qk = {
   // and does month paging and the All/Mine filter in memory, so neither
   // refetches.
   calendarTasks: () => ['calendar', 'tasks'] as const,
+  calendarProjects: () => ['calendar', 'projects'] as const,
 
   // Client portal. Everything hangs off the client_id resolved from
   // client_contacts, so that lookup is cached separately from what it unlocks.

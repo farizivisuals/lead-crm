@@ -92,6 +92,15 @@ export default function NewTaskScreen() {
   const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [creativeIds, setCreativeIds] = useState<string[]>([]);
+  // The project's creatives are on every new task by default — they should get
+  // the shoot and the edits. Seeded once, so unticking someone sticks.
+  const [creativesSeeded, setCreativesSeeded] = useState(false);
+  const projectCreativeIds = (pickers.data?.projectCreatives ?? []).map((c) => c.profile_id);
+  useEffect(() => {
+    if (creativesSeeded || !pickers.data) return;
+    setCreativeIds(projectCreativeIds);
+    setCreativesSeeded(true);
+  }, [projectCreativeIds.join(','), creativesSeeded, !!pickers.data]);
   const [picker, setPicker] = useState<'dept' | 'priority' | 'assignee' | null>(null);
   // Deliverables ("Video 1", "Video 2") — each becomes its own trackable item,
   // starting in the department's first stage alongside the task.
