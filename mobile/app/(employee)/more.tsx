@@ -37,6 +37,11 @@ export default function More() {
               <Text style={styles.rowLive}>Team</Text>
             </Pressable>
           )}
+          {exec && (
+            <Pressable onPress={() => router.push('/settings/workload')}>
+              <Text style={styles.rowLive}>Workload</Text>
+            </Pressable>
+          )}
           {/* Stage settings stay web-only — configuring department stages is
               rare, fiddly admin work that does not belong on a phone. */}
           <Pressable onPress={() => router.push('/settings/profile')}>

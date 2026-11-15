@@ -66,6 +66,8 @@ export const qk = {
   portalCalendar: (clientId: string) => ['portal-calendar', clientId] as const,
 
   team: () => ['team'] as const,
+  // month is 0-based. Not invalidated by mutations: it refetches on reopen.
+  workload: (year: number, month: number) => ['workload', year, month] as const,
   // Keyed by user: notifications are per-recipient, and a sign-out must not
   // leave the next user reading the previous one's rows.
   notifications: (userId: string) => ['notifications', userId] as const,
