@@ -18,6 +18,8 @@ import { Screen } from '../../../../../components/ui/Screen';
 import { GlassCard } from '../../../../../components/ui/GlassCard';
 import { Button } from '../../../../../components/ui/Button';
 import { Input } from '../../../../../components/ui/Input';
+import { TimeInputs } from '../../../../../components/ui/TimeInputs';
+import { readTimes } from '@shared/task-time';
 import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
 import { PickerSheet } from '../../../../../components/ui/PickerSheet';
 import { useAuth } from '../../../../../lib/auth';
@@ -35,6 +37,7 @@ import { theme } from '../../../../../lib/theme';
 import {
   createShootWithEdits,
   editStageAfterShoot,
+  shootEditClashes,
   shootEditErrors,
   type EditBlock,
   type ShootWithEditsInput,
@@ -91,6 +94,9 @@ export default function NewTaskScreen() {
   const [assignedTo, setAssignedTo] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
+  // Optional slot, typed as "09:00". Blank = all day.
+  const [startTimeText, setStartTimeText] = useState('');
+  const [endTimeText, setEndTimeText] = useState('');
   const [creativeIds, setCreativeIds] = useState<string[]>([]);
   // The project's creatives are on every new task by default — they should get
   // the shoot and the edits. Seeded once, so unticking someone sticks.
@@ -114,10 +120,14 @@ export default function NewTaskScreen() {
     setDeliverableInput('');
   }
 
+  const times = readTimes(startTimeText, endTimeText, startDate, shootDueDate(shoot, startDate, dueDate));
+  // A warning only — never blocks Create.
   const conflicts = useAvailabilityConflicts({
     assignedTo,
     startDate,
     dueDate: shootDueDate(shoot, startDate, dueDate),
+    startTime: times.problem ? null : times.start_time,
+    endTime: times.problem ? null : times.end_time,
     excludeTaskId: null,
   });
   const conflicting = conflicts.data ?? [];
@@ -157,17 +167,14 @@ export default function NewTaskScreen() {
     !!session?.user.id &&
     title.trim().length > 0 &&
     startDate.length > 0 &&
-    (shoot || dueDate.length > 0) &&
-    conflicting.length === 0 &&
-    // `conflicting` is `[]` while the query is still fetching (every
-    // assignee/date edit changes its key) and on error — neither means "no
-    // conflicts". The brief calls this a hard block; failing open on a
-    // pending or errored check would silently bypass it.
-    !conflicts.isFetching &&
-    !conflicts.error;
+    (shoot || dueDate.length > 0);
 
-  function submit() {
+  async function submit() {
     if (!canSubmit) return;
+    if (times.problem) {
+      Alert.alert('Check the time', times.problem);
+      return;
+    }
     if (editing) {
       const input: ShootWithEditsInput = {
         projectId,
@@ -177,6 +184,8 @@ export default function NewTaskScreen() {
         description,
         priority,
         shootDate: startDate,
+        shootStart: times.start_time,
+        shootEnd: times.end_time,
         shooterId: assignedTo,
         creativeIds,
         edits: blocks,
@@ -185,6 +194,19 @@ export default function NewTaskScreen() {
       const problem = shootEditErrors(input);
       if (problem) {
         Alert.alert('Check the edit plan', problem);
+        return;
+      }
+      let busy: string[] = [];
+      try {
+        busy = await shootEditClashes(supabase, input);
+      } catch {
+        // The check is only a heads-up; never let it stop the booking.
+      }
+      if (busy.length) {
+        Alert.alert('Someone is busy then', busy.join('\n'), [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Create anyway', onPress: () => editMutation.mutate(input) },
+        ]);
         return;
       }
       editMutation.mutate(input);
@@ -200,6 +222,8 @@ export default function NewTaskScreen() {
       start_date: startDate,
       due_date: dueDate,
       isShoot: shoot,
+      start_time: times.start_time,
+      end_time: times.end_time,
       assigned_to: assignedTo,
       creativeProfileIds: creativeIds,
       deliverableTitles: deliverables,
@@ -287,6 +311,12 @@ export default function NewTaskScreen() {
                   />
                 </>
               )}
+              <TimeInputs
+                start={startTimeText}
+                end={endTimeText}
+                onStart={setStartTimeText}
+                onEnd={setEndTimeText}
+              />
             </View>
           </GlassCard>
 
@@ -453,13 +483,13 @@ export default function NewTaskScreen() {
 
           {conflicting.length > 0 && (
             <GlassCard>
-              <Text style={styles.conflictTitle}>Assignee is booked</Text>
+              <Text style={styles.conflictTitle}>{assigneeName} is busy then</Text>
               {conflicting.map((c) => (
                 <Text key={c.id} style={styles.conflictRow}>
-                  · {c.title}
+                  · {c.title} ({c.when || 'all day'})
                 </Text>
               ))}
-              <Text style={styles.muted}>Change the assignee or the dates before saving.</Text>
+              <Text style={styles.muted}>You can still create the task.</Text>
             </GlassCard>
           )}
 

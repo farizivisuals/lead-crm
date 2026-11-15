@@ -42,7 +42,7 @@ const KINDS: { value: CalendarKind; label: string }[] = [
   { value: 'projects', label: 'Projects' },
 ];
 /** What a bar or row opens: a task, or (in the Projects view) a project. */
-type CalEvent = { id: string; title: string; day: string; endDay: string; color: string | null; projectId: string; assignedTo?: string | null };
+type CalEvent = { id: string; title: string; day: string; endDay: string; color: string | null; projectId: string; assignedTo?: string | null; time?: string };
 /** Bars per cell before the rest collapse into "+N". Four rows fit the cell. */
 const MAX_LANES = 4;
 const LANE_HEIGHT = 15;
@@ -91,7 +91,12 @@ export default function CalendarScreen() {
     () => weeks.map((days) => layoutWeek(events, days, MAX_LANES)),
     [weeks, events]
   );
-  const selectedEvents = useMemo(() => eventsOnDay(events, selected), [events, selected]);
+  // Timed tasks in time order; all-day ones after them.
+  const selectedEvents = useMemo(
+    () =>
+      [...eventsOnDay(events, selected)].sort((a, b) => (a.time || '~').localeCompare(b.time || '~')),
+    [events, selected]
+  );
 
   function shift(by: number) {
     const next = month + by;
@@ -304,6 +309,7 @@ export default function CalendarScreen() {
                       {task.endDay !== task.day
                         ? `${formatShort(task.day)} – ${formatShort(task.endDay)}`
                         : formatShort(task.day)}
+                      {task.time ? ` · ${task.time}` : ''}
                       {scope === 'all' && !showingProjects && !task.assignedTo ? ' · Unassigned' : ''}
                     </Text>
                   </View>

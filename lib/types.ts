@@ -162,6 +162,9 @@ export interface Task {
   priority: TaskPriority;
   start_date: string | null;
   due_date: string | null;
+  /** Optional slot, "HH:MM:SS" from Postgres. Both or neither. */
+  start_time: string | null;
+  end_time: string | null;
   assigned_to: string | null;
   /** Edit task → the shoot task it follows (see 0025_shoot_edit_handoff). */
   follows_task_id: string | null;
@@ -260,4 +263,6 @@ export interface CalendarEvent {
   department_id: string | null;
   client_id: string | null;
   project_id: string | null;
+  /** start/end carry a time of day ("YYYY-MM-DDTHH:MM") rather than whole days. */
+  timed?: boolean;
 }

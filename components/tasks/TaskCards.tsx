@@ -14,6 +14,7 @@ import {
   Clapperboard,
 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
+import { timeRange } from "@/lib/task-time";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -356,6 +357,7 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
                   >
                     <Calendar className="h-2.5 w-2.5" />
                     {formatDate(task.due_date)}
+                    {task.start_time && task.end_time && <span>· {timeRange(task.start_time, task.end_time)}</span>}
                     {overdue && <span>· Overdue</span>}
                   </span>
                 )}

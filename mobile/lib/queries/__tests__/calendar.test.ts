@@ -23,6 +23,8 @@ const row = (over: Partial<CalendarTaskRow>): CalendarTaskRow => ({
   employees: { profiles: { full_name: 'Quintin' } },
   follows_task_id: null,
   department_id: 'video',
+  start_time: null,
+  end_time: null,
   task_creatives: [],
   ...over,
 });
@@ -60,6 +62,11 @@ describe('toCalendarTask', () => {
   it('uses the view’s indigo fallback when the stage has no colour', () => {
     expect(toCalendarTask(row({ department_stages: { color: null } }))!.color).toBe('#6366f1');
     expect(toCalendarTask(row({ department_stages: null }))!.color).toBe('#6366f1');
+  });
+
+  it('carries the time slot', () => {
+    expect(toCalendarTask(row({ start_time: '09:00:00', end_time: '12:00:00' }))!.time).toBe('09:00–12:00');
+    expect(toCalendarTask(row({}))!.time).toBe('');
   });
 
   it('carries the creatives on the task', () => {

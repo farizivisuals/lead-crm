@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Loader2, AlertTriangle, X } from "lucide-react";
+import { Plus, Loader2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import type { DepartmentStage } from "@/lib/types";
-import { createShootWithEdits, editStageAfterShoot, shootEditErrors, type EditBlock } from "@/lib/shoot-edit";
+import { createShootWithEdits, editStageAfterShoot, shootEditClashes, shootEditErrors, type EditBlock } from "@/lib/shoot-edit";
+import { bookingClashes, timeErrors, type Clash } from "@/lib/task-time";
+import { BusyWarning, TaskTimeFields } from "@/components/tasks/TaskTimeFields";
 
 const emptyBlock = (): EditBlock => ({ editorId: "", editorName: "", startDate: "", dueDate: "", videos: [] });
 
@@ -35,7 +37,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>(allCreativeIds);
   const [deliverables, setDeliverables] = useState<string[]>([]);
   const [deliverableInput, setDeliverableInput] = useState("");
-  const [conflicting, setConflicting] = useState<{ id: string; title: string }[]>([]);
+  const [conflicting, setConflicting] = useState<Clash[]>([]);
 
   const [form, setForm] = useState({
     title: "",
@@ -43,6 +45,8 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     priority: "medium",
     start_date: "",
     due_date: "",
+    start_time: "",
+    end_time: "",
     assigned_to: "",
   });
 
@@ -58,7 +62,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
 
   /** After a save, so reopening the dialog can't resubmit the same booking. */
   function resetAll() {
-    setForm({ title: "", description: "", priority: "medium", start_date: "", due_date: "", assigned_to: "" });
+    setForm({ title: "", description: "", priority: "medium", start_date: "", due_date: "", start_time: "", end_time: "", assigned_to: "" });
     setSelectedCreatives(allCreativeIds);
     setDeliverables([]);
     setDeliverableInput("");
@@ -89,27 +93,25 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     setVideoInputs((vs) => vs.map((v, j) => (j === i ? "" : v)));
   }
 
-  // Real-time availability check
+  const slot = {
+    start_date: form.start_date,
+    due_date: isShootStage ? form.start_date : form.due_date,
+    start_time: form.start_time || null,
+    end_time: form.end_time || null,
+  };
+
+  // Real-time availability check — a warning, never a block.
   useEffect(() => {
-    const dueDate = isShootStage ? form.start_date : form.due_date;
-    if (!form.assigned_to || !form.start_date || !dueDate) {
+    if (!form.assigned_to || !slot.start_date || !slot.due_date) {
       setConflicting([]);
       return;
     }
     let cancelled = false;
-    supabase
-      .from("tasks")
-      .select("id, title")
-      .eq("assigned_to", form.assigned_to)
-      .not("start_date", "is", null)
-      .not("due_date", "is", null)
-      .lte("start_date", dueDate)
-      .gte("due_date", form.start_date)
-      .then(({ data }) => {
-        if (!cancelled) setConflicting(data ?? []);
-      });
+    bookingClashes(supabase, form.assigned_to, slot, null)
+      .then((c) => { if (!cancelled) setConflicting(c); })
+      .catch(() => { if (!cancelled) setConflicting([]); });
     return () => { cancelled = true; };
-  }, [form.assigned_to, form.start_date, form.due_date, isShootStage]);
+  }, [form.assigned_to, slot.start_date, slot.due_date, slot.start_time, slot.end_time]);
 
   function toggleCreative(id: string) {
     setSelectedCreatives((prev) =>
@@ -120,7 +122,8 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!firstStage) { setError("Department stages not configured"); return; }
-    if (conflicting.length > 0) return;
+    const timeProblem = timeErrors(slot);
+    if (timeProblem) { setError(timeProblem); return; }
     setLoading(true);
     setError(null);
 
@@ -135,6 +138,8 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
         description: form.description,
         priority: form.priority as "low" | "medium" | "high" | "urgent",
         shootDate: form.start_date,
+        shootStart: slot.start_time,
+        shootEnd: slot.end_time,
         shooterId: form.assigned_to || null,
         creativeIds: selectedCreatives,
         edits: blocks,
@@ -143,6 +148,11 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
       const problem = shootEditErrors(input);
       if (problem) { setError(problem); setLoading(false); return; }
       try {
+        const busy = await shootEditClashes(supabase, input);
+        if (busy.length && !window.confirm(`${busy.join("\n")}\n\nCreate anyway?`)) {
+          setLoading(false);
+          return;
+        }
         await createShootWithEdits(supabase, input);
       } catch (err) {
         setError((err as Error).message);
@@ -163,8 +173,10 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
       title: form.title,
       description: form.description || null,
       priority: form.priority,
-      start_date: form.start_date,
-      due_date: isShootStage ? form.start_date : form.due_date,
+      start_date: slot.start_date,
+      due_date: slot.due_date,
+      start_time: slot.start_time,
+      end_time: slot.end_time,
       assigned_to: form.assigned_to || null,
       created_by: user?.id,
     }).select("id").single();
@@ -203,8 +215,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     !!form.title &&
     !!selectedDeptId &&
     !!form.start_date &&
-    (isShootStage || !!form.due_date) &&
-    conflicting.length === 0;
+    (isShootStage || !!form.due_date);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -392,6 +403,12 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
             </div>
           )}
 
+          <TaskTimeFields
+            start={form.start_time}
+            end={form.end_time}
+            onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+          />
+
           {canPlanEdit && (
             <label className="flex items-center gap-2 text-sm text-white/80 cursor-pointer">
               <input
@@ -500,22 +517,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
             </div>
           )}
 
-          {/* Availability conflict warning */}
-          {conflicting.length > 0 && assigneeName && (
-            <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-              <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-amber-300">
-                  {assigneeName} is already assigned during this period
-                </p>
-                <ul className="mt-1 space-y-0.5 text-amber-400/80">
-                  {conflicting.map((t) => (
-                    <li key={t.id}>· {t.title}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
+          {assigneeName && <BusyWarning name={assigneeName} clashes={conflicting} />}
 
           {firstStage && (
             <p className="text-xs text-gray-400">

@@ -4,6 +4,7 @@
 // Next.js and any one Supabase client. Spec:
 // docs/superpowers/specs/2026-11-14-shoot-edit-handoff-design.md
 import type { TaskPriority } from "./types";
+import { bookingClashes, timeErrors, type Slot } from "./task-time";
 
 /** Any Supabase client (web and mobile pin different supabase-js versions). */
 type Db = { from(table: string): any };
@@ -27,6 +28,9 @@ export type ShootWithEditsInput = {
   description: string;
   priority: TaskPriority;
   shootDate: string;
+  /** Optional shoot slot, "HH:MM". Both or neither. */
+  shootStart?: string | null;
+  shootEnd?: string | null;
   shooterId: string | null;
   creativeIds: string[];
   edits: EditBlock[];
@@ -50,6 +54,8 @@ export function editTaskTitle(title: string, editorName: string): string {
 /** The first thing wrong with the booking, worded for the user, or null. */
 export function shootEditErrors(input: ShootWithEditsInput): string | null {
   if (!input.shootDate) return "Pick a shoot date";
+  const timeProblem = timeErrors(shootSlot(input));
+  if (timeProblem) return timeProblem;
   if (input.edits.length === 0) return "Add at least one edit block";
   for (const b of input.edits) {
     if (!b.editorId) return "Pick an editor";
@@ -65,23 +71,37 @@ export function shootEditErrors(input: ShootWithEditsInput): string | null {
   return null;
 }
 
-/** Same overlap rule as NewTaskDialog's availability check. */
-async function bookedTitles(db: Db, assignee: string, start: string, due: string): Promise<string[]> {
-  const { data, error } = await db
-    .from("tasks")
-    .select("id, title")
-    .eq("assigned_to", assignee)
-    .not("start_date", "is", null)
-    .not("due_date", "is", null)
-    .lte("start_date", due)
-    .gte("due_date", start);
-  if (error) throw error;
-  return ((data ?? []) as { title: string }[]).map((t) => t.title);
+const shootSlot = (input: ShootWithEditsInput): Slot => ({
+  start_date: input.shootDate,
+  due_date: input.shootDate,
+  start_time: input.shootStart || null,
+  end_time: input.shootEnd || null,
+});
+
+/**
+ * Who is already busy when this booking would put them to work, worded for the
+ * user. A warning to confirm, never a reason to refuse the booking.
+ */
+export async function shootEditClashes(db: Db, input: ShootWithEditsInput): Promise<string[]> {
+  const out: string[] = [];
+  const describe = (who: string, clashes: { title: string; when: string }[]) =>
+    `${who} is busy then: ${clashes.map((c) => (c.when ? `${c.title} (${c.when})` : c.title)).join(", ")}`;
+  if (input.shooterId) {
+    const c = await bookingClashes(db, input.shooterId, shootSlot(input), null);
+    if (c.length) out.push(describe("The shooter", c));
+  }
+  for (const b of input.edits) {
+    if (!b.editorId) continue;
+    const slot = { start_date: b.startDate, due_date: b.dueDate, start_time: null, end_time: null };
+    const c = await bookingClashes(db, b.editorId, slot, null);
+    if (c.length) out.push(describe(firstName(b.editorName), c));
+  }
+  return out;
 }
 
 /**
- * Validates, checks everyone's availability, then inserts the shoot task and
- * one edit task per block. Any failed insert deletes every task this call
+ * Validates, then inserts the shoot task and one edit task per block (check
+ * `shootEditClashes` first and let the user confirm). Any failed insert deletes every task this call
  * created (their videos and creatives cascade with them) and rethrows.
  */
 export async function createShootWithEdits(
@@ -95,15 +115,6 @@ export async function createShootWithEdits(
   const firstStage = ordered[0];
   const editStage = editStageAfterShoot(input.stages);
   if (!firstStage || !editStage) throw new Error("This department has no Shoot stage");
-
-  if (input.shooterId) {
-    const clash = await bookedTitles(db, input.shooterId, input.shootDate, input.shootDate);
-    if (clash.length) throw new Error(`The shooter is already booked then: ${clash.join(", ")}`);
-  }
-  for (const b of input.edits) {
-    const clash = await bookedTitles(db, b.editorId, b.startDate, b.dueDate);
-    if (clash.length) throw new Error(`${firstName(b.editorName)} is already booked then: ${clash.join(", ")}`);
-  }
 
   const created: string[] = [];
   const base = {
@@ -134,6 +145,8 @@ export async function createShootWithEdits(
       title: input.title.trim(),
       start_date: input.shootDate,
       due_date: input.shootDate,
+      start_time: input.shootStart || null,
+      end_time: input.shootEnd || null,
       assigned_to: input.shooterId,
     });
     await insertRows("task_creatives", creativesFor(shootId));

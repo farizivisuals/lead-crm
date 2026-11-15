@@ -40,8 +40,10 @@ export const qk = {
     assignedTo: string,
     startDate: string,
     dueDate: string,
+    startTime: string | null,
+    endTime: string | null,
     excludeTaskId: string | null
-  ) => ['task-conflicts', assignedTo, startDate, dueDate, excludeTaskId] as const,
+  ) => ['task-conflicts', assignedTo, startDate, dueDate, startTime, endTime, excludeTaskId] as const,
 
   allTasks: () => ['tasks'] as const,
 

@@ -19,7 +19,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Trash2, AlertTriangle, Plus } from "lucide-react";
+import { Loader2, Trash2, Plus } from "lucide-react";
+import { bookingClashes, timeErrors, type Clash } from "@/lib/task-time";
+import { BusyWarning, TaskTimeFields } from "@/components/tasks/TaskTimeFields";
 
 interface Employee {
   profile_id: string;
@@ -51,7 +53,7 @@ export default function EditTaskDialog({
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [conflicting, setConflicting] = useState<{ id: string; title: string }[]>([]);
+  const [conflicting, setConflicting] = useState<Clash[]>([]);
   const [selectedCreatives, setSelectedCreatives] = useState<string[]>(
     (task.task_creatives ?? []).map((tc) => tc.profile_id)
   );
@@ -73,6 +75,8 @@ export default function EditTaskDialog({
     current_stage_id: task.current_stage_id,
     start_date: task.start_date?.slice(0, 10) ?? "",
     due_date: task.due_date?.slice(0, 10) ?? "",
+    start_time: task.start_time?.slice(0, 5) ?? "",
+    end_time: task.end_time?.slice(0, 5) ?? "",
   });
 
   const currentStage = stages.find((s) => s.id === form.current_stage_id);
@@ -88,32 +92,31 @@ export default function EditTaskDialog({
     );
   }
 
-  // Real-time availability check — excludes the task being edited
+  const slot = {
+    start_date: form.start_date,
+    due_date: isShootStage ? form.start_date : form.due_date,
+    start_time: form.start_time || null,
+    end_time: form.end_time || null,
+  };
+
+  // Real-time availability check, excluding the task being edited — a
+  // warning, never a block.
   useEffect(() => {
-    const dueDate = isShootStage ? form.start_date : form.due_date;
-    if (!form.assigned_to || !form.start_date || !dueDate) {
+    if (!form.assigned_to || !slot.start_date || !slot.due_date) {
       setConflicting([]);
       return;
     }
     let cancelled = false;
-    supabase
-      .from("tasks")
-      .select("id, title")
-      .eq("assigned_to", form.assigned_to)
-      .neq("id", task.id)
-      .not("start_date", "is", null)
-      .not("due_date", "is", null)
-      .lte("start_date", dueDate)
-      .gte("due_date", form.start_date)
-      .then(({ data }) => {
-        if (!cancelled) setConflicting(data ?? []);
-      });
+    bookingClashes(supabase, form.assigned_to, slot, task.id)
+      .then((c) => { if (!cancelled) setConflicting(c); })
+      .catch(() => { if (!cancelled) setConflicting([]); });
     return () => { cancelled = true; };
-  }, [form.assigned_to, form.start_date, form.due_date, isShootStage]);
+  }, [form.assigned_to, slot.start_date, slot.due_date, slot.start_time, slot.end_time]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (conflicting.length > 0) return;
+    const timeProblem = timeErrors(slot);
+    if (timeProblem) { setError(timeProblem); return; }
     setLoading(true);
     setError(null);
 
@@ -123,8 +126,10 @@ export default function EditTaskDialog({
       priority: form.priority,
       assigned_to: form.assigned_to || null,
       current_stage_id: form.current_stage_id,
-      start_date: form.start_date || null,
-      due_date: isShootStage ? (form.start_date || null) : (form.due_date || null),
+      start_date: slot.start_date || null,
+      due_date: slot.due_date || null,
+      start_time: slot.start_time,
+      end_time: slot.end_time,
     };
 
     const { error: err } = await supabase
@@ -260,8 +265,7 @@ export default function EditTaskDialog({
     !loading &&
     !!form.title &&
     !!form.start_date &&
-    (isShootStage || !!form.due_date) &&
-    conflicting.length === 0;
+    (isShootStage || !!form.due_date);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -431,22 +435,13 @@ export default function EditTaskDialog({
             </div>
           )}
 
-          {/* Availability conflict warning */}
-          {conflicting.length > 0 && assigneeName && (
-            <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-              <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-amber-300">
-                  {assigneeName} is already assigned during this period
-                </p>
-                <ul className="mt-1 space-y-0.5 text-amber-400/80">
-                  {conflicting.map((t) => (
-                    <li key={t.id}>· {t.title}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
+          <TaskTimeFields
+            start={form.start_time}
+            end={form.end_time}
+            onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+          />
+
+          {assigneeName && <BusyWarning name={assigneeName} clashes={conflicting} />}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 

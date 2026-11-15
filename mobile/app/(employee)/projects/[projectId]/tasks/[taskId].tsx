@@ -18,6 +18,8 @@ import { Screen } from '../../../../../components/ui/Screen';
 import { GlassCard } from '../../../../../components/ui/GlassCard';
 import { Button } from '../../../../../components/ui/Button';
 import { Input } from '../../../../../components/ui/Input';
+import { TimeInputs } from '../../../../../components/ui/TimeInputs';
+import { readTimes } from '@shared/task-time';
 import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
 import { PickerSheet } from '../../../../../components/ui/PickerSheet';
 import { one, firstName, shortDate } from '../../../../../lib/data';
@@ -66,6 +68,9 @@ export default function TaskDetailScreen() {
   const [assignedTo, setAssignedTo] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
+  // Optional slot, typed as "09:00". Blank = all day.
+  const [startTimeText, setStartTimeText] = useState('');
+  const [endTimeText, setEndTimeText] = useState('');
   const [creativeIds, setCreativeIds] = useState<string[]>([]);
   const [originalCreativeIds, setOriginalCreativeIds] = useState<string[]>([]);
   // Optimistic stage while a move is in flight; null = show the persisted one.
@@ -95,6 +100,8 @@ export default function TaskDetailScreen() {
     setAssignedTo(row.assigned_to);
     setStartDate(row.start_date ?? '');
     setDueDate(row.due_date ?? '');
+    setStartTimeText(row.start_time?.slice(0, 5) ?? '');
+    setEndTimeText(row.end_time?.slice(0, 5) ?? '');
     const ids = (row.task_creatives ?? []).map((tc) => tc.profile_id);
     setCreativeIds(ids);
     setOriginalCreativeIds(ids);
@@ -132,10 +139,14 @@ export default function TaskDetailScreen() {
   // With deliverables the task's own stage is derived, not chosen.
   const hasDeliverables = drafts.length > 0;
 
+  const times = readTimes(startTimeText, endTimeText, startDate, shootDueDate(shoot, startDate, dueDate));
+  // A warning only — never blocks Save.
   const conflicts = useAvailabilityConflicts({
     assignedTo,
     startDate,
     dueDate: shootDueDate(shoot, startDate, dueDate),
+    startTime: times.problem ? null : times.start_time,
+    endTime: times.problem ? null : times.end_time,
     excludeTaskId: taskId,
   });
   const conflicting = conflicts.data ?? [];
@@ -321,16 +332,13 @@ export default function TaskDetailScreen() {
   const canSave =
     title.trim().length > 0 &&
     startDate.length > 0 &&
-    (shoot || dueDate.length > 0) &&
-    conflicting.length === 0 &&
-    // `conflicting` is `[]` while the query is still fetching (every
-    // assignee/date edit changes its key) and on error — neither means "no
-    // conflicts". The brief calls this a hard block; failing open on a
-    // pending or errored check would silently bypass it.
-    !conflicts.isFetching &&
-    !conflicts.error;
+    (shoot || dueDate.length > 0);
 
   function submit() {
+    if (times.problem) {
+      Alert.alert('Check the time', times.problem);
+      return;
+    }
     const { toAdd, toRemove } = diffCreatives(creativeIds, originalCreativeIds);
     saveMutation.mutate({
       taskId,
@@ -342,6 +350,8 @@ export default function TaskDetailScreen() {
       start_date: startDate,
       due_date: dueDate,
       isShoot: shoot,
+      start_time: times.start_time,
+      end_time: times.end_time,
       creativesToAdd: toAdd,
       creativesToRemove: toRemove,
     });
@@ -464,6 +474,12 @@ export default function TaskDetailScreen() {
                   />
                 </>
               )}
+              <TimeInputs
+                start={startTimeText}
+                end={endTimeText}
+                onStart={setStartTimeText}
+                onEnd={setEndTimeText}
+              />
             </View>
           </GlassCard>
 
@@ -652,15 +668,13 @@ export default function TaskDetailScreen() {
 
           {conflicting.length > 0 && (
             <GlassCard>
-              <Text style={styles.conflictTitle}>Assignee is booked</Text>
+              <Text style={styles.conflictTitle}>{assigneeName} is busy then</Text>
               {conflicting.map((c) => (
                 <Text key={c.id} style={styles.conflictRow}>
-                  · {c.title}
+                  · {c.title} ({c.when || 'all day'})
                 </Text>
               ))}
-              <Text style={styles.muted}>
-                Change the assignee or the dates before saving.
-              </Text>
+              <Text style={styles.muted}>You can still save.</Text>
             </GlassCard>
           )}
 

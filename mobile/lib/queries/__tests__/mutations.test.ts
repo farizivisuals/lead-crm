@@ -141,6 +141,8 @@ const taskInput = {
   start_date: '2026-08-11',
   due_date: '2026-08-20',
   isShoot: false,
+  start_time: null,
+  end_time: null,
   creativesToAdd: ['creative-new'],
   creativesToRemove: ['creative-old'],
 };
@@ -161,6 +163,16 @@ describe('saveTask', () => {
 
     await expect(saveTask(taskInput)).rejects.toThrow('add boom');
     expect(calls.some((c) => c.table === 'task_creatives' && c.op === 'delete')).toBe(false);
+  });
+
+  it('writes the time slot, or clears it', async () => {
+    recordInto();
+    await saveTask({ ...taskInput, start_time: '09:00', end_time: '12:00' });
+    expect(calls.find((c) => c.op === 'update')!.payload).toMatchObject({ start_time: '09:00', end_time: '12:00' });
+
+    recordInto();
+    await saveTask(taskInput);
+    expect(calls.find((c) => c.op === 'update')!.payload).toMatchObject({ start_time: null, end_time: null });
   });
 
   it('collapses a shoot task onto its start date', async () => {

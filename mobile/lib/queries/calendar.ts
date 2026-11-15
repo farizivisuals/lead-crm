@@ -4,6 +4,7 @@ import { qk } from './keys';
 import { one } from '../data';
 import type { LaidOutEvent } from '../calendar-layout';
 import { isMine, taskKinds, type TaskKind } from '@shared/task-filters';
+import { timeRange } from '@shared/task-time';
 
 /**
  * The calendar shows TASKS ONLY.
@@ -31,6 +32,8 @@ export type CalendarTaskRow = {
   project_id: string;
   follows_task_id: string | null;
   department_id: string;
+  start_time: string | null;
+  end_time: string | null;
   department_stages: { color: string | null } | { color: string | null }[] | null;
   employees: ProfileName | ProfileName[] | null;
   task_creatives: { profile_id: string; employees: ProfileName | ProfileName[] | null }[] | null;
@@ -43,6 +46,8 @@ export type CalendarTask = LaidOutEvent & {
   /** Creatives on the task — it is theirs as much as the assignee's. */
   creatives: { id: string; name: string }[];
   kind: TaskKind;
+  /** "09:00–12:00", or '' for an all-day task. */
+  time: string;
 };
 
 /** Calendar view: every task, only shoots, only edits, or project timelines. */
@@ -75,6 +80,7 @@ export function toCalendarTask(row: CalendarTaskRow, kind: TaskKind = 'other'): 
     projectId: row.project_id,
     creatives: (row.task_creatives ?? []).map((c) => ({ id: c.profile_id, name: nameOf(c.employees) ?? 'Unknown' })),
     kind,
+    time: timeRange(row.start_time, row.end_time),
   };
 }
 
@@ -88,7 +94,7 @@ export function useCalendarTasks() {
         supabase
           .from('tasks')
           .select(
-            'id, title, start_date, due_date, assigned_to, project_id, follows_task_id, department_id, department_stages!current_stage_id(color), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees(profiles(full_name)))'
+            'id, title, start_date, due_date, start_time, end_time, assigned_to, project_id, follows_task_id, department_id, department_stages!current_stage_id(color), employees!assigned_to(profiles(full_name)), task_creatives(profile_id, employees(profiles(full_name)))'
           )
           .or('start_date.not.is.null,due_date.not.is.null'),
         // Each department's "Shoot" stage, to tell shoots from edits.

@@ -30,7 +30,9 @@ export default function CompanyCalendar({ events, portal = false }: Props) {
       id: e.entity_id,
       title: e.title,
       start: e.start,
-      end: endBase ? exclusiveEnd(endBase) : undefined,
+      // A timed event's end is exact; only all-day ends need the +1 day.
+      end: e.timed ? e.end ?? undefined : endBase ? exclusiveEnd(endBase) : undefined,
+      allDay: !e.timed,
       color: e.color,
       extendedProps: {
         entity_type: e.entity_type,

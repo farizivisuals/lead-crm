@@ -4,6 +4,7 @@ import { supabase } from '../supabase';
 import { one } from '../data';
 import { TASK_DELIVERABLES_SELECT, insertDeliverables, type TaskDeliverable } from './task-deliverables';
 import { qk } from './keys';
+import { bookingClashes } from '@shared/task-time';
 
 export type TaskDetail = {
   id: string;
@@ -15,6 +16,8 @@ export type TaskDetail = {
   priority: TaskPriority;
   start_date: string | null;
   due_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
   assigned_to: string | null;
   follows_task_id: string | null;
   department_stages:
@@ -127,42 +130,35 @@ export function useTaskPickers(projectId: string, departmentId: string | undefin
 }
 
 /**
- * Overlapping-date-range check, verbatim from NewTaskDialog/EditTaskDialog:
- * any other task for the same assignee whose [start_date, due_date] window
- * intersects this one's. `excludeTaskId` is the task being edited (the web
- * adds `.neq('id', task.id)`); pass null when creating.
- *
- * This is a HARD BLOCK on web despite its advisory styling — `canSubmit`
- * requires `conflicting.length === 0`. Keep it blocking.
+ * Other tasks for the assignee whose time slot overlaps this one
+ * (`bookingClashes`, shared with the web). `excludeTaskId` is the task being
+ * edited; null when creating. A WARNING only — never blocks the save.
  */
 export function useAvailabilityConflicts({
   assignedTo,
   startDate,
   dueDate,
+  startTime,
+  endTime,
   excludeTaskId,
 }: {
   assignedTo: string | null;
   startDate: string;
   dueDate: string;
+  startTime: string | null;
+  endTime: string | null;
   excludeTaskId: string | null;
 }) {
   return useQuery({
-    queryKey: qk.taskConflicts(assignedTo ?? '', startDate, dueDate, excludeTaskId),
+    queryKey: qk.taskConflicts(assignedTo ?? '', startDate, dueDate, startTime, endTime, excludeTaskId),
     enabled: !!assignedTo && !!startDate && !!dueDate,
-    queryFn: async () => {
-      let query = supabase
-        .from('tasks')
-        .select('id, title')
-        .eq('assigned_to', assignedTo!)
-        .not('start_date', 'is', null)
-        .not('due_date', 'is', null)
-        .lte('start_date', dueDate)
-        .gte('due_date', startDate);
-      if (excludeTaskId) query = query.neq('id', excludeTaskId);
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data ?? []) as { id: string; title: string }[];
-    },
+    queryFn: () =>
+      bookingClashes(
+        supabase,
+        assignedTo!,
+        { start_date: startDate, due_date: dueDate, start_time: startTime, end_time: endTime },
+        excludeTaskId
+      ),
   });
 }
 
@@ -222,6 +218,9 @@ export type SaveTaskInput = {
   start_date: string;
   due_date: string;
   isShoot: boolean;
+  /** "HH:MM", or null for an all-day task. Both or neither. */
+  start_time: string | null;
+  end_time: string | null;
   creativesToAdd: string[];
   creativesToRemove: string[];
 };
@@ -242,6 +241,8 @@ export async function saveTask(input: SaveTaskInput) {
       current_stage_id: input.current_stage_id,
       start_date: input.start_date || null,
       due_date: shootDueDate(input.isShoot, input.start_date, input.due_date) || null,
+      start_time: input.start_time,
+      end_time: input.end_time,
     })
     .eq('id', input.taskId);
   if (error) throw error;
@@ -278,6 +279,9 @@ export type CreateTaskInput = {
   start_date: string;
   due_date: string;
   isShoot: boolean;
+  /** "HH:MM", or null for an all-day task. Both or neither. */
+  start_time: string | null;
+  end_time: string | null;
   assigned_to: string | null;
   creativeProfileIds: string[];
   /** Deliverable titles ("Video 1", "Video 2"), created in the starting stage. */
@@ -304,6 +308,8 @@ export async function createTask(input: CreateTaskInput): Promise<string> {
       priority: input.priority,
       start_date: input.start_date,
       due_date: shootDueDate(input.isShoot, input.start_date, input.due_date),
+      start_time: input.start_time,
+      end_time: input.end_time,
       assigned_to: input.assigned_to || null,
       created_by: input.userId,
     })

@@ -5,6 +5,7 @@
  */
 import {
   createShootWithEdits,
+  shootEditClashes,
   editStageAfterShoot,
   editTaskTitle,
   shootEditErrors,
@@ -137,10 +138,45 @@ describe('shootEditErrors', () => {
   it('needs at least one video per block', () => {
     expect(shootEditErrors(input({ edits: [{ ...block, videos: [] }] }))).toBe('Add at least one video for Ali');
   });
+  it('wants both shoot times or neither, end after start', () => {
+    expect(shootEditErrors(input({ shootStart: '09:00', shootEnd: null }))).toBe('Add an end time');
+    expect(shootEditErrors(input({ shootStart: '12:00', shootEnd: '09:00' }))).toBe('End time must be after start time');
+    expect(shootEditErrors(input({ shootStart: '09:00', shootEnd: '12:00' }))).toBeNull();
+  });
   it('rejects the same editor in two blocks', () => {
     expect(shootEditErrors(input({ edits: [block, { ...block, videos: ['Video 9'] }] }))).toBe(
       'Ali is in two edit blocks'
     );
+  });
+});
+
+const busy = (id: string, title: string, date: string, start_time: string | null = null, end_time: string | null = null) => ({
+  id,
+  title,
+  start_date: date,
+  due_date: date,
+  start_time,
+  end_time,
+});
+
+describe('shootEditClashes', () => {
+  it('names everyone who is busy then', async () => {
+    const { db, ops } = recorder({
+      conflicts: {
+        shooter: [busy('y', 'Other shoot', '2026-11-20', '10:00:00', '11:00:00')],
+        ali: [busy('x', 'Other edit', '2026-11-22')],
+      },
+    });
+    await expect(shootEditClashes(db, input({ shootStart: '09:00', shootEnd: '12:00' }))).resolves.toEqual([
+      'The shooter is busy then: Other shoot (10:00–11:00)',
+      'Ali is busy then: Other edit',
+    ]);
+    expect(ops).toEqual([]);
+  });
+
+  it('ignores a same-day shoot at another time', async () => {
+    const { db } = recorder({ conflicts: { shooter: [busy('y', 'Morning shoot', '2026-11-20', '09:00', '12:00')] } });
+    await expect(shootEditClashes(db, input({ shootStart: '13:00', shootEnd: '16:00' }))).resolves.toEqual([]);
   });
 });
 
@@ -159,6 +195,7 @@ describe('createShootWithEdits', () => {
       title: 'Brand Film',
     });
     expect(tasks[0].follows_task_id).toBeUndefined();
+    expect(tasks[0]).toMatchObject({ start_time: null, end_time: null });
     expect(tasks[1]).toMatchObject({
       current_stage_id: 'post',
       assigned_to: 'ali',
@@ -184,16 +221,17 @@ describe('createShootWithEdits', () => {
     expect(creativeTasks.sort()).toEqual(['task-1', 'task-2', 'task-3']);
   });
 
-  it('creates nothing when an editor is already booked', async () => {
-    const { db, ops } = recorder({ conflicts: { ali: [{ id: 'x', title: 'Other edit' }] } });
-    await expect(createShootWithEdits(db, input())).rejects.toThrow('Ali is already booked then: Other edit');
-    expect(ops).toEqual([]);
+  it('writes the shoot time slot on the shoot task only', async () => {
+    const { db, ops } = recorder();
+    await createShootWithEdits(db, input({ shootStart: '09:00', shootEnd: '12:00' }));
+    const tasks = ops.filter((o) => o.table === 'tasks').map((o) => o.payload);
+    expect(tasks[0]).toMatchObject({ start_time: '09:00', end_time: '12:00' });
+    expect(tasks[1].start_time).toBeUndefined();
   });
 
-  it('creates nothing when the shooter is already booked', async () => {
-    const { db, ops } = recorder({ conflicts: { shooter: [{ id: 'y', title: 'Other shoot' }] } });
-    await expect(createShootWithEdits(db, input())).rejects.toThrow('The shooter is already booked then: Other shoot');
-    expect(ops).toEqual([]);
+  it('still creates everything when someone is busy — clashes only warn', async () => {
+    const { db } = recorder({ conflicts: { ali: [busy('x', 'Other edit', '2026-11-22')] } });
+    await expect(createShootWithEdits(db, input())).resolves.toEqual({ shootId: 'task-1', editIds: ['task-2', 'task-3'] });
   });
 
   it('rejects an invalid booking before touching the database', async () => {
