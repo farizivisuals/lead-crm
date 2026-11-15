@@ -23,6 +23,8 @@ import { Loader2, Trash2, Plus } from "lucide-react";
 import { bookingClashes, timeErrors, type Clash } from "@/lib/task-time";
 import { BusyWarning, TaskTimeFields } from "@/components/tasks/TaskTimeFields";
 import { GRAPHICS_SLUG, TIERS, tierHint, type Tier } from "@/lib/graphics";
+import { editStageAfterShoot } from "@/lib/shoot-edit";
+import { LocationField } from "@/components/tasks/LocationField";
 
 interface Employee {
   profile_id: string;
@@ -79,8 +81,11 @@ export default function EditTaskDialog({
     start_time: task.start_time?.slice(0, 5) ?? "",
     end_time: task.end_time?.slice(0, 5) ?? "",
     tier: (task.tier ?? "") as Tier | "",
+    location: task.location ?? "",
   });
   const isGraphics = task.departments?.slug === GRAPHICS_SLUG;
+  // Shoots (Video/Photo, not a linked edit) get a location.
+  const isShootTask = !!editStageAfterShoot(stages) && !task.follows_task_id;
 
   const currentStage = stages.find((s) => s.id === form.current_stage_id);
   const isShootStage = currentStage?.name.toLowerCase() === "shoot";
@@ -134,6 +139,7 @@ export default function EditTaskDialog({
       start_time: slot.start_time,
       end_time: slot.end_time,
       ...(isGraphics ? { tier: form.tier || null } : {}),
+      ...(isShootTask ? { location: form.location.trim() || null } : {}),
     };
 
     // Read back the dates: the Graphic Design trigger may have set them.
@@ -470,6 +476,8 @@ export default function EditTaskDialog({
             end={form.end_time}
             onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
           />
+
+          {isShootTask && <LocationField value={form.location} onChange={(v) => field("location", v)} />}
 
           {assigneeName && <BusyWarning name={assigneeName} clashes={conflicting} />}
 

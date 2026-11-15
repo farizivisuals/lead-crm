@@ -167,6 +167,8 @@ export interface Task {
   end_time: string | null;
   /** Graphic Design only. */
   tier: "basic" | "premium" | null;
+  /** Shoots: Google Maps / Waze link or an address (0032). */
+  location: string | null;
   assigned_to: string | null;
   /** Edit task → the shoot task it follows (see 0025_shoot_edit_handoff). */
   follows_task_id: string | null;

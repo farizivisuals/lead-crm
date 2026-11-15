@@ -32,6 +32,8 @@ export type ShootWithEditsInput = {
   shootStart?: string | null;
   shootEnd?: string | null;
   shooterId: string | null;
+  /** Google Maps / Waze link or address; on the shoot only. */
+  location?: string | null;
   creativeIds: string[];
   edits: EditBlock[];
   userId: string;
@@ -148,6 +150,7 @@ export async function createShootWithEdits(
       start_time: input.shootStart || null,
       end_time: input.shootEnd || null,
       assigned_to: input.shooterId,
+      location: input.location?.trim() || null,
     });
     await insertRows("task_creatives", creativesFor(shootId));
 

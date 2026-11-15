@@ -21,6 +21,8 @@ import { Button } from '../../../../../components/ui/Button';
 import { Input } from '../../../../../components/ui/Input';
 import { TimeInputs } from '../../../../../components/ui/TimeInputs';
 import { TierPicker } from '../../../../../components/ui/TierPicker';
+import { LocationInput, LocationLink } from '../../../../../components/ui/Location';
+import { editStageAfterShoot } from '@shared/shoot-edit';
 import { GRAPHICS_SLUG, type Tier } from '@shared/graphics';
 import { readTimes } from '@shared/task-time';
 import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
@@ -76,6 +78,7 @@ export default function TaskDetailScreen() {
   const [startTimeText, setStartTimeText] = useState('');
   const [endTimeText, setEndTimeText] = useState('');
   const [tier, setTier] = useState<Tier | null>(null);
+  const [location, setLocation] = useState('');
   const [creativeIds, setCreativeIds] = useState<string[]>([]);
   const [originalCreativeIds, setOriginalCreativeIds] = useState<string[]>([]);
   // Optimistic stage while a move is in flight; null = show the persisted one.
@@ -108,6 +111,7 @@ export default function TaskDetailScreen() {
     setStartTimeText(row.start_time?.slice(0, 5) ?? '');
     setEndTimeText(row.end_time?.slice(0, 5) ?? '');
     setTier(row.tier ?? null);
+    setLocation(row.location ?? '');
     const ids = (row.task_creatives ?? []).map((tc) => tc.profile_id);
     setCreativeIds(ids);
     setOriginalCreativeIds(ids);
@@ -142,6 +146,8 @@ export default function TaskDetailScreen() {
     stages.find((s) => s.id === stageId) ??
     (pendingStageId ? null : one(task.data?.department_stages ?? null));
   const shoot = isShootStage(stage?.name);
+  // Shoots (Video/Photo, not a linked edit) get a location.
+  const isShootTask = !!editStageAfterShoot(stages) && !task.data?.follows_task_id;
   // With deliverables the task's own stage is derived, not chosen.
   const hasDeliverables = drafts.length > 0;
 
@@ -376,6 +382,7 @@ export default function TaskDetailScreen() {
       start_time: times.start_time,
       end_time: times.end_time,
       ...(isGraphics ? { tier } : {}),
+      ...(isShootTask ? { location } : {}),
       creativesToAdd: toAdd,
       creativesToRemove: toRemove,
     });
@@ -461,6 +468,13 @@ export default function TaskDetailScreen() {
             />
           )}
 
+          {!!task.data?.location && (
+            <GlassCard>
+              <Text style={styles.label}>LOCATION</Text>
+              <LocationLink location={task.data.location} />
+            </GlassCard>
+          )}
+
           <GlassCard>
             <View style={styles.form}>
               <Input label="Title" value={title} onChangeText={setTitle} placeholder="Task title" />
@@ -515,6 +529,7 @@ export default function TaskDetailScreen() {
                   onEnd={setEndTimeText}
                 />
               )}
+              {isShootTask && <LocationInput value={location} onChange={setLocation} />}
             </View>
           </GlassCard>
 

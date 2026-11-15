@@ -19,6 +19,8 @@ export type TaskDetail = {
   start_time: string | null;
   end_time: string | null;
   tier: 'basic' | 'premium' | null;
+  /** Shoots: Google Maps / Waze link or an address. */
+  location: string | null;
   assigned_to: string | null;
   follows_task_id: string | null;
   department_stages:
@@ -230,6 +232,8 @@ export type SaveTaskInput = {
   end_time: string | null;
   /** Graphic Design only; leave undefined to keep it as it is. */
   tier?: 'basic' | 'premium' | null;
+  /** Shoots only; leave undefined to keep it as it is. */
+  location?: string | null;
   creativesToAdd: string[];
   creativesToRemove: string[];
 };
@@ -253,6 +257,7 @@ export async function saveTask(input: SaveTaskInput) {
       start_time: input.start_time,
       end_time: input.end_time,
       ...(input.tier !== undefined ? { tier: input.tier } : {}),
+      ...(input.location !== undefined ? { location: input.location?.trim() || null } : {}),
     })
     .eq('id', input.taskId);
   if (error) throw error;
@@ -295,6 +300,8 @@ export type CreateTaskInput = {
   assigned_to: string | null;
   /** Graphic Design only. */
   tier: 'basic' | 'premium' | null;
+  /** Shoots only. */
+  location: string | null;
   creativeProfileIds: string[];
   /** Deliverable titles ("Video 1", "Video 2"), created in the starting stage. */
   deliverableTitles: string[];
@@ -323,6 +330,7 @@ export async function createTask(input: CreateTaskInput): Promise<string> {
       start_time: input.start_time,
       end_time: input.end_time,
       tier: input.tier,
+      location: input.location?.trim() || null,
       assigned_to: input.assigned_to || null,
       created_by: input.userId,
     })

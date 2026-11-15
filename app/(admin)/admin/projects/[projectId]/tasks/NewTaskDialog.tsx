@@ -13,6 +13,7 @@ import type { DepartmentStage } from "@/lib/types";
 import { createShootWithEdits, editStageAfterShoot, shootEditClashes, shootEditErrors, type EditBlock } from "@/lib/shoot-edit";
 import { bookingClashes, timeErrors, type Clash } from "@/lib/task-time";
 import { BusyWarning, TaskTimeFields } from "@/components/tasks/TaskTimeFields";
+import { LocationField } from "@/components/tasks/LocationField";
 import { GRAPHICS_SLUG, TIERS, tierHint, type Tier } from "@/lib/graphics";
 
 const emptyBlock = (): EditBlock => ({ editorId: "", editorName: "", startDate: "", dueDate: "", videos: [] });
@@ -50,6 +51,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
     start_time: "",
     end_time: "",
     assigned_to: "",
+    location: "",
   });
 
   // Shoot → edit handoff: book the shoot and plan one edit task per editor.
@@ -64,7 +66,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
 
   /** After a save, so reopening the dialog can't resubmit the same booking. */
   function resetAll() {
-    setForm({ title: "", description: "", priority: "medium", start_date: "", due_date: "", start_time: "", end_time: "", assigned_to: "" });
+    setForm({ title: "", description: "", priority: "medium", start_date: "", due_date: "", start_time: "", end_time: "", assigned_to: "", location: "" });
     setSelectedCreatives(allCreativeIds);
     setDeliverables([]);
     setDeliverableInput("");
@@ -146,6 +148,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
         shootStart: slot.start_time,
         shootEnd: slot.end_time,
         shooterId: form.assigned_to || null,
+        location: form.location,
         creativeIds: selectedCreatives,
         edits: blocks,
         userId: user?.id ?? "",
@@ -183,6 +186,7 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
       start_time: isGraphics ? null : slot.start_time,
       end_time: isGraphics ? null : slot.end_time,
       tier: isGraphics ? tier : null,
+      location: canPlanEdit ? form.location.trim() || null : null,
       assigned_to: form.assigned_to || null,
       created_by: user?.id,
     }).select("id").single();
@@ -435,6 +439,10 @@ export default function NewTaskDialog({ projectId, departments, stages, employee
               end={form.end_time}
               onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
             />
+          )}
+
+          {canPlanEdit && (
+            <LocationField value={form.location} onChange={(v) => setForm((f) => ({ ...f, location: v }))} />
           )}
 
           {canPlanEdit && (

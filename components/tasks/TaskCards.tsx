@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import EditTaskDialog from "./EditTaskDialog";
+import { LocationLink } from "./LocationField";
 
 /** Returns true when a task is past its due date and not yet fully delivered. */
 function isTaskOverdue(task: Task, stages: DepartmentStage[]): boolean {
@@ -399,6 +400,7 @@ export default function TaskCards({ stages, tasks, employees, creatives = [], de
                       .join(", ")}
                   </span>
                 )}
+                {task.location && <LocationLink location={task.location} className="text-[11px]" />}
               </div>
 
               {/* Deliverable rows, each with its own stage */}

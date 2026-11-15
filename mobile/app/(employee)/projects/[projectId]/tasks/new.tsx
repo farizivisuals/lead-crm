@@ -20,6 +20,7 @@ import { Button } from '../../../../../components/ui/Button';
 import { Input } from '../../../../../components/ui/Input';
 import { TimeInputs } from '../../../../../components/ui/TimeInputs';
 import { TierPicker } from '../../../../../components/ui/TierPicker';
+import { LocationInput } from '../../../../../components/ui/Location';
 import { GRAPHICS_SLUG, type Tier } from '@shared/graphics';
 import { readTimes } from '@shared/task-time';
 import { ScreenHeader } from '../../../../../components/ui/ScreenHeader';
@@ -72,6 +73,7 @@ export default function NewTaskScreen() {
   // Graphic Design: pick Basic/Premium; dates are set when it reaches Consultation.
   const isGraphics = departments.find((d) => d.id === deptId)?.slug === GRAPHICS_SLUG;
   const [tier, setTier] = useState<Tier | null>(null);
+  const [location, setLocation] = useState('');
   const firstStage = pickers.data?.stages[0] ?? null;
 
   // Shoot → edit handoff (web parity: NewTaskDialog "Plan the edit").
@@ -191,6 +193,7 @@ export default function NewTaskScreen() {
         shootStart: times.start_time,
         shootEnd: times.end_time,
         shooterId: assignedTo,
+        location,
         creativeIds,
         edits: blocks,
         userId: session!.user.id,
@@ -229,6 +232,7 @@ export default function NewTaskScreen() {
       start_time: isGraphics ? null : times.start_time,
       end_time: isGraphics ? null : times.end_time,
       tier: isGraphics ? tier : null,
+      location: canPlanEdit ? location : null,
       assigned_to: assignedTo,
       creativeProfileIds: creativeIds,
       deliverableTitles: deliverables,
@@ -326,6 +330,7 @@ export default function NewTaskScreen() {
                   onEnd={setEndTimeText}
                 />
               )}
+              {canPlanEdit && <LocationInput value={location} onChange={setLocation} />}
             </View>
           </GlassCard>
 
