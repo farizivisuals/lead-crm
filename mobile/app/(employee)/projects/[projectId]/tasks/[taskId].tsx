@@ -718,7 +718,7 @@ export default function TaskDetailScreen() {
 
           {conflicting.length > 0 && (
             <GlassCard>
-              <Text style={styles.conflictTitle}>{assigneeName} is busy then</Text>
+              <Text style={styles.conflictTitle}>{`${assigneeName} already has ${conflicting.length} tasks then`}</Text>
               {conflicting.map((c) => (
                 <Text key={c.id} style={styles.conflictRow}>
                   · {c.title} ({c.when || 'all day'})

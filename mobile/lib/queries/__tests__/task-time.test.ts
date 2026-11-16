@@ -90,14 +90,26 @@ describe('bookingClashes', () => {
     return { calls, from: (t: string) => (calls.push(['from', t]), chain) };
   }
 
-  it('keeps only same-day tasks whose times overlap', async () => {
+  it('warns once they already have 2 tasks then, listing only the overlapping ones', async () => {
+    const d = db([
+      { id: 'a', title: 'Brev shoot', ...day('09:00:00', '12:00:00') },
+      { id: 'c', title: 'Photo shoot', ...day('10:00:00', '11:30:00') },
+      { id: 'b', title: 'Zill photos', ...day('13:00:00', '16:00:00') },
+    ]);
+    const clashes = await bookingClashes(d, 'dawood', day('10:00', '11:00'), null);
+    expect(clashes).toEqual([
+      { id: 'a', title: 'Brev shoot', when: '09:00–12:00' },
+      { id: 'c', title: 'Photo shoot', when: '10:00–11:30' },
+    ]);
+    expect(d.calls).toContainEqual(['eq', 'assigned_to', 'dawood']);
+  });
+
+  it('says nothing when they have just 1 other task then (2 at once is fine)', async () => {
     const d = db([
       { id: 'a', title: 'Brev shoot', ...day('09:00:00', '12:00:00') },
       { id: 'b', title: 'Zill photos', ...day('13:00:00', '16:00:00') },
     ]);
-    const clashes = await bookingClashes(d, 'dawood', day('10:00', '11:00'), null);
-    expect(clashes).toEqual([{ id: 'a', title: 'Brev shoot', when: '09:00–12:00' }]);
-    expect(d.calls).toContainEqual(['eq', 'assigned_to', 'dawood']);
+    expect(await bookingClashes(d, 'dawood', day('10:00', '11:00'), null)).toEqual([]);
   });
 
   it('skips the task being edited', async () => {

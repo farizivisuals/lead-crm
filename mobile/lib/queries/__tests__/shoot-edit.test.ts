@@ -160,18 +160,26 @@ const busy = (id: string, title: string, date: string, start_time: string | null
 });
 
 describe('shootEditClashes', () => {
-  it('names everyone who is busy then', async () => {
+  it('names everyone who already has 2 tasks then', async () => {
     const { db, ops } = recorder({
       conflicts: {
-        shooter: [busy('y', 'Other shoot', '2026-11-20', '10:00:00', '11:00:00')],
-        ali: [busy('x', 'Other edit', '2026-11-22')],
+        shooter: [
+          busy('y', 'Other shoot', '2026-11-20', '10:00:00', '11:00:00'),
+          busy('z', 'Photo shoot', '2026-11-20', '09:30:00', '10:30:00'),
+        ],
+        ali: [busy('x', 'Other edit', '2026-11-22'), busy('w', 'Reel edit', '2026-11-22')],
       },
     });
     await expect(shootEditClashes(db, input({ shootStart: '09:00', shootEnd: '12:00' }))).resolves.toEqual([
-      'The shooter is busy then: Other shoot (10:00–11:00)',
-      'Ali is busy then: Other edit',
+      'The shooter already has 2 tasks then: Other shoot (10:00–11:00), Photo shoot (09:30–10:30)',
+      'Ali already has 2 tasks then: Other edit, Reel edit',
     ]);
     expect(ops).toEqual([]);
+  });
+
+  it('lets a second task at the same time through without a warning', async () => {
+    const { db } = recorder({ conflicts: { shooter: [busy('y', 'Video shoot', '2026-11-20', '09:00', '12:00')] } });
+    await expect(shootEditClashes(db, input({ shootStart: '09:00', shootEnd: '12:00' }))).resolves.toEqual([]);
   });
 
   it('ignores a same-day shoot at another time', async () => {

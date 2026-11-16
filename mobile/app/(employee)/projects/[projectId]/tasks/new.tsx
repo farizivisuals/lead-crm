@@ -210,7 +210,7 @@ export default function NewTaskScreen() {
         // The check is only a heads-up; never let it stop the booking.
       }
       if (busy.length) {
-        Alert.alert('Someone is busy then', busy.join('\n'), [
+        Alert.alert('Someone already has 2 tasks then', busy.join('\n'), [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Create anyway', onPress: () => editMutation.mutate(input) },
         ]);
@@ -497,7 +497,7 @@ export default function NewTaskScreen() {
 
           {conflicting.length > 0 && (
             <GlassCard>
-              <Text style={styles.conflictTitle}>{assigneeName} is busy then</Text>
+              <Text style={styles.conflictTitle}>{`${assigneeName} already has ${conflicting.length} tasks then`}</Text>
               {conflicting.map((c) => (
                 <Text key={c.id} style={styles.conflictRow}>
                   · {c.title} ({c.when || 'all day'})

@@ -87,7 +87,7 @@ const shootSlot = (input: ShootWithEditsInput): Slot => ({
 export async function shootEditClashes(db: Db, input: ShootWithEditsInput): Promise<string[]> {
   const out: string[] = [];
   const describe = (who: string, clashes: { title: string; when: string }[]) =>
-    `${who} is busy then: ${clashes.map((c) => (c.when ? `${c.title} (${c.when})` : c.title)).join(", ")}`;
+    `${who} already has ${clashes.length} tasks then: ${clashes.map((c) => (c.when ? `${c.title} (${c.when})` : c.title)).join(", ")}`;
   if (input.shooterId) {
     const c = await bookingClashes(db, input.shooterId, shootSlot(input), null);
     if (c.length) out.push(describe("The shooter", c));

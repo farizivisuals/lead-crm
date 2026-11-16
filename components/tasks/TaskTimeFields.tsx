@@ -35,7 +35,7 @@ export function BusyWarning({ name, clashes }: { name: string; clashes: Clash[] 
     <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
       <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
       <div className="text-sm">
-        <p className="font-medium text-amber-300">{name} is busy then</p>
+        <p className="font-medium text-amber-300">{`${name} already has ${clashes.length} tasks then`}</p>
         <ul className="mt-1 space-y-0.5 text-amber-400/80">
           {clashes.map((t) => (
             <li key={t.id}>

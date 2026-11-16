@@ -56,6 +56,13 @@ export type Clash = { id: string; title: string; when: string };
  * Other tasks for `assignee` whose slots overlap `slot`. The database narrows
  * by date; times are compared here. A warning only — never a reason to block.
  */
+/** Two tasks at the same time is normal (a shoot plus a photo shoot); warn from the third. */
+export const MAX_TASKS_AT_ONCE = 2;
+
+/**
+ * The person's tasks that overlap `slot` — but only once they already have
+ * MAX_TASKS_AT_ONCE of them (this booking would be one too many). Otherwise [].
+ */
 export async function bookingClashes(db: Db, assignee: string, slot: Slot, excludeTaskId: string | null): Promise<Clash[]> {
   let query = db
     .from("tasks")
@@ -68,9 +75,10 @@ export async function bookingClashes(db: Db, assignee: string, slot: Slot, exclu
   if (excludeTaskId) query = query.neq("id", excludeTaskId);
   const { data, error } = await query;
   if (error) throw error;
-  return ((data ?? []) as (Slot & { id: string; title: string })[])
+  const clashes = ((data ?? []) as (Slot & { id: string; title: string })[])
     .filter((t) => slotsOverlap(t, slot))
     .map((t) => ({ id: t.id, title: t.title, when: timeRange(t.start_time, t.end_time) }));
+  return clashes.length >= MAX_TASKS_AT_ONCE ? clashes : [];
 }
 
 /** For typed time fields (mobile): normalise both and say what's wrong, if anything. */
