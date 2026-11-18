@@ -5,6 +5,7 @@ import { one } from '../data';
 import { TASK_DELIVERABLES_SELECT, insertDeliverables, type TaskDeliverable } from './task-deliverables';
 import { qk } from './keys';
 import { bookingClashes } from '@shared/task-time';
+import { staffSlug } from '@shared/graphics';
 
 export type TaskDetail = {
   id: string;
@@ -98,6 +99,9 @@ export function useTaskPickers(projectId: string, departmentId: string | undefin
     queryKey: qk.taskPickers(projectId, departmentId ?? ''),
     enabled: !!departmentId,
     queryFn: async (): Promise<TaskPickers> => {
+      // Who takes this department's tasks (graphic designers take Branding's).
+      const deptRes = await supabase.from('departments').select('slug').eq('id', departmentId!).single();
+      if (deptRes.error) throw deptRes.error;
       const [stagesRes, employeesRes, creativesRes] = await Promise.all([
         supabase
           .from('department_stages')
@@ -106,8 +110,8 @@ export function useTaskPickers(projectId: string, departmentId: string | undefin
           .order('position'),
         supabase
           .from('employees')
-          .select('profile_id, profiles(full_name), employee_departments!inner(department_id)')
-          .eq('employee_departments.department_id', departmentId!),
+          .select('profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))')
+          .eq('employee_departments.departments.slug', staffSlug(deptRes.data.slug)),
         supabase
           .from('project_creatives')
           .select('profile_id, employees(profiles(full_name))')

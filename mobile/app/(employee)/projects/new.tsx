@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ProjectStatus } from '@shared/types';
 import { PROJECT_STATUS_LABELS, DEPT_COLORS } from '@shared/rbac';
+import { projectPeople } from '@shared/graphics';
 import { Screen } from '../../../components/ui/Screen';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { Button } from '../../../components/ui/Button';
@@ -49,6 +50,14 @@ export default function NewProjectScreen() {
   const [error, setError] = useState<string | null>(null);
   const [picker, setPicker] = useState<'client' | 'status' | null>(null);
 
+  // Graphic designers on Branding projects, creatives on the rest.
+  const roster = projectPeople(
+    options?.creatives ?? [],
+    deptIds.map((id) => options?.departments.find((d) => d.id === id)?.slug ?? '')
+  );
+  // Only people still offered (switching to or from Branding changes who that is).
+  const pickedPeople = creativeIds.filter((id) => roster.people.some((p) => p.profile_id === id));
+
   const clientName =
     options?.clients.find((c) => c.id === clientId)?.company_name ?? 'Select a client';
 
@@ -82,7 +91,7 @@ export default function NewProjectScreen() {
       start_date: startDate,
       target_end_date: targetEndDate,
       departmentIds: deptIds,
-      creativeProfileIds: creativeIds,
+      creativeProfileIds: pickedPeople,
       userId: session.user.id,
     });
   }
@@ -157,9 +166,9 @@ export default function NewProjectScreen() {
           </GlassCard>
 
           <GlassCard>
-            <Text style={styles.label}>CREATIVES</Text>
+            <Text style={styles.label}>{roster.label.toUpperCase()}</Text>
             <View style={styles.chipRow}>
-              {(options?.creatives ?? []).map((c) => {
+              {roster.people.map((c) => {
                 const on = creativeIds.includes(c.profile_id);
                 return (
                   <Pressable
@@ -171,8 +180,8 @@ export default function NewProjectScreen() {
                   </Pressable>
                 );
               })}
-              {!isLoading && (options?.creatives.length ?? 0) === 0 && (
-                <Text style={styles.hint}>No creatives available.</Text>
+              {!isLoading && roster.people.length === 0 && (
+                <Text style={styles.hint}>No one available.</Text>
               )}
             </View>
           </GlassCard>

@@ -6,32 +6,25 @@ import { formatDate } from "@/lib/utils";
 import NewProjectDialog from "./NewProjectDialog";
 import { requireEmployee } from "@/lib/auth/guards";
 import { isExecutive } from "@/lib/rbac";
+import { fetchPeople } from "@/lib/graphics";
 
 export default async function ProjectsPage() {
   const { employee } = await requireEmployee();
   const canManage = isExecutive(employee?.role ?? "employee");
   const supabase = await createClient();
 
-  const [{ data: projects }, { data: clients }, { data: departments }, { data: creativeRows }, { data: taskRows }] = await Promise.all([
+  const [{ data: projects }, { data: clients }, { data: departments }, creatives, { data: taskRows }] = await Promise.all([
     supabase
       .from("projects")
       .select("*, clients(company_name), project_departments(*, departments(name, slug))")
       .order("updated_at", { ascending: false }),
     supabase.from("clients").select("id, company_name").order("company_name"),
     supabase.from("departments").select("*").order("name"),
-    supabase
-      .from("employees")
-      .select("profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))")
-      .eq("employee_departments.departments.slug", "creatives"),
+    fetchPeople(supabase),
     // Task progress for all visible projects — RLS already scopes tasks to the
     // same projects the list above returns, so no .in() filter needed.
     supabase.from("tasks").select("project_id, department_stages(is_terminal)"),
   ]);
-
-  const creatives = (creativeRows ?? []).map((c) => ({
-    profile_id: c.profile_id as string,
-    full_name: (c.profiles as unknown as { full_name: string } | null)?.full_name ?? "Unknown",
-  }));
 
   type Progress = { total: number; done: number };
   const progressByProject = (taskRows ?? []).reduce<Record<string, Progress>>((acc, t) => {

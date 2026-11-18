@@ -11,11 +11,13 @@ import * as Popover from "@radix-ui/react-popover";
 import { Plus, Loader2, ChevronDown, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import type { Department } from "@/lib/types";
+import { projectPeople, type Person } from "@/lib/graphics";
 
 interface Props {
   clients: { id: string; company_name: string }[];
   departments: Department[];
-  creatives: { profile_id: string; full_name: string }[];
+  /** Creatives and graphic designers; the picker shows whoever fits the departments. */
+  creatives: Person[];
   /** Locks the dialog to one client (used on the client detail page). */
   defaultClientId?: string;
 }
@@ -39,6 +41,14 @@ export default function NewProjectDialog({ clients, departments, creatives, defa
     start_date: "",
     target_end_date: "",
   });
+
+  // Graphic designers on Branding projects, creatives on the rest.
+  const roster = projectPeople(
+    creatives,
+    selectedDepts.map((id) => departments.find((d) => d.id === id)?.slug ?? "")
+  );
+  // Only people still offered (switching to or from Branding changes who that is).
+  const pickedPeople = selectedCreatives.filter((id) => roster.people.some((p) => p.profile_id === id));
 
   function toggleDept(id: string) {
     setSelectedDepts((prev) =>
@@ -91,9 +101,9 @@ export default function NewProjectDialog({ clients, departments, creatives, defa
       return;
     }
 
-    if (selectedCreatives.length > 0) {
+    if (pickedPeople.length > 0) {
       const { error: creativeErr } = await supabase.from("project_creatives").insert(
-        selectedCreatives.map((profile_id) => ({
+        pickedPeople.map((profile_id) => ({
           project_id: project.id,
           profile_id,
         }))
@@ -237,11 +247,11 @@ export default function NewProjectDialog({ clients, departments, creatives, defa
             </div>
           </div>
 
-          {creatives.length > 0 && (
+          {roster.people.length > 0 && (
             <div className="space-y-2">
-              <Label>Creatives</Label>
+              <Label>{roster.label}</Label>
               <div className="flex gap-2 flex-wrap">
-                {creatives.map((c) => (
+                {roster.people.map((c) => (
                   <button
                     key={c.profile_id}
                     type="button"

@@ -13,6 +13,7 @@ import QuoteDialog from "./QuoteDialog";
 import EditQuoteDialog from "./EditQuoteDialog";
 import DeleteQuoteButton from "./DeleteQuoteButton";
 import DeleteClientButton from "./DeleteClientButton";
+import { fetchPeople } from "@/lib/graphics";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
@@ -32,24 +33,15 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
 
-  const [{ data: quotes }, { data: departments }, { data: creativeRows }] = await Promise.all([
+  const [{ data: quotes }, { data: departments }, creatives] = await Promise.all([
     supabase
       .from("quotes")
       .select("*, quote_line_items(description, quantity, unit_price, position)")
       .eq("client_id", clientId)
       .order("created_at", { ascending: false }),
     supabase.from("departments").select("*").order("name"),
-    // Same creatives query as the All Projects page.
-    supabase
-      .from("employees")
-      .select("profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))")
-      .eq("employee_departments.departments.slug", "creatives"),
+    fetchPeople(supabase),
   ]);
-
-  const creatives = (creativeRows ?? []).map((c) => ({
-    profile_id: c.profile_id as string,
-    full_name: (c.profiles as unknown as { full_name: string } | null)?.full_name ?? "Unknown",
-  }));
 
   const statusColors: Record<string, "default" | "secondary" | "success" | "warning" | "destructive"> = {
     planning: "secondary",

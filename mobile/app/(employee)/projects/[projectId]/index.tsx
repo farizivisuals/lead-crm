@@ -177,7 +177,7 @@ export default function ProjectDetailScreen() {
     );
   }
 
-  const { project, progress, deliverableCount, assignedCreatives, availableCreatives, allDepartments } = data;
+  const { project, progress, deliverableCount, assignedCreatives, availableCreatives, peopleLabel, allDepartments } = data;
   const assignedDepts: AssignedDepartment[] = (project.project_departments ?? [])
     .map((pd) => ({
       department_id: pd.department_id,
@@ -338,7 +338,7 @@ export default function ProjectDetailScreen() {
 
           {canManage && (
             <View style={styles.creatives}>
-              <Text style={styles.label}>CREATIVES</Text>
+              <Text style={styles.label}>{peopleLabel.toUpperCase()}</Text>
               <View style={styles.chipRow}>
                 {assignedCreatives.map((c) => (
                   <Pressable
@@ -350,7 +350,7 @@ export default function ProjectDetailScreen() {
                   </Pressable>
                 ))}
                 {assignedCreatives.length === 0 && (
-                  <Text style={styles.muted}>No creatives assigned</Text>
+                  <Text style={styles.muted}>No one assigned</Text>
                 )}
                 {availableCreatives.length > 0 && (
                   <Pressable onPress={() => setCreativePickerOpen(true)} style={[styles.chip, styles.chipAdd]}>
@@ -461,7 +461,7 @@ export default function ProjectDetailScreen() {
       />
       <PickerSheet
         visible={creativePickerOpen}
-        title="Add creative"
+        title="Add to project"
         options={availableCreatives.map((c) => ({ value: c.profile_id, label: c.full_name }))}
         onSelect={(profileId) => {
           setCreativePickerOpen(false);

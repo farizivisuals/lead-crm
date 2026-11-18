@@ -66,4 +66,5 @@ export const DEPT_COLORS: Record<string, string> = {
   pr: "#f59e0b",
   creatives: "#7c3aed",
   graphics: "#f97316",
+  branding: "#3b82f6",
 };

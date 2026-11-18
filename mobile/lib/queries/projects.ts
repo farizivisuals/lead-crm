@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import type { ProjectStatus } from '@shared/types';
 import { supabase } from '../supabase';
 import { qk } from './keys';
-import { one, taskProgress, type Progress, type TaskProgressRow } from '../data';
+import { taskProgress, type Progress, type TaskProgressRow } from '../data';
+import { fetchPeople, type Person } from '@shared/graphics';
 
 export type ProjectListRow = {
   id: string;
@@ -46,26 +47,14 @@ export function useProjectsList() {
 
 export type ClientOption = { id: string; company_name: string };
 export type DepartmentOption = { id: string; name: string; slug: string };
-export type CreativeOption = { profile_id: string; full_name: string };
+export type CreativeOption = Person;
 
 /**
- * Every employee in the `creatives` department — the agency-wide roster the new
- * project form and the project detail screen both offer. One definition, used
- * by both `queryFn`s; the select string is verbatim from the porting brief
- * (including `employee_departments!inner(departments!inner(slug))`) and must
- * stay character-identical to the web's.
+ * Every creative and graphic designer — the roster the new project form and
+ * the project detail screen both pick from (`projectPeople` narrows it to the
+ * project's departments). Shared with the web.
  */
-export async function creativeEmployees(): Promise<CreativeOption[]> {
-  const { data, error } = await supabase
-    .from('employees')
-    .select('profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))')
-    .eq('employee_departments.departments.slug', 'creatives');
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({
-    profile_id: row.profile_id as string,
-    full_name: one<{ full_name: string }>(row.profiles)?.full_name ?? 'Unknown',
-  }));
-}
+export const creativeEmployees = (): Promise<CreativeOption[]> => fetchPeople(supabase);
 
 export function useProjectFormOptions() {
   return useQuery({

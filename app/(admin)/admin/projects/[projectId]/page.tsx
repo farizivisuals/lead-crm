@@ -12,6 +12,7 @@ import MoodboardEditor from "./MoodboardEditor";
 import type { ProjectStatus } from "@/lib/types";
 import { requireEmployee, isCreativeEmployee } from "@/lib/auth/guards";
 import { isExecutive, PROJECT_STATUS_LABELS } from "@/lib/rbac";
+import { fetchPeople, projectPeople } from "@/lib/graphics";
 
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ projectId: string }> }) {
@@ -22,7 +23,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const canEditMoodboard = canManage || isCreativeEmployee(employee);
 
-  const [{ data: project }, { data: taskRows }, { count: deliverableCount }, { data: creativeRows }, { data: allCreativeRows }, { data: allDepartments }] = await Promise.all([
+  const [{ data: project }, { data: taskRows }, { count: deliverableCount }, { data: creativeRows }, people, { data: allDepartments }] = await Promise.all([
     supabase
       .from("projects")
       .select("*, clients(company_name), project_departments(*, departments(name, slug))")
@@ -37,10 +38,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .from("project_creatives")
       .select("profile_id, employees(profiles(full_name))")
       .eq("project_id", projectId),
-    supabase
-      .from("employees")
-      .select("profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))")
-      .eq("employee_departments.departments.slug", "creatives"),
+    fetchPeople(supabase),
     supabase.from("departments").select("id, name, slug").order("name"),
   ]);
 
@@ -52,7 +50,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     return { profile_id: row.profile_id, full_name: profiles?.full_name ?? "Unknown" };
   };
   const assignedCreatives = (creativeRows ?? []).map(toName);
-  const allCreatives = (allCreativeRows ?? []).map(toName);
   const taskCount = taskRows?.length ?? 0;
   // Supabase returns the join as an array; take the first element.
   const taskDone = (taskRows ?? []).filter((t) => {
@@ -71,6 +68,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       slug: pd.departments?.slug ?? "",
     }))
     .sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
+  // Graphic designers on Branding projects, creatives on the rest.
+  const roster = projectPeople(people, assignedDepartments.map((d) => d.slug));
 
   const navItems = [
     {
@@ -184,7 +183,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <ProjectCreatives
             projectId={projectId}
             assigned={assignedCreatives}
-            allCreatives={allCreatives}
+            allCreatives={roster.people}
+            label={roster.label}
           />
         )}
       </div>

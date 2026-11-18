@@ -14,9 +14,11 @@ interface Props {
   projectId: string;
   assigned: Creative[];
   allCreatives: Creative[];
+  /** "Creatives", or "Graphic designers" on Branding projects. */
+  label: string;
 }
 
-export default function ProjectCreatives({ projectId, assigned, allCreatives }: Props) {
+export default function ProjectCreatives({ projectId, assigned, allCreatives, label }: Props) {
   const router = useRouter();
   const [supabase] = useState(() => createClient());
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +51,7 @@ export default function ProjectCreatives({ projectId, assigned, allCreatives }: 
     <div className="mt-4 pt-4 border-t border-white/[0.08]">
       <div className="flex items-center gap-1.5 mb-2">
         <Users className="h-3.5 w-3.5 text-white/30" />
-        <span className="text-xs font-medium uppercase tracking-widest text-white/40">Creatives</span>
+        <span className="text-xs font-medium uppercase tracking-widest text-white/40">{label}</span>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         {assigned.map((c) => (
@@ -61,14 +63,14 @@ export default function ProjectCreatives({ projectId, assigned, allCreatives }: 
             <button
               onClick={() => removeCreative(c.profile_id)}
               className="text-white/25 hover:text-red-400 transition-colors"
-              title="Remove creative"
+              title="Remove"
             >
               <X className="h-3 w-3" />
             </button>
           </span>
         ))}
         {assigned.length === 0 && (
-          <span className="text-xs text-white/25">No creatives assigned</span>
+          <span className="text-xs text-white/25">No one assigned</span>
         )}
         {available.length > 0 && (
           <Select value="" onValueChange={addCreative}>

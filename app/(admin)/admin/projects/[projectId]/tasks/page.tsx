@@ -7,6 +7,7 @@ import TaskCards from "@/components/tasks/TaskCards";
 import NewTaskDialog from "./NewTaskDialog";
 import { requireEmployee } from "@/lib/auth/guards";
 import { isExecutive } from "@/lib/rbac";
+import { staffSlug } from "@/lib/graphics";
 
 export default async function TasksPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
@@ -40,6 +41,8 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
   }[]);
 
   const deptIds = depts.map((d) => d.department_id);
+  // Who takes each department's tasks (graphic designers take Branding's).
+  const staffSlugs = depts.map((d) => staffSlug(d.departments.slug));
 
   const [{ data: stages }, { data: employees }] = await Promise.all([
     supabase
@@ -49,15 +52,19 @@ export default async function TasksPage({ params }: { params: Promise<{ projectI
       .order("position"),
     supabase
       .from("employees")
-      .select("profile_id, profiles(full_name), employee_departments!inner(department_id)")
-      .in("employee_departments.department_id", deptIds),
+      .select("profile_id, profiles(full_name), employee_departments!inner(departments!inner(slug))")
+      .in("employee_departments.departments.slug", staffSlugs),
   ]);
 
-  const deptEmployees = (employees ?? []).map((e) => ({
-    profile_id: e.profile_id as string,
-    profiles: e.profiles as unknown as { full_name: string } | null,
-    department_ids: (e.employee_departments as unknown as { department_id: string }[]).map((d) => d.department_id),
-  }));
+  const deptEmployees = (employees ?? []).map((e) => {
+    const slugs = (e.employee_departments as unknown as { departments: { slug: string } }[]).map((d) => d.departments.slug);
+    return {
+      profile_id: e.profile_id as string,
+      profiles: e.profiles as unknown as { full_name: string } | null,
+      // The project's departments whose tasks they can take.
+      department_ids: depts.filter((_, i) => slugs.includes(staffSlugs[i]!)).map((d) => d.department_id),
+    };
+  });
 
   const projectCreatives = (creativeRows ?? []).map((c) => ({
     profile_id: c.profile_id as string,

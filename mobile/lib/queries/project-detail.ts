@@ -4,6 +4,7 @@ import { supabase } from '../supabase';
 import { qk } from './keys';
 import { creativeEmployees } from './projects';
 import { one, taskProgress, type TaskProgressRow } from '../data';
+import { projectPeople } from '@shared/graphics';
 
 export type ProjectDetail = {
   project: {
@@ -27,6 +28,8 @@ export type ProjectDetail = {
   deliverableCount: number;
   assignedCreatives: { profile_id: string; full_name: string }[];
   availableCreatives: { profile_id: string; full_name: string }[];
+  /** "Creatives", or "Graphic designers" on Branding projects. */
+  peopleLabel: string;
   allDepartments: { id: string; name: string; slug: string }[];
 };
 
@@ -91,12 +94,19 @@ export function useProjectDetail(projectId: string) {
         full_name: one<any>(one<any>(row.employees)?.profiles)?.full_name ?? 'Unknown',
       }));
 
+      // Graphic designers on Branding projects, creatives on the rest.
+      const deptSlugs = ((projectRes.data as any).project_departments ?? []).map(
+        (pd: any) => one<{ slug: string }>(pd.departments)?.slug ?? ''
+      );
+      const roster = projectPeople(allCreatives, deptSlugs);
+
       return {
         project: projectRes.data as unknown as ProjectDetail['project'],
         progress: taskProgress(progressRows)[projectId] ?? { total: 0, done: 0 },
         deliverableCount: deliverablesRes.count ?? 0,
         assignedCreatives: assigned,
-        availableCreatives: unassignedCreatives(allCreatives, assigned),
+        availableCreatives: unassignedCreatives(roster.people, assigned),
+        peopleLabel: roster.label,
         allDepartments: departmentsRes.data ?? [],
       };
     },
